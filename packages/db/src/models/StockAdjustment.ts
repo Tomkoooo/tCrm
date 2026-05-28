@@ -5,6 +5,11 @@ export type StockAdjustmentReason =
   | 'damage'
   | 'correction'
   | 'initial_load'
+  | 'grn'
+  | 'pick'
+  | 'transfer'
+  | 'return'
+  | 'reservation'
   | 'other';
 
 export interface IStockAdjustment extends Document {
@@ -28,7 +33,18 @@ const StockAdjustmentSchema = new Schema<IStockAdjustment>(
     reason: {
       type: String,
       required: true,
-      enum: ['physical_count', 'damage', 'correction', 'initial_load', 'other'],
+      enum: [
+        'physical_count',
+        'damage',
+        'correction',
+        'initial_load',
+        'grn',
+        'pick',
+        'transfer',
+        'return',
+        'reservation',
+        'other',
+      ],
     },
     note: { type: String },
     byUserId: { type: Schema.Types.ObjectId, ref: 'User', required: true },

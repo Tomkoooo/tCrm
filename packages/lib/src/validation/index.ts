@@ -25,3 +25,13 @@ export type {
   CategoryInput,
   StockAdjustmentInput,
 } from './inventory';
+
+export {
+  movementLineSchema,
+  createMovementSchema,
+  createReservationSchema,
+  releaseReservationSchema,
+  parseMovementLinesJson,
+} from './logistics';
+
+export type { CreateMovementInput, MovementLineInput, CreateReservationInput } from './logistics';

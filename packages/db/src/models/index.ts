@@ -11,3 +11,17 @@ export {
 } from './StockAdjustment';
 export { Category, type ICategory } from './Category';
 export { Supplier, type ISupplier } from './Supplier';
+export { Counter, type ICounter } from './Counter';
+export {
+  Reservation,
+  type IReservation,
+  type ReservationSourceType,
+  type ReservationStatus,
+} from './Reservation';
+export {
+  StockMovement,
+  type IStockMovement,
+  type IMovementLine,
+  type MovementType,
+  type MovementStatus,
+} from './StockMovement';

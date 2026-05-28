@@ -1,16 +1,20 @@
 import { connections, connect, mongo } from 'mongoose';
 
-const MONGODB_URI = process.env.MONGODB_URI;
 const DB_NAME = process.env.MONGODB_DB_NAME ?? 'tcrm';
 
-if (!MONGODB_URI) {
+function getMongoUri(): string | undefined {
+  return process.env.MONGODB_URI;
+}
+
+if (!getMongoUri()) {
   console.warn('MONGODB_URI is not set — database operations will fail at runtime');
 }
 
 let connectionPromise: Promise<typeof import('mongoose')> | null = null;
 
 export async function connectDB(): Promise<void> {
-  if (!MONGODB_URI) {
+  const mongoUri = getMongoUri();
+  if (!mongoUri) {
     throw new Error('MONGODB_URI is not set');
   }
 
@@ -24,7 +28,7 @@ export async function connectDB(): Promise<void> {
   }
 
   try {
-    connectionPromise = connect(MONGODB_URI, {
+    connectionPromise = connect(mongoUri, {
       dbName: DB_NAME,
       serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 10000,
@@ -42,11 +46,12 @@ export async function connectDB(): Promise<void> {
 let _nativeClient: mongo.MongoClient | null = null;
 
 export function getNativeClient(): mongo.MongoClient {
-  if (!MONGODB_URI) {
+  const mongoUri = getMongoUri();
+  if (!mongoUri) {
     throw new Error('MONGODB_URI is not set');
   }
   if (!_nativeClient) {
-    _nativeClient = new mongo.MongoClient(MONGODB_URI);
+    _nativeClient = new mongo.MongoClient(mongoUri);
   }
   return _nativeClient;
 }

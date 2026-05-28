@@ -8,11 +8,13 @@
   },
   "scripts": {
     "lint": "eslint src/",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@crm/db": "workspace:*",
     "@crm/lib": "workspace:*",
+    "mongoose": "^9.0.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
@@ -20,6 +22,7 @@
     "@crm/tsconfig": "workspace:*",
     "@types/node": "^20",
     "eslint": "^9.17.0",
+    "mongodb-memory-server": "^11.2.0",
     "typescript": "^5.7.2",
     "vitest": "^3.2.4"
   }

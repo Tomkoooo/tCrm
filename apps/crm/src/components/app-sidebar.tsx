@@ -7,6 +7,8 @@ import {
   LayoutDashboardIcon,
   PackageIcon,
   TruckIcon,
+  ArrowRightLeftIcon,
+  LockIcon,
   FileTextIcon,
   WrenchIcon,
   UsersIcon,
@@ -112,12 +114,26 @@ export function AppSidebar() {
                 </>
               )}
               {hasPermission('logistics:read') && (
-                <MenuItem
-                  href="/logistics"
-                  icon={<TruckIcon className="h-4 w-4" />}
-                  label="Logistics"
-                  onClick={linkClick}
-                />
+                <>
+                  <MenuItem
+                    href="/logistics"
+                    icon={<TruckIcon className="h-4 w-4" />}
+                    label="Logistics"
+                    onClick={linkClick}
+                  />
+                  <MenuItem
+                    href="/logistics/movements"
+                    icon={<ArrowRightLeftIcon className="h-4 w-4" />}
+                    label="Movements"
+                    onClick={linkClick}
+                  />
+                  <MenuItem
+                    href="/logistics/reservations"
+                    icon={<LockIcon className="h-4 w-4" />}
+                    label="Reservations"
+                    onClick={linkClick}
+                  />
+                </>
               )}
               {hasPermission('offers:read') && (
                 <MenuItem
