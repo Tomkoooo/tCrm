@@ -1,0 +1,26 @@
+{
+  "name": "@crm/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@crm/db": "workspace:*",
+    "@crm/lib": "workspace:*",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@crm/eslint-config": "workspace:*",
+    "@crm/tsconfig": "workspace:*",
+    "@types/node": "^20",
+    "eslint": "^9.17.0",
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.4"
+  }
+}

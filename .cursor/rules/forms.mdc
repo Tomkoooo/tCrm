@@ -1,0 +1,20 @@
+---
+description: Form component patterns for tCrm
+globs: "**/*Form.tsx"
+alwaysApply: false
+---
+
+# Forms
+
+Use Server Actions + `useActionState`:
+
+```tsx
+const [state, formAction, pending] = useActionState(myAction, initialState);
+```
+
+- Form: `className="flex flex-col gap-6"`
+- Field groups: `gap-2`
+- Required: red asterisk on Label
+- Errors: `text-sm text-red-600` from `state.fieldErrors`
+- Submit button shows pending state
+- Do not use react-hook-form unless explicitly approved

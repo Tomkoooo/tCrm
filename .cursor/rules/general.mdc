@@ -1,0 +1,30 @@
+---
+description: tCrm monorepo conventions and architecture overview
+alwaysApply: true
+---
+
+# tCrm — Cursor Rules
+
+Internal CRM monorepo. Read `docs/ARCHITECTURE.md`, `docs/rules.md`, and `docs/design.md` before making changes.
+
+## Stack
+
+Next.js 16 App Router · React 19 · TypeScript strict · Tailwind v4 · shadcn New York+zinc · MongoDB/Mongoose · Auth.js v5 · Turborepo/pnpm
+
+## Key conventions
+
+- Server Components by default; `"use client"` only when needed
+- Server Actions + `useActionState` for forms (not RHF)
+- Co-locate `actions.ts` next to routes
+- Models in `@crm/db`, auth in `@crm/auth`, shared utils in `@crm/lib`
+- Always use `requirePermission()` in admin routes and mutations
+- Wrap pages in `<Container>` from `@crm/ui`
+- Use semantic Tailwind tokens, not raw colors
+
+## Workspace packages
+
+`@crm/auth` `@crm/db` `@crm/lib` `@crm/ui` `@crm/core` — never import across `apps/*`
+
+## Phase 0 scope
+
+Foundation only: auth shell, dynamic RBAC, admin permissions UI, dashboard. Inventory is Phase 1.

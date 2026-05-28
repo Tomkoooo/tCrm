@@ -1,0 +1,18 @@
+---
+description: RBAC and auth enforcement rules
+globs: "**/{middleware.ts,layout.tsx,actions.ts}"
+alwaysApply: false
+---
+
+# RBAC Enforcement
+
+Defense in depth — all layers required:
+
+1. `middleware.ts` — session validation via Auth.js
+2. Layouts — `requirePermission('key')` returns `notFound()` for unauthorized
+3. Server Actions — `await requirePermission('key')` as first line
+4. Client nav — hide items only (not security)
+
+Permission key format: `module:action` (e.g. `inventory:read`, `roles:manage`).
+
+Import helpers from `@crm/auth`: `getCurrentUser`, `requireAuth`, `requirePermission`, `hasPermission`.

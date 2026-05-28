@@ -1,0 +1,14 @@
+---
+description: React component conventions for tCrm CRM app
+globs: "apps/crm/src/components/**"
+alwaysApply: false
+---
+
+# Components
+
+- Prefer Server Components; add `"use client"` only for interactivity
+- Use `cn()` for class merging
+- Import shadcn primitives from `@/components/ui/`
+- Do not modify `ui/` primitives for one-offs — compose wrappers
+- Icons from lucide-react at `h-4 w-4` in nav
+- Permission-aware UI: check `user.permissions.includes('key')` but always enforce server-side too

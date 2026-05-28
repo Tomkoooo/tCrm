@@ -1,0 +1,18 @@
+import { requirePermission } from '@crm/auth';
+import { Container } from '@crm/ui';
+import { ProductForm } from '../_components/product-form';
+import { createProductAction } from '../actions';
+
+export default async function NewProductPage() {
+  await requirePermission('inventory:write');
+
+  return (
+    <Container className="flex max-w-4xl flex-col gap-4 pb-12 md:gap-6">
+      <div>
+        <h1 className="text-2xl font-bold">New product</h1>
+        <p className="text-muted-foreground text-sm">Create a product manually.</p>
+      </div>
+      <ProductForm mode="create" action={createProductAction} />
+    </Container>
+  );
+}

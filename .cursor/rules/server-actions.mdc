@@ -1,0 +1,18 @@
+---
+description: Server Actions pattern for tCrm
+globs: "**/actions.ts"
+alwaysApply: false
+---
+
+# Server Actions
+
+Every action file must:
+
+1. Start with `'use server'`
+2. Use discriminated union state: `{ success: true } | { success: false; fieldErrors?; message? }`
+3. Call `await requirePermission('key')` or `requireAuth()` first for protected actions
+4. Validate with Zod from `@crm/lib/validation`
+5. Call `await connectDB()` before DB operations
+6. Use `revalidatePath()` after mutations
+
+Never put business logic in API routes — use Server Actions or `@crm/core`.

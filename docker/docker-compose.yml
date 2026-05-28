@@ -1,0 +1,39 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: tcrm
+
+  mongo-express:
+    image: mongo-express:1
+    restart: unless-stopped
+    ports:
+      - '8081:8081'
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongo
+      ME_CONFIG_BASICAUTH: 'false'
+    depends_on:
+      - mongo
+
+  crm:
+    build:
+      context: ..
+      dockerfile: apps/crm/Dockerfile
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      MONGODB_URI: mongodb://mongo:27017
+      MONGODB_DB_NAME: tcrm
+      AUTH_SECRET: ${AUTH_SECRET:-dev-secret-change-in-production-min-32-chars}
+      AUTH_URL: http://localhost:3000
+    depends_on:
+      - mongo
+
+volumes:
+  mongo_data:

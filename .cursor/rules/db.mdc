@@ -1,0 +1,16 @@
+---
+description: Database and repository conventions
+globs: "packages/db/**"
+alwaysApply: false
+---
+
+# Database Layer
+
+- All models in `packages/db/src/models/`
+- Use `connectDB()` singleton — never create new connections
+- Extend `AbstractRepository` for complex query modules
+- Add indexes on frequently queried fields
+- Seed baseline data via `packages/db/src/seed.ts`
+- GridFS uploads via `getUploadsBucket()`
+
+Never import `@crm/db` in Edge runtime (middleware).

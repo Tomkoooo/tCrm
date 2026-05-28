@@ -1,0 +1,28 @@
+{
+  "name": "@crm/lib",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./utils": "./src/utils/index.ts",
+    "./validation": "./src/validation/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.4.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@crm/eslint-config": "workspace:*",
+    "@crm/tsconfig": "workspace:*",
+    "eslint": "^9.17.0",
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.18"
+  }
+}
