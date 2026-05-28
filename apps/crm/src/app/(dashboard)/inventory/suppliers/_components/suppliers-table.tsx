@@ -12,6 +12,10 @@ export type SupplierRow = {
   name: string;
   city?: string;
   country?: string;
+  phone?: string;
+  email?: string;
+  euTaxNo?: string;
+  salesContact?: string;
 };
 
 export function SuppliersTable({
@@ -54,7 +58,8 @@ export function SuppliersTable({
           open={createOpen}
           onOpenChange={setCreateOpen}
           title="Új beszállító"
-          size="md"
+          description="Cégadatok és tetszőleges számú, elnevezett kapcsolattartó."
+          size="lg"
           mode="create"
         >
           <CreateSupplierForm onSuccess={() => setCreateOpen(false)} />

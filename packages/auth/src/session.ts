@@ -31,6 +31,15 @@ export async function requirePermission(permissionKey: string) {
   return user;
 }
 
+export async function requireAnyPermission(permissionKeys: string[]) {
+  const user = await requireAuth();
+  if (!user || !permissionKeys.some((key) => user.permissions.includes(key))) {
+    const { notFound } = await import('next/navigation');
+    notFound();
+  }
+  return user;
+}
+
 export async function hasPermission(permissionKey: string): Promise<boolean> {
   const user = await getCurrentUser();
   if (!user) return false;

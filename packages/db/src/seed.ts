@@ -118,6 +118,27 @@ const BASELINE_PERMISSIONS = [
     description: 'Create and edit suppliers (import partners)',
     isSystem: true,
   },
+  {
+    key: 'media:read',
+    label: 'View Media Library',
+    group: 'media',
+    description: 'Browse and search the central media library',
+    isSystem: true,
+  },
+  {
+    key: 'media:upload',
+    label: 'Upload Media',
+    group: 'media',
+    description: 'Upload images and register external image URLs',
+    isSystem: true,
+  },
+  {
+    key: 'media:delete',
+    label: 'Delete Media',
+    group: 'media',
+    description: 'Remove media from the library',
+    isSystem: true,
+  },
 ];
 
 const BASELINE_ROLES = [
@@ -144,6 +165,8 @@ const BASELINE_ROLES = [
       'warehouses:read',
       'suppliers:read',
       'suppliers:manage',
+      'media:read',
+      'media:upload',
     ],
     isSystem: true,
   },
@@ -157,6 +180,7 @@ const BASELINE_ROLES = [
       'logistics:read',
       'warehouses:read',
       'suppliers:read',
+      'media:read',
     ],
     isSystem: true,
   },

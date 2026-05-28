@@ -25,7 +25,7 @@ export function CreateSupplierForm({ onSuccess }: { onSuccess?: () => void } = {
 
   return (
     <form action={action} className="flex flex-col gap-4">
-      <SupplierFormFields />
+      <SupplierFormFields compact />
       <Button type="submit" disabled={pending} className="w-fit">
         {pending ? 'Mentés…' : 'Beszállító létrehozása'}
       </Button>

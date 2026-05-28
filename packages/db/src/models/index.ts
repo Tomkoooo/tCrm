@@ -10,7 +10,7 @@ export {
   type StockAdjustmentReason,
 } from './StockAdjustment';
 export { Category, type ICategory } from './Category';
-export { Supplier, type ISupplier } from './Supplier';
+export { Supplier, type ISupplier, type ISupplierContact } from './Supplier';
 export { Counter, type ICounter } from './Counter';
 export {
   Reservation,
@@ -25,3 +25,4 @@ export {
   type MovementType,
   type MovementStatus,
 } from './StockMovement';
+export { Media, type IMedia, type MediaType, type MediaUsage } from './Media';

@@ -18,7 +18,9 @@ import {
   LogOutIcon,
   UserIcon,
   TagsIcon,
+  ImagesIcon,
 } from 'lucide-react';
+import { MEDIA_READ_PERMISSION_KEYS, SUPPLIER_READ_PERMISSION_KEYS } from '@crm/lib';
 import {
   Sidebar,
   SidebarContent,
@@ -92,12 +94,7 @@ export function AppSidebar() {
         label: 'Termékkategóriák',
       },
     ];
-    if (
-      hasPermission('suppliers:read') ||
-      hasPermission('suppliers:manage') ||
-      hasPermission('inventory:import') ||
-      hasPermission('inventory:write')
-    ) {
+    if (SUPPLIER_READ_PERMISSION_KEYS.some((key) => hasPermission(key))) {
       items.push({
         href: '/inventory/suppliers',
         icon: <HandshakeIcon className="h-4 w-4" />,
@@ -162,6 +159,13 @@ export function AppSidebar() {
         href: '/admin/warehouses',
         icon: <Building2Icon className="h-4 w-4" />,
         label: 'Raktárak',
+      });
+    }
+    if (MEDIA_READ_PERMISSION_KEYS.some((key) => hasPermission(key))) {
+      items.push({
+        href: '/admin/media',
+        icon: <ImagesIcon className="h-4 w-4" />,
+        label: 'Médiatár',
       });
     }
     return items;

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { updateSupplierAction, type SupplierFormState } from '../actions';
+import type { SupplierContactEntry } from '@crm/lib';
 import { SupplierFormFields } from './supplier-form-fields';
 
 type SupplierData = {
@@ -20,10 +21,18 @@ type SupplierData = {
   taxNo?: string;
   euTaxNo?: string;
   registry?: string;
-  contacts?: Record<string, string | undefined>;
+  contacts?: SupplierContactEntry[];
 };
 
-export function EditSupplierForm({ supplier }: { supplier: SupplierData }) {
+export function EditSupplierForm({
+  supplier,
+  compact = false,
+  onSuccess,
+}: {
+  supplier: SupplierData;
+  compact?: boolean;
+  onSuccess?: () => void;
+}) {
   const router = useRouter();
   const bound = updateSupplierAction.bind(null, supplier._id);
   const [state, action, pending] = useActionState(bound, {
@@ -34,14 +43,15 @@ export function EditSupplierForm({ supplier }: { supplier: SupplierData }) {
     if (state.success) {
       toast.success(state.message);
       router.refresh();
+      onSuccess?.();
     } else if (state.message) {
       toast.error(state.message);
     }
-  }, [state, router]);
+  }, [state, router, onSuccess]);
 
   return (
     <form action={action} className="flex flex-col gap-4">
-      <SupplierFormFields supplier={supplier} keyReadOnly />
+      <SupplierFormFields supplier={supplier} keyReadOnly compact={compact} />
       <Button type="submit" disabled={pending} className="w-fit">
         {pending ? 'Mentés…' : 'Mentés'}
       </Button>

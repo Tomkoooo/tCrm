@@ -12,3 +12,4 @@ alwaysApply: false
 - Do not modify `ui/` primitives for one-offs — compose wrappers
 - Icons from lucide-react at `h-4 w-4` in nav
 - Permission-aware UI: check `user.permissions.includes('key')` but always enforce server-side too
+- List tables: use co-located `*-table.tsx` client wrappers for `DataTable`; see `.cursor/rules/datatable.mdc`

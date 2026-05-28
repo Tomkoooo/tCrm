@@ -19,7 +19,7 @@ Next.js 16 App Router · React 19 · TypeScript strict · Tailwind v4 · shadcn 
 - Models in `@crm/db`, auth in `@crm/auth`, shared utils in `@crm/lib`
 - Always use `requirePermission()` in admin routes and mutations
 - Wrap pages in `<Container>` from `@crm/ui`
-- List views → `DataTable` (`tableId` required); panels → `EntitySheet` (not inline Cards above tables)
+- List views → `DataTable` (`tableId` required); panels → `EntitySheet` (not inline Cards above tables). Server pages use a client `*-table.tsx` wrapper — never pass `rowHref`, `rowDetail`, or column `render` from RSC (see `.cursor/rules/datatable.mdc`)
 - Use semantic Tailwind tokens, not raw colors
 
 ## Workspace packages

@@ -11,6 +11,7 @@ export {
   getCurrentUser,
   requireAuth,
   requirePermission,
+  requireAnyPermission,
   hasPermission,
   hasAnyPermission,
 } from './session';

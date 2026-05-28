@@ -1,0 +1,38 @@
+---
+description: DataTable list views — Server vs Client boundary
+globs:
+  - "apps/crm/**/page.tsx"
+  - "apps/crm/**/_components/*table*.tsx"
+  - "packages/ui/src/components/data-table/**"
+alwaysApply: false
+---
+
+# DataTable (RSC boundary)
+
+`DataTable` / `DataTableRoot` in `@crm/ui` is a **Client Component**. Server pages must not pass non-serializable props.
+
+## Never pass from a Server Component
+
+- `rowHref`, `rowDetail` (functions)
+- `columns` entries with `render` or `imageOptions.alt` as functions
+
+## Correct pattern
+
+1. **Server `page.tsx`** — fetch data, define serializable `ColumnDef` (keys, labels, types, `mongoKey`, `altKey`, enums). Pass `data`, `columns`, `query`, `total` to a client wrapper.
+2. **Client `*-table.tsx`** (`'use client'`) — import `DataTable`, define `rowHref` / `rowDetail` / `render` here.
+
+Examples: `inventory/_components/inventory-table.tsx`, `admin/users/_components/users-table.tsx`, `logistics/movements/_components/movements-table.tsx`.
+
+## Images in server-driven columns
+
+Use `altKey` on the column and put the alt string on each row (e.g. `thumbnailAlt`). Do not use `imageOptions.alt: (row) => ...` from the server.
+
+## Client-only tables
+
+`mode="client"` snippet tables may define columns and `rowHref` entirely in a `'use client'` file (e.g. `logistics-snippet-tables.tsx`).
+
+## Checklist for new list routes
+
+- [ ] `tableId` set
+- [ ] No `DataTable` import in `page.tsx` unless the page is itself a client component
+- [ ] Co-located `*-table.tsx` when `rowHref`, `rowDetail`, or `render` is needed

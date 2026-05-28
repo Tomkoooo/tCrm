@@ -29,6 +29,7 @@ export {
   categorySchema,
   stockAdjustmentSchema,
   inventoryImportRowSchema,
+  buildKitSchema,
 } from './inventory';
 
 export type {
@@ -36,6 +37,7 @@ export type {
   WarehouseInput,
   CategoryInput,
   StockAdjustmentInput,
+  BuildKitInput,
 } from './inventory';
 
 export {

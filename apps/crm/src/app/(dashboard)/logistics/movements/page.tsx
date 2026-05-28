@@ -1,17 +1,10 @@
 import Link from 'next/link';
 import { requirePermission } from '@crm/auth';
 import { connectDB, StockMovement } from '@crm/db';
-import { Container, DataTable, parseDataTableQuery, buildDataTableMongoQuery } from '@crm/ui';
+import { Container, parseDataTableQuery, buildDataTableMongoQuery } from '@crm/ui';
 import type { ColumnDef } from '@crm/ui';
 import { Button } from '@/components/ui/button';
-type Row = {
-  _id: string;
-  reference: string;
-  type: string;
-  status: string;
-  lineCount: number;
-  createdAt: Date;
-};
+import { MovementsTable, type MovementRow } from './_components/movements-table';
 
 export default async function MovementsPage({
   searchParams,
@@ -22,7 +15,7 @@ export default async function MovementsPage({
   await connectDB();
 
   const query = parseDataTableQuery(await searchParams);
-  const columns: Array<ColumnDef<Row>> = [
+  const columns: Array<ColumnDef<MovementRow>> = [
     {
       key: 'reference',
       label: 'Hivatkozás',
@@ -56,7 +49,7 @@ export default async function MovementsPage({
     cancelled: 'Elutasítva',
   };
 
-  const data: Row[] = items.map((m) => ({
+  const data: MovementRow[] = items.map((m) => ({
     _id: String(m._id),
     reference: m.reference,
     type: typeLabels[m.type] ?? m.type,
@@ -90,16 +83,7 @@ export default async function MovementsPage({
         </div>
       </div>
 
-      <DataTable<Row>
-        tableId="logistics-movements"
-        data={data}
-        columns={columns}
-        query={query}
-        total={total}
-        basePath="/logistics/movements"
-        rowHref={(row) => `/logistics/movements/${row._id}`}
-        emptyMessage="Még nincs készletmozgás."
-      />
+      <MovementsTable data={data} columns={columns} query={query} total={total} />
     </Container>
   );
 }

@@ -18,3 +18,24 @@ export {
 export { exportInventoryXlsx, getImportTemplateXlsx } from './export';
 
 export { generateInternalSku, normalizeDigits, type CategorySkuSettings } from './sku';
+
+export {
+  sha256Hex,
+  normalizeMediaUrl,
+  filenameFromUrl,
+  findFileMediaByHash,
+  uploadFileToMedia,
+  resolveOrCreateLinkMedia,
+  resolveLinkUrlsToMediaIds,
+  syncMediaUsage,
+  setEntityMediaIds,
+  listMedia,
+  mediaPreviewPath,
+  getMediaById,
+  deleteMediaById,
+  migrateGridFsIdToMedia,
+  filterFileMediaIds,
+  linkUrlsFromMediaIds,
+  type MediaListItem,
+  type MediaUsageRef,
+} from './media';

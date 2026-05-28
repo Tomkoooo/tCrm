@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { updateCategoryAction, type CategoryFormState } from '../actions';
 import { cn } from '@/lib/utils';
+import { OptionalEnDeFields, hasEnDeContent } from '@/components/optional-en-de-fields';
 
 const selectClassName = cn(
   'border-input bg-background ring-offset-background flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-xs',
@@ -100,29 +101,33 @@ export function EditCategoryForm({
           <Label htmlFor={`slug-${category._id}`}>Slug</Label>
           <Input id={`slug-${category._id}`} name="slug" defaultValue={category.slug} required />
         </div>
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 md:col-span-2">
           <Label htmlFor={`name_hu-${category._id}`}>Név (HU)</Label>
           <Input
             id={`name_hu-${category._id}`}
             name="name_hu"
             defaultValue={category.names?.hu ?? ''}
           />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor={`name_en-${category._id}`}>Név (EN)</Label>
-          <Input
-            id={`name_en-${category._id}`}
-            name="name_en"
-            defaultValue={category.names?.en ?? ''}
-          />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor={`name_de-${category._id}`}>Név (DE)</Label>
-          <Input
-            id={`name_de-${category._id}`}
-            name="name_de"
-            defaultValue={category.names?.de ?? ''}
-          />
+          <OptionalEnDeFields defaultOpen={hasEnDeContent(category.names)}>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor={`name_en-${category._id}`}>Név (EN)</Label>
+                <Input
+                  id={`name_en-${category._id}`}
+                  name="name_en"
+                  defaultValue={category.names?.en ?? ''}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor={`name_de-${category._id}`}>Név (DE)</Label>
+                <Input
+                  id={`name_de-${category._id}`}
+                  name="name_de"
+                  defaultValue={category.names?.de ?? ''}
+                />
+              </div>
+            </div>
+          </OptionalEnDeFields>
         </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor={`skuPrefix-${category._id}`}>SKU előtag</Label>

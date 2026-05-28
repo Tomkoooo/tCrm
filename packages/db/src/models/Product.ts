@@ -66,6 +66,9 @@ export interface IProduct extends Document {
 
   components: ProductComponent[];
 
+  /** Összeszerelési útmutató (BOM / build kit) */
+  assemblyGuide?: string;
+
   inCategories?: string;
   isDiscontinued: boolean;
   isActive: boolean;
@@ -157,6 +160,8 @@ const ProductSchema = new Schema<IProduct>(
     },
 
     components: { type: [ProductComponentSchema], default: [] },
+
+    assemblyGuide: { type: String },
 
     inCategories: { type: String },
     isDiscontinued: { type: Boolean, default: false, index: true },

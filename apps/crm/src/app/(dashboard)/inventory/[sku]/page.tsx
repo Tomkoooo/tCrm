@@ -14,6 +14,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { EnDeReadonlyDetails } from '@/components/en-de-readonly-details';
+import { resolveProductImageUrls } from '@/lib/product-thumbnail';
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ sku: string }> }) {
   await requirePermission('inventory:read');
@@ -40,6 +42,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   }
 
   const name = product.names?.hu ?? product.names?.en ?? product.names?.de ?? product.sku;
+  const imageUrls = resolveProductImageUrls(product);
 
   const componentIds = product.components?.map((c) => c.productId) ?? [];
   const componentProducts = await Product.find({ _id: { $in: componentIds } })
@@ -106,24 +109,79 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         </CardContent>
       </Card>
 
+      {imageUrls.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Képek</CardTitle>
+            <CardDescription>
+              Médiatár ({product.imageIds?.length ?? 0} csatolva
+              {(product.externalImageHints?.length ?? 0) > 0 ? ', Excel hintek is' : ''})
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-3">
+              {imageUrls.map((url, i) => (
+                <a
+                  key={i}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block overflow-hidden rounded-md border"
+                >
+                  <img src={url} alt={`${name} — ${i + 1}`} className="size-32 object-cover" />
+                </a>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
-          <CardTitle>Names & descriptions</CardTitle>
-          <CardDescription>DE / EN / HU</CardDescription>
+          <CardTitle>Nevek és leírások</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <CardContent className="flex flex-col gap-4">
           <div>
-            <p className="text-muted-foreground text-xs">Name (DE)</p>
-            <p className="text-sm">{product.names?.de ?? '—'}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground text-xs">Name (EN)</p>
-            <p className="text-sm">{product.names?.en ?? '—'}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground text-xs">Name (HU)</p>
+            <p className="text-muted-foreground text-xs">Név (HU)</p>
             <p className="text-sm">{product.names?.hu ?? '—'}</p>
           </div>
+          {(product.descriptions?.hu || product.descriptions?.en || product.descriptions?.de) && (
+            <div>
+              <p className="text-muted-foreground text-xs">Leírás (HU)</p>
+              <p className="whitespace-pre-wrap text-sm">{product.descriptions?.hu ?? '—'}</p>
+            </div>
+          )}
+          {(product.names?.en ||
+            product.names?.de ||
+            product.descriptions?.en ||
+            product.descriptions?.de) && (
+            <EnDeReadonlyDetails>
+              {(product.names?.en || product.names?.de) && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <p className="text-muted-foreground text-xs">Név (EN)</p>
+                    <p className="text-sm">{product.names?.en ?? '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs">Név (DE)</p>
+                    <p className="text-sm">{product.names?.de ?? '—'}</p>
+                  </div>
+                </div>
+              )}
+              {(product.descriptions?.en || product.descriptions?.de) && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <p className="text-muted-foreground text-xs">Leírás (EN)</p>
+                    <p className="whitespace-pre-wrap text-sm">{product.descriptions?.en ?? '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs">Leírás (DE)</p>
+                    <p className="whitespace-pre-wrap text-sm">{product.descriptions?.de ?? '—'}</p>
+                  </div>
+                </div>
+              )}
+            </EnDeReadonlyDetails>
+          )}
         </CardContent>
       </Card>
 
@@ -254,6 +312,17 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           )}
         </CardContent>
       </Card>
+
+      {product.assemblyGuide && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Összeszerelési útmutató</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <pre className="whitespace-pre-wrap text-sm">{product.assemblyGuide}</pre>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

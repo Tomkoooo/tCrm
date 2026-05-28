@@ -179,16 +179,55 @@ flowchart TD
 
 ---
 
-## 6. Készlet táblázat (DataTable)
+## 6. Médiatár (fájl + link)
+
+```mermaid
+flowchart TD
+  picker[Médiatár modal] --> lib[Galéria keresés]
+  picker --> upload[Feltöltés vágás/zoom]
+  picker --> link[Link hozzáadása]
+  upload --> hash[SHA-256 hash]
+  hash -->|létezik| reuse[Meglévő Media id]
+  hash -->|új| gridfs[GridFS + Media rekord]
+  link --> linkMedia[Media type link]
+  import[Excel bild1-5] --> linkMedia
+  product[Product.imageIds] --> usage[syncMediaUsage]
+  linkMedia --> product
+  gridfs --> product
+  serve["GET /api/inventory/images/id"] --> redirect[302 link URL]
+  serve --> stream[GridFS stream]
+```
+
+| Elem | Jelentés |
+|------|----------|
+| `Media` | Központi meta: `type` file/link, `hash` (fájl), `url` (link), `useCount`, `usages[]` |
+| `Product.imageIds` | Media dokumentum id-k (nem nyers GridFS id új feltöltéseknél) |
+| `externalImageHints` | Excel/export URL lista; import commit link Media-t is létrehoz |
+| `POST /api/uploads` | Hash deduplikáció, Media visszaadás |
+| `GET/POST /api/media` | Lista/keresés, link regisztráció |
+| `DELETE /api/media/[id]` | Törlés (`media:delete`) |
+| Admin | **Adminisztráció → Médiatár** (`/admin/media`) — teljes kezelőfelület |
+
+| Jogosultság | Funkció |
+|-------------|---------|
+| `media:read` | Médiatár böngészés (vagy `inventory:read`) |
+| `media:upload` | Feltöltés, link (vagy `inventory:write`) |
+| `media:delete` | Média törlése a könyvtárból |
+
+Termék és összeszerelés űrlap: **Médiatár** gomb → többes kiválasztás, sorrend, eltávolítás.
+
+---
+
+## 7. Készlet táblázat (DataTable)
 
 - **Oszlopok** panel: minden import mező megjeleníthető (`mongoKey` a beágyazott Mongo mezőkhöz); mentés `localStorage` + `tableId`.
-- **Kép előnézet** oszlop: opcionális (alapból rejtett) — első GridFS vagy `bild1` URL.
-- **Képek (db)** oszlop: Excel `bild1`–`bild5` / `externalImageHints` és feltöltött `imageIds` száma (max érték).
+- **Kép előnézet** oszlop: opcionális (alapból rejtett) — első Media (`imageIds`) vagy legacy `bild1` URL.
+- **Képek (db)** oszlop: `imageIds` vagy `externalImageHints` száma.
 - Fejléc **ⓘ** tooltip: Radix; táblázat ikonok egységesen `size-2.5`.
 
 ---
 
-## 7. Kereső (`SearchAutocomplete`)
+## 8. Kereső (`SearchAutocomplete`)
 
 | Használat | Action |
 |-----------|--------|
@@ -198,7 +237,7 @@ flowchart TD
 
 ---
 
-## 8. Felhasználók és fiók
+## 9. Felhasználók és fiók
 
 ```mermaid
 flowchart TD
@@ -229,7 +268,7 @@ flowchart TD
 
 ---
 
-## 9. Jogosultságok (összefoglaló)
+## 10. Jogosultságok (összefoglaló)
 
 | Kulcs | Funkció |
 |-------|---------|
@@ -237,16 +276,20 @@ flowchart TD
 | `suppliers:read` / `manage` | Beszállítók |
 | `warehouses:read` / `manage` | Raktárak |
 | `logistics:read` / `write` | Mozgások, foglalások |
+| `media:read` / `upload` / `delete` | Központi médiatár |
 
 ---
 
-## 10. Beszállító felvétel
+## 11. Beszállító felvétel
 
-1. **Készletkezelés → Beszállítók** (`/inventory/suppliers`) — `suppliers:read`, `suppliers:manage`, `inventory:import` vagy `inventory:write`
+Sablon: [`docs/excel/supplier.csv`](./excel/supplier.csv) — cégnév, cím, központi elérhetőség, majd kapcsolatok: ügyvezető, értékesítő, technikai, **mérnök**, **iroda**, raktár, pénzügy (név / mobil / e-mail).
+
+1. **Készletkezelés → Beszállítók** (`/inventory/suppliers`) — olvasás: `suppliers:read` vagy import/write jog; **Új beszállító**: `suppliers:manage` vagy `inventory:import` / `inventory:write`
 2. **Kulcs (slug)** → Excel `crm_supplier_slug`
-3. **Termékkategóriák** → Excel `crm_category_slug`
-4. **Import** a készlet oldalon
+3. **Új termék** (`/inventory/new`) — Excel mezők + beszállító/kategória kereső
+4. **Új összeszerelés** (`/inventory/builds/new`) — alkatrész kereső, médiatár (fájl/link), útmutató
+5. **Import** a készlet oldalon
 
 ---
 
-*Utolsó frissítés: 2026-05 — **Phase 2 zárás:** logisztika, felhasználók/fiók, DataTable oszlopkezelés + opcionális kép oszlopok, beszállítók, raktárak.*
+*Utolsó frissítés: 2026-05 — **Médiatár:** hash alapú fájltárolás, link Media, `syncMediaUsage`, Excel bild→Media import, médiatár modal (galéria/feltöltés/link).*

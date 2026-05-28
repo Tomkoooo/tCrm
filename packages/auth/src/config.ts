@@ -38,8 +38,8 @@ export const authConfig: NextAuthConfig = {
       if (user?.id) {
         token.id = user.id;
       }
-      if (token.id && (user?.id || trigger === 'update')) {
-        if (trigger === 'update') {
+      if (token.id) {
+        if (trigger === 'update' || user?.id) {
           const dbUser = await User.findById(token.id).select('name email image').lean().exec();
           if (dbUser) {
             token.name = dbUser.name;
@@ -55,7 +55,8 @@ export const authConfig: NextAuthConfig = {
     async session({ session, token }) {
       if (session.user && token.id) {
         session.user.id = token.id as string;
-        session.user.permissions = (token.permissions as string[]) ?? [];
+        const permissions = await getEffectivePermissionKeys(token.id as string);
+        session.user.permissions = Array.from(permissions);
       }
       return session;
     },

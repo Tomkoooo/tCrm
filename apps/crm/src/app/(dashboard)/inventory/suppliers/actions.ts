@@ -1,8 +1,10 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requirePermission } from '@crm/auth';
+import { requireAnyPermission } from '@crm/auth';
+import { SUPPLIER_MANAGE_PERMISSION_KEYS } from '@crm/lib';
 import { connectDB, Supplier } from '@crm/db';
+import { contactsHaveData, type SupplierContactEntry } from '@crm/lib';
 import { supplierSchema } from '@crm/lib/validation';
 
 export type SupplierFormState =
@@ -19,24 +21,27 @@ function zodToFieldErrors(issues: Array<{ path: PropertyKey[]; message: string }
   return fieldErrors;
 }
 
-function contactFields(formData: FormData, role: string) {
-  return {
-    [`${role}Name`]: formData.get(`${role}Name`) || undefined,
-    [`${role}Phone`]: formData.get(`${role}Phone`) || undefined,
-    [`${role}Email`]: formData.get(`${role}Email`) || undefined,
-  };
+function parseContactsJson(raw: FormDataEntryValue | null): SupplierContactEntry[] | undefined {
+  if (typeof raw !== 'string' || !raw.trim()) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return undefined;
+    const entries = parsed
+      .map((item) => ({
+        role: String(item?.role ?? '').trim(),
+        name: item?.name ? String(item.name).trim() : undefined,
+        phone: item?.phone ? String(item.phone).trim() : undefined,
+        email: item?.email ? String(item.email).trim() : undefined,
+      }))
+      .filter((c) => c.role);
+    return contactsHaveData(entries) ? entries : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function parseSupplierForm(formData: FormData) {
-  const contacts = {
-    ...contactFields(formData, 'ceo'),
-    ...contactFields(formData, 'sales'),
-    ...contactFields(formData, 'technical'),
-    ...contactFields(formData, 'warehouse'),
-    ...contactFields(formData, 'finance'),
-  };
-
-  const hasContact = Object.values(contacts).some((v) => v && String(v).trim());
+  const contacts = parseContactsJson(formData.get('contactsJson'));
 
   return supplierSchema.safeParse({
     key: formData.get('key'),
@@ -50,7 +55,7 @@ function parseSupplierForm(formData: FormData) {
     taxNo: formData.get('taxNo') || undefined,
     euTaxNo: formData.get('euTaxNo') || undefined,
     registry: formData.get('registry') || undefined,
-    contacts: hasContact ? contacts : undefined,
+    contacts,
   });
 }
 
@@ -58,7 +63,7 @@ export async function createSupplierAction(
   _prev: SupplierFormState,
   formData: FormData
 ): Promise<SupplierFormState> {
-  await requirePermission('suppliers:manage');
+  await requireAnyPermission([...SUPPLIER_MANAGE_PERMISSION_KEYS]);
   await connectDB();
 
   const parsed = parseSupplierForm(formData);
@@ -81,7 +86,7 @@ export async function updateSupplierAction(
   _prev: SupplierFormState,
   formData: FormData
 ): Promise<SupplierFormState> {
-  await requirePermission('suppliers:manage');
+  await requireAnyPermission([...SUPPLIER_MANAGE_PERMISSION_KEYS]);
   await connectDB();
 
   const parsed = parseSupplierForm(formData);
@@ -106,7 +111,7 @@ export async function updateSupplierAction(
 }
 
 export async function deleteSupplierAction(id: string): Promise<SupplierFormState> {
-  await requirePermission('suppliers:manage');
+  await requireAnyPermission([...SUPPLIER_MANAGE_PERMISSION_KEYS]);
   await connectDB();
 
   const supplier = await Supplier.findByIdAndDelete(id);

@@ -1,5 +1,10 @@
-import { hasPermission, requirePermission } from '@crm/auth';
+import { hasAnyPermission, requireAnyPermission } from '@crm/auth';
 import { connectDB, Supplier } from '@crm/db';
+import {
+  SUPPLIER_MANAGE_PERMISSION_KEYS,
+  SUPPLIER_READ_PERMISSION_KEYS,
+  primarySalesContactName,
+} from '@crm/lib';
 import { Container, parseDataTableQuery, buildDataTableMongoQuery } from '@crm/ui';
 import type { ColumnDef } from '@crm/ui';
 import { SuppliersTable, type SupplierRow } from './_components/suppliers-table';
@@ -9,10 +14,10 @@ export default async function SuppliersPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requirePermission('suppliers:read');
+  await requireAnyPermission([...SUPPLIER_READ_PERMISSION_KEYS]);
   await connectDB();
 
-  const canManage = await hasPermission('suppliers:manage');
+  const canManage = await hasAnyPermission([...SUPPLIER_MANAGE_PERMISSION_KEYS]);
   const query = parseDataTableQuery(await searchParams);
   const columns: Array<ColumnDef<SupplierRow>> = [
     {
@@ -25,14 +30,52 @@ export default async function SuppliersPage({
     },
     {
       key: 'name',
-      label: 'Név',
+      label: 'Cégnév',
       type: 'string',
       sortable: true,
       filterable: true,
       searchable: true,
     },
-    { key: 'city', label: 'Város', type: 'string', sortable: true, filterable: true },
-    { key: 'country', label: 'Ország', type: 'string', sortable: true, filterable: true },
+    {
+      key: 'city',
+      label: 'Város',
+      type: 'string',
+      sortable: true,
+      filterable: true,
+      searchable: true,
+    },
+    {
+      key: 'phone',
+      label: 'Telefon',
+      type: 'string',
+      sortable: false,
+      filterable: false,
+      defaultVisible: true,
+    },
+    {
+      key: 'email',
+      label: 'E-mail',
+      type: 'string',
+      sortable: false,
+      filterable: false,
+      defaultVisible: true,
+    },
+    {
+      key: 'salesContact',
+      label: 'Értékesítő',
+      type: 'string',
+      sortable: false,
+      filterable: false,
+      defaultVisible: true,
+    },
+    {
+      key: 'euTaxNo',
+      label: 'EU adószám',
+      type: 'string',
+      sortable: false,
+      filterable: false,
+      defaultVisible: false,
+    },
   ];
 
   const { filter, sort, skip, limit } = buildDataTableMongoQuery(query, columns);
@@ -47,6 +90,10 @@ export default async function SuppliersPage({
     name: s.name,
     city: s.city,
     country: s.country,
+    phone: s.phone,
+    email: s.email,
+    euTaxNo: s.euTaxNo,
+    salesContact: primarySalesContactName(s.contacts),
   }));
 
   return (
@@ -54,7 +101,8 @@ export default async function SuppliersPage({
       <div>
         <h1 className="text-2xl font-bold">Beszállítók</h1>
         <p className="text-muted-foreground text-sm">
-          Partner felvétel — Excel <strong>crm_supplier_slug</strong> = <strong>kulcs</strong>.
+          Cégadatok és elnevezett kapcsolattartók. Import: <strong>crm_supplier_slug</strong> ={' '}
+          <strong>kulcs</strong>.
         </p>
       </div>
 

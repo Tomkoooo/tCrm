@@ -3,23 +3,24 @@
 import { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { MediaSelector } from '@/components/media/media-selector';
+import type { SelectedMedia } from '@/lib/media-types';
 import type { InventoryFormState } from '../actions';
-import { ImageUpload } from './image-upload';
+import { ProductFormExcelSections } from './product-form-excel';
 
 export function ProductForm({
   mode,
   action,
-  initialSku,
+  initialMedia,
 }: {
   mode: 'create' | 'edit';
   action: (prev: InventoryFormState, formData: FormData) => Promise<InventoryFormState>;
   initialSku?: string;
+  initialMedia?: SelectedMedia[];
 }) {
   const router = useRouter();
-  const [uploadedImageIds, setUploadedImageIds] = useState<string[]>([]);
+  const [media, setMedia] = useState<SelectedMedia[]>(initialMedia ?? []);
   const [state, formAction, pending] = useActionState(action, {
     success: false,
   } as InventoryFormState);
@@ -36,69 +37,42 @@ export function ProductForm({
       {state.success === false && state.message && (
         <p className="text-destructive text-sm">{state.message}</p>
       )}
-      <Card>
-        <CardHeader>
-          <CardTitle>{mode === 'create' ? 'Create product' : 'Edit product'}</CardTitle>
-          <CardDescription>Basic fields (Phase 1). Import fills the full schema.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="sku">
-              SKU <span className="text-sm text-red-600">*</span>
-            </Label>
-            <Input
-              id="sku"
-              name="sku"
-              defaultValue={initialSku ?? ''}
-              disabled={mode === 'edit'}
-              required
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="brand">Brand</Label>
-            <Input id="brand" name="brand" />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="name_en">
-              Name (EN) <span className="text-sm text-red-600">*</span>
-            </Label>
-            <Input id="name_en" name="name_en" required />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="name_hu">Name (HU)</Label>
-            <Input id="name_hu" name="name_hu" />
-          </div>
-        </CardContent>
-      </Card>
+      {state.success === false && state.fieldErrors && (
+        <ul className="text-destructive list-inside list-disc text-sm">
+          {Object.entries(state.fieldErrors).map(([k, msgs]) => (
+            <li key={k}>
+              {k}: {msgs.join(', ')}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <ProductFormExcelSections mode={mode} />
 
       <Card>
         <CardHeader>
-          <CardTitle>Images</CardTitle>
-          <CardDescription>Uploads to GridFS. Stored on the product in Phase 1+.</CardDescription>
+          <CardTitle>Képek</CardTitle>
+          <CardDescription>
+            Médiatárból választható feltöltött fájl vagy külső link — több kép is csatolható.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <ImageUpload
-            onUploaded={(id) => {
-              setUploadedImageIds((prev) => [...prev, id]);
-            }}
+        <CardContent>
+          <MediaSelector
+            value={media}
+            onChange={setMedia}
+            multiple
+            maxCount={5}
+            description="Excel import bild URL-ek a médiatárban linkként is kezelhetők."
           />
-          {uploadedImageIds.length > 0 && (
-            <div className="text-muted-foreground text-sm">
-              Uploaded: {uploadedImageIds.join(', ')}
-            </div>
-          )}
-          {uploadedImageIds.map((id) => (
-            <input key={id} type="hidden" name="imageId" value={id} />
-          ))}
         </CardContent>
       </Card>
 
       <div className="flex gap-2">
         <Button type="submit" disabled={pending}>
-          {pending ? 'Saving...' : 'Save'}
+          {pending ? 'Mentés…' : 'Termék mentése'}
         </Button>
         <Button type="button" variant="outline" onClick={() => router.back()}>
-          Cancel
+          Mégse
         </Button>
       </div>
     </form>

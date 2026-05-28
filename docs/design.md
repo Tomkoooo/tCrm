@@ -161,20 +161,26 @@ Server Actions + `useActionState`, `gap-6` form, `gap-2` fields, red asterisk on
 **DataTable** — mandatory for list views. Compact toolbar: Keresés · Szűrők · Rendezés · Oszlopok (each opens **EntitySheet**). URL drives server filters; `tableId` persists visible columns in `localStorage`.
 
 ```typescript
-// Server list page
+// Server list page — fetch only; no DataTable here (RSC cannot pass rowHref/render)
 const query = parseDataTableQuery(await searchParams);
 const { filter, sort, skip, limit } = buildDataTableMongoQuery(query, columns);
+// … load rows …
 
+<InventoryTable data={rows} columns={columns} query={query} total={total} />
+```
+
+```typescript
+// Client co-located *-table.tsx ('use client')
 <DataTable
   tableId="inventory-products"
-  mode="server"
   data={rows}
   columns={columns}
   query={query}
   total={total}
   basePath="/inventory"
   rowHref={(r) => `/inventory/${r.sku}`}
-  rowOpen="sheet"  // optional rowDetail preview
+  rowOpen="sheet"
+  rowDetail={{ title: (r) => r.sku, fields: [...] }}
 />
 ```
 

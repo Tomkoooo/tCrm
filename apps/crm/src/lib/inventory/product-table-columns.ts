@@ -51,6 +51,8 @@ export type ProductTableRow = {
 };
 
 type ProductLean = {
+  imageIds?: unknown[];
+  externalImageHints?: string[];
   sku: string;
   internalSku?: string;
   supplierSku?: string;

@@ -141,23 +141,14 @@ export const supplierSchema = z.object({
   euTaxNo: emptyToUndefined(z.string().max(64)),
   registry: emptyToUndefined(z.string().max(500)),
   contacts: z
-    .object({
-      ceoName: emptyToUndefined(z.string().max(120)),
-      ceoPhone: emptyToUndefined(z.string().max(64)),
-      ceoEmail: emptyToUndefined(z.string().max(200)),
-      salesName: emptyToUndefined(z.string().max(120)),
-      salesPhone: emptyToUndefined(z.string().max(64)),
-      salesEmail: emptyToUndefined(z.string().max(200)),
-      technicalName: emptyToUndefined(z.string().max(120)),
-      technicalPhone: emptyToUndefined(z.string().max(64)),
-      technicalEmail: emptyToUndefined(z.string().max(200)),
-      warehouseName: emptyToUndefined(z.string().max(120)),
-      warehousePhone: emptyToUndefined(z.string().max(64)),
-      warehouseEmail: emptyToUndefined(z.string().max(200)),
-      financeName: emptyToUndefined(z.string().max(120)),
-      financePhone: emptyToUndefined(z.string().max(64)),
-      financeEmail: emptyToUndefined(z.string().max(200)),
-    })
+    .array(
+      z.object({
+        role: z.string().min(1, 'Adja meg a szerepkört (pl. Értékesítés).').max(80),
+        name: emptyToUndefined(z.string().max(120)),
+        phone: emptyToUndefined(z.string().max(64)),
+        email: emptyToUndefined(z.string().max(200)),
+      })
+    )
     .optional(),
 });
 
@@ -190,6 +181,24 @@ export const stockAdjustmentSchema = z.object({
   note: emptyToUndefined(z.string().max(2000)),
 });
 
+export const buildComponentSchema = z.object({
+  productId: z.string().min(1),
+  quantity: z.coerce.number().min(0.000001, 'Quantity must be > 0'),
+});
+
+export const buildKitSchema = z
+  .object({
+    sku: skuSchema,
+    names: i18nTextSchema,
+    assemblyGuide: emptyToUndefined(z.string().max(20000)),
+    components: z.array(buildComponentSchema).min(1, 'Legalább egy alkatrész szükséges.'),
+    externalImageHints: z.array(z.string()).optional(),
+  })
+  .refine((p) => Boolean(p.names.de || p.names.en || p.names.hu), {
+    message: 'Legalább egy név kötelező (de/en/hu).',
+    path: ['names'],
+  });
+
 export const inventoryImportRowSchema = z.object({
   // minimally required for commit
   product: productSchema,
@@ -200,3 +209,4 @@ export type ProductInput = z.infer<typeof productSchema>;
 export type WarehouseInput = z.infer<typeof warehouseSchema>;
 export type CategoryInput = z.infer<typeof categorySchema>;
 export type StockAdjustmentInput = z.infer<typeof stockAdjustmentSchema>;
+export type BuildKitInput = z.infer<typeof buildKitSchema>;

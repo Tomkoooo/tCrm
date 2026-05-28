@@ -1,11 +1,26 @@
-/** Count of stored images (GridFS) or Excel bild1–bild5 hints, whichever is larger. */
+/** Count of media-backed images or legacy Excel bild hints. */
 export function countProductImages(product: {
   imageIds?: Array<unknown>;
   externalImageHints?: string[];
 }): number {
   const stored = product.imageIds?.length ?? 0;
-  const hints = (product.externalImageHints ?? []).filter((h) => h?.trim()).length;
-  return Math.max(stored, hints);
+  if (stored > 0) return stored;
+  return (product.externalImageHints ?? []).filter((h) => h?.trim()).length;
+}
+
+export function resolveProductImageUrls(product: {
+  imageIds?: Array<{ toString(): string } | string>;
+  externalImageHints?: string[];
+}): string[] {
+  const fromMedia = (product.imageIds ?? []).map((id) => {
+    const s = typeof id === 'string' ? id : id.toString();
+    return `/api/inventory/images/${s}`;
+  });
+  if (fromMedia.length > 0) return fromMedia;
+
+  return (product.externalImageHints ?? [])
+    .map((h) => h?.trim())
+    .filter((h): h is string => Boolean(h && /^https?:\/\//i.test(h)));
 }
 
 export function resolveProductThumbnailUrl(product: {

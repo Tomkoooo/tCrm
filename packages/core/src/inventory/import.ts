@@ -10,9 +10,10 @@ import {
 } from '@crm/db';
 import { inventoryImportRowSchema, productSchema, skuSchema } from '@crm/lib/validation';
 import type { ProductInput } from '@crm/lib/validation';
-import type { Types } from 'mongoose';
+import mongoose, { type Types } from 'mongoose';
 import { ALUTENT_COLUMNS } from './excel-columns';
 import { generateInternalSku } from './sku';
+import { filterFileMediaIds, resolveLinkUrlsToMediaIds, syncMediaUsage } from './media';
 
 export type ParseIssue = { row: number; field?: string; message: string };
 
@@ -565,6 +566,9 @@ export async function commitInventoryImport(
 
     const crmSku = row.product.sku;
 
+    const bildUrls = (row.product.externalImageHints ?? []).filter((h) => h?.trim());
+    const importLinkMediaIds = await resolveLinkUrlsToMediaIds(bildUrls);
+
     const doc = await Product.findOne({ sku: crmSku }).exec();
     if (!doc) {
       const createdDoc = await Product.create({
@@ -585,8 +589,8 @@ export async function commitInventoryImport(
         pricing: row.product.pricing,
         youtubeId: row.product.youtubeId,
         youtubeVideo: row.product.youtubeVideo,
-        externalImageHints: row.product.externalImageHints ?? [],
-        imageIds: [],
+        externalImageHints: bildUrls,
+        imageIds: importLinkMediaIds.map((id) => new mongoose.Types.ObjectId(id)),
         freightLevel: row.product.freightLevel,
         stockLevelHint: row.product.stockLevelHint,
         availabilityWeeks: row.product.availabilityWeeks,
@@ -603,7 +607,20 @@ export async function commitInventoryImport(
       created++;
       skuToId.set(crmSku, createdDoc._id);
       skuToInternalSku.set(crmSku, crmSku);
+
+      if (importLinkMediaIds.length > 0) {
+        await syncMediaUsage({
+          entityType: 'product',
+          entityId: createdDoc._id,
+          previousMediaIds: [],
+          nextMediaIds: importLinkMediaIds,
+        });
+      }
     } else {
+      const previousMediaIds = (doc.imageIds ?? []).map((id) => id.toString());
+      const keptFileIds = await filterFileMediaIds(doc.imageIds ?? []);
+      const nextMediaIds = [...keptFileIds, ...importLinkMediaIds];
+
       doc.set({
         internalSku: crmSku,
         supplierSku: row.product.supplierSku,
@@ -621,7 +638,8 @@ export async function commitInventoryImport(
         pricing: row.product.pricing,
         youtubeId: row.product.youtubeId,
         youtubeVideo: row.product.youtubeVideo,
-        externalImageHints: row.product.externalImageHints ?? [],
+        externalImageHints: bildUrls,
+        imageIds: nextMediaIds.map((id) => new mongoose.Types.ObjectId(id)),
         freightLevel: row.product.freightLevel,
         stockLevelHint: row.product.stockLevelHint,
         availabilityWeeks: row.product.availabilityWeeks,
@@ -638,6 +656,13 @@ export async function commitInventoryImport(
       updated++;
       skuToId.set(crmSku, doc._id);
       skuToInternalSku.set(crmSku, crmSku);
+
+      await syncMediaUsage({
+        entityType: 'product',
+        entityId: doc._id,
+        previousMediaIds,
+        nextMediaIds,
+      });
     }
   }
 

@@ -209,7 +209,7 @@ Groups expand/collapse independently; the active route’s group opens by defaul
 
 **Documented exceptions:** RBAC permission matrix (`/admin/permissions`) — role × permission checkboxes. Product detail sub-grids (BOM, stock by warehouse) may stay static `Table` until migrated.
 
-**Product images:** Up to five Excel hints (`bild1`–`bild5` → `externalImageHints[]`) plus GridFS `imageIds[]`. List table shows optional **Kép előnézet** (first image) and **Képek (db)** count; full gallery on product detail. Thumbnails: `GET /api/inventory/images/[id]` or first http(s) hint.
+**Product images:** Central `Media` collection (`file` with SHA-256 dedup + GridFS, or `link` with URL). `Product.imageIds[]` references Media ids; Excel `bild1`–`bild5` resolve to link Media on import (`externalImageHints` kept for export). UI: Médiatár modal on forms. Serve: `GET /api/inventory/images/[id]` (redirect/stream; legacy GridFS id fallback).
 
 **Import categories:** CRM uses simplified `Category` documents (slug + SKU prefix). Excel import requires `crm_category_slug` per row; shipper taxonomy columns (`cat*Name_*`) are stored on the product as `shipperCategoryPath` only. See [inventory.md](./inventory.md).
 

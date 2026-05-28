@@ -9,8 +9,10 @@ export default async function NewProductPage() {
   return (
     <Container className="flex max-w-4xl flex-col gap-4 pb-12 md:gap-6">
       <div>
-        <h1 className="text-2xl font-bold">New product</h1>
-        <p className="text-muted-foreground text-sm">Create a product manually.</p>
+        <h1 className="text-2xl font-bold">Új termék</h1>
+        <p className="text-muted-foreground text-sm">
+          Excel import mezők szerint — beszállító és kategória keresővel.
+        </p>
       </div>
       <ProductForm mode="create" action={createProductAction} />
     </Container>

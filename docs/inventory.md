@@ -77,10 +77,12 @@ Implemented on top of Phase 1 schema:
 - Builds list + BOM availability (`/inventory/builds`)
 - User admin (`/admin/users`), account settings (`/account`), collapsible role permissions
 
-### Images (Excel + GridFS)
+### Images (Media manager)
 
-- Import stores up to five URL hints in `externalImageHints` (Excel `bild1`–`bild5`).
-- Uploaded binaries use `imageIds` (GridFS). Inventory list can show an optional thumbnail column (first image) and a **Képek (db)** count column; product detail holds the full set.
+- **`Media` collection:** `file` (SHA-256 dedup + GridFS) or `link` (external URL); `usages[]` + `useCount`.
+- **`Product.imageIds`:** Media document ids; served via `GET /api/inventory/images/[id]` (redirect for links, stream for files; legacy GridFS id fallback).
+- Import resolves `bild1`–`bild5` into link Media on commit; manual uploads keep file Media on re-import merge.
+- UI: **Médiatár** modal on product/build forms (gallery, crop upload, add link).
 
 ## Phase 3+ notes
 

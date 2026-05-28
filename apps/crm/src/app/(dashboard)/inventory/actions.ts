@@ -2,8 +2,17 @@
 
 import mongoose from 'mongoose';
 import { revalidatePath } from 'next/cache';
-import { connectDB, Product, StockAdjustment, StockLevel, Warehouse } from '@crm/db';
+import {
+  connectDB,
+  Category,
+  Product,
+  StockAdjustment,
+  StockLevel,
+  Supplier,
+  Warehouse,
+} from '@crm/db';
 import { requirePermission, requireAuth } from '@crm/auth';
+import { syncMediaUsage, linkUrlsFromMediaIds } from '@crm/core';
 import { productSchema, stockAdjustmentSchema } from '@crm/lib/validation';
 
 export type InventoryFormState =
@@ -20,14 +29,14 @@ function zodToFieldErrors(issues: Array<{ path: PropertyKey[]; message: string }
   return fieldErrors;
 }
 
-export async function createProductAction(
-  _prev: InventoryFormState,
-  formData: FormData
-): Promise<InventoryFormState> {
-  await requirePermission('inventory:write');
-  await connectDB();
+const BILD_FIELDS = ['bild1', 'bild2', 'bild3', 'bild4', 'bild5'] as const;
 
-  const candidate = {
+function parseBildHints(formData: FormData): string[] {
+  return BILD_FIELDS.map((k) => String(formData.get(k) ?? '').trim()).filter(Boolean);
+}
+
+function parseProductCandidate(formData: FormData) {
+  return {
     sku: formData.get('sku'),
     supplierSku: formData.get('supplierSku'),
     supplierNo: formData.get('supplierNo'),
@@ -83,23 +92,60 @@ export async function createProductAction(
       discount1Max: formData.get('Discont 1.'),
       discount2Owner: formData.get('Discont 2.'),
     },
-    externalImageHints: [],
+    externalImageHints: parseBildHints(formData),
     components: [],
     categoryPath: undefined,
   };
+}
 
-  const parsed = productSchema.safeParse(candidate);
+async function resolveCategoryAndSupplier(formData: FormData) {
+  const categoryIds: mongoose.Types.ObjectId[] = [];
+  const categorySlug = String(formData.get('crm_category_slug') ?? '').trim();
+  if (categorySlug) {
+    const cat = await Category.findOne({ slug: categorySlug }).select('_id').lean().exec();
+    if (!cat) {
+      return { error: `Ismeretlen kategória: ${categorySlug}` as const };
+    }
+    categoryIds.push(cat._id as mongoose.Types.ObjectId);
+  }
+
+  let supplierId: mongoose.Types.ObjectId | undefined;
+  const supplierKey = String(formData.get('crm_supplier_slug') ?? '').trim();
+  if (supplierKey) {
+    const sup = await Supplier.findOne({ key: supplierKey }).select('_id').lean().exec();
+    if (!sup) {
+      return { error: `Ismeretlen beszállító: ${supplierKey}` as const };
+    }
+    supplierId = sup._id as mongoose.Types.ObjectId;
+  }
+
+  return { categoryIds, supplierId };
+}
+
+export async function createProductAction(
+  _prev: InventoryFormState,
+  formData: FormData
+): Promise<InventoryFormState> {
+  await requirePermission('inventory:write');
+  await connectDB();
+
+  const parsed = productSchema.safeParse(parseProductCandidate(formData));
   if (!parsed.success) {
     return {
       success: false,
       fieldErrors: zodToFieldErrors(parsed.error.issues),
-      message: 'Fix validation errors.',
+      message: 'Ellenőrizd a mezőket.',
     };
   }
 
   const existing = await Product.findOne({ sku: parsed.data.sku });
   if (existing) {
-    return { success: false, message: 'SKU already exists.' };
+    return { success: false, message: 'Ez a CRM SKU már létezik.' };
+  }
+
+  const links = await resolveCategoryAndSupplier(formData);
+  if ('error' in links) {
+    return { success: false, message: links.error };
   }
 
   const imageIds = formData
@@ -107,10 +153,15 @@ export async function createProductAction(
     .map((v) => String(v))
     .filter(Boolean);
 
-  await Product.create({
+  const linkHints = await linkUrlsFromMediaIds(imageIds);
+  const bildHints = parseBildHints(formData);
+  const externalImageHints = [...new Set([...bildHints, ...linkHints])];
+
+  const created = await Product.create({
     sku: parsed.data.sku,
     supplierSku: parsed.data.supplierSku,
     supplierNo: parsed.data.supplierNo,
+    supplierId: links.supplierId,
     brand: parsed.data.brand,
     ean: parsed.data.ean,
     names: parsed.data.names,
@@ -132,14 +183,24 @@ export async function createProductAction(
     owner: parsed.data.owner,
     rental: parsed.data.rental,
     discounts: parsed.data.discounts,
-    externalImageHints: parsed.data.externalImageHints ?? [],
+    externalImageHints,
     imageIds: imageIds.map((id) => new mongoose.Types.ObjectId(id)),
-    categoryIds: [],
+    categoryIds: links.categoryIds,
     components: [],
   });
 
+  if (imageIds.length > 0) {
+    await syncMediaUsage({
+      entityType: 'product',
+      entityId: created._id,
+      previousMediaIds: [],
+      nextMediaIds: imageIds,
+    });
+  }
+
   revalidatePath('/inventory');
-  return { success: true, message: 'Product created.', sku: parsed.data.sku };
+  revalidatePath('/inventory/builds');
+  return { success: true, message: 'Termék létrehozva.', sku: parsed.data.sku };
 }
 
 export async function updateProductAction(
@@ -221,6 +282,15 @@ export async function updateProductAction(
     };
   }
 
+  const imageIds = formData
+    .getAll('imageId')
+    .map((v) => String(v))
+    .filter(Boolean);
+  const previousMediaIds = (existing.imageIds ?? []).map((id) => id.toString());
+  const linkHints = await linkUrlsFromMediaIds(imageIds);
+  const bildHints = parseBildHints(formData);
+  const externalImageHints = [...new Set([...bildHints, ...linkHints])];
+
   existing.set({
     supplierSku: parsed.data.supplierSku,
     supplierNo: parsed.data.supplierNo,
@@ -245,9 +315,19 @@ export async function updateProductAction(
     owner: parsed.data.owner,
     rental: parsed.data.rental,
     discounts: parsed.data.discounts,
+    externalImageHints,
+    imageIds: imageIds.map((id) => new mongoose.Types.ObjectId(id)),
   });
 
   await existing.save();
+
+  await syncMediaUsage({
+    entityType: 'product',
+    entityId: existing._id,
+    previousMediaIds,
+    nextMediaIds: imageIds,
+  });
+
   revalidatePath(`/inventory/${sku}`);
   return { success: true, message: 'Product updated.', sku };
 }
