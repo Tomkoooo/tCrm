@@ -41,7 +41,7 @@ export function EntitySheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side={side} size={size} className={cn('overflow-y-auto', className)}>
-        <SheetHeader>
+        <SheetHeader className="pr-12">
           <SheetTitle>{title}</SheetTitle>
           {description ? <SheetDescription>{description}</SheetDescription> : null}
         </SheetHeader>

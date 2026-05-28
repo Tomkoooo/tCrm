@@ -19,8 +19,13 @@ import {
   UserIcon,
   TagsIcon,
   ImagesIcon,
+  KeyRoundIcon,
 } from 'lucide-react';
-import { MEDIA_READ_PERMISSION_KEYS, SUPPLIER_READ_PERMISSION_KEYS } from '@crm/lib';
+import {
+  MEDIA_READ_PERMISSION_KEYS,
+  SECRETS_READ_PERMISSION_KEYS,
+  SUPPLIER_READ_PERMISSION_KEYS,
+} from '@crm/lib';
 import {
   Sidebar,
   SidebarContent,
@@ -212,6 +217,14 @@ export function AppSidebar() {
                 label="Fiók"
                 onClick={linkClick}
               />
+              {SECRETS_READ_PERMISSION_KEYS.some((key) => hasPermission(key)) && (
+                <MenuItem
+                  href="/secrets"
+                  icon={<KeyRoundIcon className="h-4 w-4" />}
+                  label="Titoktár"
+                  onClick={linkClick}
+                />
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

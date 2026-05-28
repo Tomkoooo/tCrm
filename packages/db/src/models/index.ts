@@ -26,3 +26,4 @@ export {
   type MovementStatus,
 } from './StockMovement';
 export { Media, type IMedia, type MediaType, type MediaUsage } from './Media';
+export { SecretProject, type ISecretProject, type ISecretItem } from './SecretProject';

@@ -44,6 +44,12 @@ flowchart TB
     builds[Összeszerelések BOM]
   end
 
+  subgraph secrets [Titoktár]
+    secProj[Titok projektek]
+    secEnc[AES titkosított értékek]
+    secProj --> secEnc
+  end
+
   subgraph future [Phase 3+]
     offers[Ajánlatok]
     acct[Könyvelés]
@@ -53,6 +59,7 @@ flowchart TB
   rbac --> inv
   rbac --> log
   rbac --> phase2done
+  rbac --> secrets
   rbac --> future
   products -.-> offers
   res -.-> mov
@@ -65,6 +72,7 @@ flowchart TB
 | Beszállítók | `/inventory/suppliers` | Phase 2 ✓ |
 | Raktárak | `/admin/warehouses` | Phase 2 ✓ |
 | Logisztika | `/logistics/*` | Phase 2 ✓ |
+| Titoktár | `/secrets`, `/secrets/[id]` | Phase 3 ✓ |
 | Ajánlatok | `/offers` | Placeholder (Phase 3) |
 | Nyilvános web | `apps/landing` | Phase 3 |
 
@@ -292,4 +300,42 @@ Sablon: [`docs/excel/supplier.csv`](./excel/supplier.csv) — cégnév, cím, k�
 
 ---
 
-*Utolsó frissítés: 2026-05 — **Médiatár:** hash alapú fájltárolás, link Media, `syncMediaUsage`, Excel bild→Media import, médiatár modal (galéria/feltöltés/link).*
+## 12. Titoktár (secret storage)
+
+Projekt alapú kulcs–érték tárolás (jelszavak, API kulcsok, deployment titkok). Értékek **AES-256-GCM** titkosítással a MongoDB-ben; visszafejtés csak szerveren, **kérésre** (Megjelenítés / Másolás).
+
+```mermaid
+flowchart LR
+  user[Felhasználó secrets:read]
+  list[/secrets lista]
+  detail[/secrets/id]
+  action[revealSecretValueAction]
+  db[(SecretProject)]
+  user --> list
+  list --> detail
+  detail -->|Másolás / szem| action
+  action -->|decrypt| user
+  detail --> db
+```
+
+### Jogosultságok
+
+| Kulcs | Jelentés |
+|-------|----------|
+| `secrets:read` | Projekt lista + kulcsok; érték on-demand |
+| `secrets:write` | Projekt / kulcs létrehozás, szerkesztés |
+| `secrets:delete` | Projekt vagy kulcs törlés (létrehozó vagy manage) |
+| `secrets:manage` | Minden projekt + megosztás beállítása |
+
+### Megosztás
+
+- **Alapértelmezés: privát** — csak `createdBy`, `secrets:manage`, és explicit `allowedRoles` / `allowedUsers`.
+- Megosztás: projekt részletein **Megosztás** (létrehozó vagy `secrets:manage`).
+
+### Környezet
+
+- `SECRETS_ENCRYPTION_KEY` (≥32 karakter), vagy tartalék: `AUTH_SECRET`.
+
+---
+
+*Utolsó frissítés: 2026-05 — **Titoktár:** SecretProject modell, AES-256-GCM, privát megosztás, on-demand reveal + vágólap.*

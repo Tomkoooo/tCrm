@@ -139,6 +139,34 @@ const BASELINE_PERMISSIONS = [
     description: 'Remove media from the library',
     isSystem: true,
   },
+  {
+    key: 'secrets:read',
+    label: 'View Secrets',
+    group: 'secrets',
+    description: 'View secret projects and keys (values on demand)',
+    isSystem: true,
+  },
+  {
+    key: 'secrets:write',
+    label: 'Manage Secrets',
+    group: 'secrets',
+    description: 'Create and edit secret projects and key-value pairs',
+    isSystem: true,
+  },
+  {
+    key: 'secrets:delete',
+    label: 'Delete Secrets',
+    group: 'secrets',
+    description: 'Delete secret projects and entries',
+    isSystem: true,
+  },
+  {
+    key: 'secrets:manage',
+    label: 'Configure Secret Access',
+    group: 'secrets',
+    description: 'Manage sharing and access on all secret projects',
+    isSystem: true,
+  },
 ];
 
 const BASELINE_ROLES = [

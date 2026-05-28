@@ -32,6 +32,7 @@ export function translateSegment(segment: string): string {
     offers: 'Ajánlatok',
     builds: 'Összeszerelések',
     account: 'Fiók',
+    secrets: 'Titoktár',
     create: 'Létrehozás',
     edit: 'Szerkesztés',
     grn: 'Bevételezés',

@@ -52,3 +52,6 @@ export {
 } from './logistics';
 
 export type { CreateMovementInput, MovementLineInput, CreateReservationInput } from './logistics';
+
+export { secretProjectSchema, secretItemSchema, secretProjectAccessSchema } from './secrets';
+export type { SecretProjectInput, SecretItemInput, SecretProjectAccessInput } from './secrets';

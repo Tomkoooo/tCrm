@@ -37,24 +37,29 @@ function SheetOverlay({
   );
 }
 
-const sheetSizeClass: Record<string, string> = {
-  sm: 'sm:max-w-sm',
-  md: 'sm:max-w-md',
-  lg: 'sm:max-w-lg',
-  xl: 'sm:max-w-xl',
-  full: 'sm:max-w-2xl',
+/** Panel width cap — not full viewport; `w-[min(100vw,…)]` keeps mobile inset too. */
+const sheetWidthClass: Record<NonNullable<SheetContentProps['size']>, string> = {
+  sm: 'w-[min(calc(100vw-1rem),24rem)]',
+  md: 'w-[min(calc(100vw-1rem),28rem)]',
+  lg: 'w-[min(calc(100vw-1rem),32rem)]',
+  xl: 'w-[min(calc(100vw-1rem),36rem)]',
+  full: 'w-[min(calc(100vw-1rem),42rem)]',
+};
+
+type SheetContentProps = React.ComponentProps<typeof SheetPrimitive.Content> & {
+  side?: 'top' | 'right' | 'bottom' | 'left';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
 };
 
 function SheetContent({
   className,
   children,
   side = 'right',
-  size,
+  size = 'md',
   ...props
-}: React.ComponentProps<typeof SheetPrimitive.Content> & {
-  side?: 'top' | 'right' | 'bottom' | 'left';
-  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
-}) {
+}: SheetContentProps) {
+  const widthClass = sheetWidthClass[size];
+
   return (
     <SheetPortal>
       <SheetOverlay />
@@ -63,20 +68,32 @@ function SheetContent({
         className={cn(
           'bg-background data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-50 flex flex-col gap-4 shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500',
           side === 'right' &&
-            'data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right inset-y-0 right-0 h-full w-full border-l sm:w-3/4',
+            cn(
+              'data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right inset-y-0 right-0 h-full border-l',
+              widthClass
+            ),
           side === 'left' &&
-            'data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left inset-y-0 left-0 h-full w-full border-r sm:w-3/4',
+            cn(
+              'data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left inset-y-0 left-0 h-full border-r',
+              widthClass
+            ),
           side === 'top' &&
-            'data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top inset-x-0 top-0 h-auto border-b',
+            'data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top inset-x-0 top-0 h-auto w-full border-b',
           side === 'bottom' &&
-            'data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom inset-x-0 bottom-0 h-auto border-t',
-          size ? sheetSizeClass[size] : 'sm:max-w-sm',
+            'data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom inset-x-0 bottom-0 h-auto w-full border-t',
           className
         )}
         {...props}
       >
         {children}
-        <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary rounded-xs focus:outline-hidden absolute right-4 top-4 opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 disabled:pointer-events-none">
+        <SheetPrimitive.Close
+          type="button"
+          className={cn(
+            'ring-offset-background focus:ring-ring absolute right-3 top-3 z-50',
+            'border-input bg-background hover:bg-muted rounded-md border p-1.5 shadow-sm',
+            'focus:outline-hidden transition-colors focus:ring-2 focus:ring-offset-2 disabled:pointer-events-none'
+          )}
+        >
           <XIcon className="size-4" />
           <span className="sr-only">Bezárás</span>
         </SheetPrimitive.Close>

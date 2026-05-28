@@ -191,7 +191,7 @@ The CRM uses a **collapsible sidebar** (`apps/crm/src/components/app-sidebar.tsx
 | Készletkezelés | `/inventory`, `/inventory/categories`, `/inventory/suppliers`, `/inventory/builds` | `inventory:read`, `suppliers:*` |
 | Logisztika | `/logistics`, `/logistics/movements`, `/logistics/reservations` | `logistics:read` |
 | Értékesítés | `/offers`, `/builds` | `offers:read`, `inventory:read` |
-| Beállítások | `/account` | authenticated |
+| Beállítások | `/account`, `/secrets` (Titoktár) | authenticated; `secrets:read` |
 | Adminisztráció | `/admin/users`, `/admin/permissions`, `/admin/warehouses` | `admin:access` + module keys |
 
 Groups expand/collapse independently; the active route’s group opens by default. Breadcrumb labels are localized in `app-header.tsx` (`translateSegment`).
