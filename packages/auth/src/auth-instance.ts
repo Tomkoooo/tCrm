@@ -1,8 +1,13 @@
 import NextAuth from 'next-auth';
-import { authConfig, middlewareAuthConfig } from './config';
+import { edgeAuthConfig } from './auth.config';
+import { authConfig } from './config';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...edgeAuthConfig,
   ...authConfig,
-  ...middlewareAuthConfig,
+  callbacks: {
+    ...edgeAuthConfig.callbacks,
+    ...authConfig.callbacks,
+  },
   trustHost: true,
 });

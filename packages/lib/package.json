@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./env": "./src/env.ts",
     "./utils": "./src/utils/index.ts",
     "./validation": "./src/validation/index.ts"
   },
@@ -21,6 +22,7 @@
   "devDependencies": {
     "@crm/eslint-config": "workspace:*",
     "@crm/tsconfig": "workspace:*",
+    "@types/node": "^20",
     "eslint": "^9.17.0",
     "typescript": "^5.7.2",
     "vitest": "^4.0.18"

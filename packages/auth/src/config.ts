@@ -1,7 +1,7 @@
 import type { NextAuthConfig } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
-import { connectDB, hasAnyAdminUser, User } from '@crm/db';
+import { connectDB, User } from '@crm/db';
 import { loginSchema } from '@crm/lib/validation';
 import { getEffectivePermissionKeys } from './permissions';
 
@@ -52,60 +52,4 @@ export const authConfig: NextAuthConfig = {
       return session;
     },
   },
-  session: {
-    strategy: 'jwt',
-    maxAge: 8 * 60 * 60,
-  },
-  pages: {
-    signIn: '/login',
-  },
-};
-
-// Extend authConfig with authorized for middleware - applied in auth-instance
-export const middlewareAuthConfig = {
-  callbacks: {
-    ...authConfig.callbacks,
-    authorized({
-      auth,
-      request: { nextUrl },
-    }: {
-      auth: { user?: unknown } | null;
-      request: { nextUrl: URL };
-    }) {
-      const isLoggedIn = !!auth?.user;
-      const isAuthPage =
-        nextUrl.pathname.startsWith('/login') || nextUrl.pathname.startsWith('/register');
-      const isSetupPage = nextUrl.pathname.startsWith('/setup');
-
-      if (isAuthPage) {
-        if (isLoggedIn) {
-          return Response.redirect(new URL('/', nextUrl));
-        }
-        return true;
-      }
-
-      // First-run setup: if no admin exists, force /setup (but still allow API + static via matcher)
-      // NOTE: authorized supports async in Auth.js v5
-      return (async () => {
-        const initialized = await hasAnyAdminUser();
-        if (!initialized && !isSetupPage) {
-          return Response.redirect(new URL('/setup', nextUrl));
-        }
-
-        if (isSetupPage) {
-          // If already initialized, setup should not be reachable
-          if (initialized) {
-            return Response.redirect(new URL('/login', nextUrl));
-          }
-          return true;
-        }
-
-        if (!isLoggedIn) {
-          return Response.redirect(new URL('/login', nextUrl));
-        }
-
-        return true;
-      })();
-    },
-  },
-};
+} satisfies NextAuthConfig;

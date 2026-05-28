@@ -29,13 +29,19 @@ export async function loginAction(
   }
 
   try {
-    const result = await signIn('credentials', {
+    const redirectUrl = await signIn('credentials', {
       email: parsed.data.email,
       password: parsed.data.password,
       redirect: false,
+      redirectTo: '/',
     });
 
-    if (result && 'error' in result && result.error) {
+    if (
+      typeof redirectUrl === 'string' &&
+      (redirectUrl.includes('error=') ||
+        redirectUrl.includes('/login') ||
+        redirectUrl.includes('/signin'))
+    ) {
       return { success: false, message: 'Invalid email or password.' };
     }
 

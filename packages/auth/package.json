@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./config": "./src/config.ts",
+    "./edge": "./src/auth.config.ts",
     "./permissions": "./src/permissions.ts"
   },
   "scripts": {

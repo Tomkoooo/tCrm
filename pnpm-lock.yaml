@@ -230,6 +230,9 @@ importers:
       '@crm/lib':
         specifier: workspace:*
         version: link:../lib
+      mongoose:
+        specifier: ^9.0.0
+        version: 9.6.2
       xlsx:
         specifier: ^0.18.5
         version: 0.18.5
@@ -246,6 +249,9 @@ importers:
       eslint:
         specifier: ^9.17.0
         version: 9.39.4(jiti@2.7.0)
+      mongodb-memory-server:
+        specifier: ^11.2.0
+        version: 11.2.0
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
@@ -329,6 +335,9 @@ importers:
       '@crm/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      '@types/node':
+        specifier: ^20
+        version: 20.19.41
       eslint:
         specifier: ^9.17.0
         version: 9.39.4(jiti@2.7.0)

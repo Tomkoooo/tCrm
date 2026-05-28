@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 const initialState: LoginFormState = { success: false };
 
-export function LoginForm() {
+export function LoginForm({ showRegisterLink = false }: { showRegisterLink?: boolean }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(loginAction, initialState);
 
@@ -56,12 +56,14 @@ export function LoginForm() {
           <Button type="submit" disabled={pending} className="w-full">
             {pending ? 'Signing in...' : 'Sign in'}
           </Button>
-          <p className="text-muted-foreground text-center text-sm">
-            No account?{' '}
-            <Link href="/register" className="text-primary underline-offset-4 hover:underline">
-              Register
-            </Link>
-          </p>
+          {showRegisterLink && (
+            <p className="text-muted-foreground text-center text-sm">
+              No account?{' '}
+              <Link href="/register" className="text-primary underline-offset-4 hover:underline">
+                Register
+              </Link>
+            </p>
+          )}
         </form>
       </CardContent>
     </Card>

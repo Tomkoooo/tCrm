@@ -140,6 +140,45 @@ const BASELINE_ROLES = [
   },
 ];
 
+/** Permissions + roles required for first-run /setup (no admin user). */
+export async function ensureBaselineRbac(): Promise<void> {
+  await connectDB();
+
+  const permissionMap = new Map<string, string>();
+
+  for (const perm of BASELINE_PERMISSIONS) {
+    const existing = await Permission.findOne({ key: perm.key });
+    if (existing) {
+      permissionMap.set(perm.key, existing._id.toString());
+    } else {
+      const created = await Permission.create(perm);
+      permissionMap.set(perm.key, created._id.toString());
+    }
+  }
+
+  for (const role of BASELINE_ROLES) {
+    const permissionIds = role.permissionKeys
+      .map((key) => permissionMap.get(key))
+      .filter((id): id is string => Boolean(id));
+
+    const existing = await Role.findOne({ key: role.key });
+    if (existing) {
+      existing.permissionIds = permissionIds as unknown as typeof existing.permissionIds;
+      existing.name = role.name;
+      existing.description = role.description;
+      await existing.save();
+    } else {
+      await Role.create({
+        key: role.key,
+        name: role.name,
+        description: role.description,
+        permissionIds: permissionIds as never,
+        isSystem: role.isSystem,
+      });
+    }
+  }
+}
+
 export async function seedDatabase(): Promise<void> {
   await connectDB();
 

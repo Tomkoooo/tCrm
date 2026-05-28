@@ -56,6 +56,7 @@ docs/              Architecture, rules, design system
 
 ## Documentation
 
+- [AGENT_HANDOFF.md](./docs/AGENT_HANDOFF.md) — phase status, known issues, **copy-paste prompt for next agent** (§10)
 - [ARCHITECTURE.md](./docs/ARCHITECTURE.md) — system design, RBAC, CI/CD
 - [rules.md](./docs/rules.md) — coding conventions
 - [design.md](./docs/design.md) — UI tokens, layout, components

@@ -2,7 +2,7 @@
 
 import bcrypt from 'bcryptjs';
 import { redirect } from 'next/navigation';
-import { connectDB, hasAnyAdminUser, Role, User } from '@crm/db';
+import { connectDB, ensureBaselineRbac, hasAnyAdminUser, Role, User } from '@crm/db';
 import { registerSchema } from '@crm/lib/validation';
 
 export type SetupState =
@@ -32,6 +32,8 @@ export async function setupAdminAction(_prev: SetupState, formData: FormData): P
     return { success: false, message: 'Setup already completed.' };
   }
 
+  await ensureBaselineRbac();
+
   const email = parsed.data.email.toLowerCase();
   const existing = await User.findOne({ email });
   if (existing) {
@@ -40,7 +42,10 @@ export async function setupAdminAction(_prev: SetupState, formData: FormData): P
 
   const adminRole = await Role.findOne({ key: 'admin' });
   if (!adminRole) {
-    return { success: false, message: 'Admin role is missing. Run seed first.' };
+    return {
+      success: false,
+      message: 'Could not create the admin role. Check database connectivity and try again.',
+    };
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 10);

@@ -1,7 +1,8 @@
 'use server';
 
 import bcrypt from 'bcryptjs';
-import { connectDB, hasAnyAdminUser, Role, User } from '@crm/db';
+import { connectDB, ensureBaselineRbac, hasAnyAdminUser, Role, User } from '@crm/db';
+import { isPublicRegistrationEnabled } from '@crm/lib';
 import { registerSchema } from '@crm/lib/validation';
 
 export type RegisterFormState =
@@ -16,13 +17,22 @@ export async function registerAction(
   _prevState: RegisterFormState,
   formData: FormData
 ): Promise<RegisterFormState> {
-  await connectDB();
-  if (await hasAnyAdminUser()) {
+  if (!isPublicRegistrationEnabled()) {
     return {
       success: false,
       message: 'Registration is disabled. Please contact an administrator.',
     };
   }
+
+  await connectDB();
+  if (!(await hasAnyAdminUser())) {
+    return {
+      success: false,
+      message: 'Complete initial setup before registering.',
+    };
+  }
+
+  await ensureBaselineRbac();
 
   const parsed = registerSchema.safeParse({
     name: formData.get('name'),
