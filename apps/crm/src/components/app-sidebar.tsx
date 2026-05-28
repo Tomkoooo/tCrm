@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { signOut } from 'next-auth/react';
 import {
   LayoutDashboardIcon,
@@ -14,8 +14,10 @@ import {
   UsersIcon,
   ShieldIcon,
   Building2Icon,
+  HandshakeIcon,
   LogOutIcon,
   UserIcon,
+  TagsIcon,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -34,6 +36,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
 import { getInitials } from '@/lib/utils';
+import { SidebarNavGroup, type SidebarNavItem } from '@/components/sidebar-nav-group';
 
 export function MenuItem({
   href,
@@ -70,135 +73,147 @@ export function AppSidebar() {
 
   const hasPermission = (key: string) => user?.permissions.includes(key) ?? false;
 
+  const inventoryItems = useMemo((): SidebarNavItem[] => {
+    if (!hasPermission('inventory:read')) return [];
+    const items: SidebarNavItem[] = [
+      {
+        href: '/inventory',
+        icon: <PackageIcon className="h-4 w-4" />,
+        label: 'Termékek',
+      },
+      {
+        href: '/inventory/builds',
+        icon: <WrenchIcon className="h-4 w-4" />,
+        label: 'Összeszerelések',
+      },
+      {
+        href: '/inventory/categories',
+        icon: <TagsIcon className="h-4 w-4" />,
+        label: 'Termékkategóriák',
+      },
+    ];
+    if (
+      hasPermission('suppliers:read') ||
+      hasPermission('suppliers:manage') ||
+      hasPermission('inventory:import') ||
+      hasPermission('inventory:write')
+    ) {
+      items.push({
+        href: '/inventory/suppliers',
+        icon: <HandshakeIcon className="h-4 w-4" />,
+        label: 'Beszállítók',
+      });
+    }
+    return items;
+  }, [user?.permissions]);
+
+  const logisticsItems = useMemo((): SidebarNavItem[] => {
+    if (!hasPermission('logistics:read')) return [];
+    return [
+      {
+        href: '/logistics',
+        icon: <TruckIcon className="h-4 w-4" />,
+        label: 'Áttekintés',
+      },
+      {
+        href: '/logistics/movements',
+        icon: <ArrowRightLeftIcon className="h-4 w-4" />,
+        label: 'Készletmozgások',
+      },
+      {
+        href: '/logistics/reservations',
+        icon: <LockIcon className="h-4 w-4" />,
+        label: 'Foglalások',
+      },
+    ];
+  }, [user?.permissions]);
+
+  const salesItems = useMemo((): SidebarNavItem[] => {
+    const items: SidebarNavItem[] = [];
+    if (hasPermission('offers:read')) {
+      items.push({
+        href: '/offers',
+        icon: <FileTextIcon className="h-4 w-4" />,
+        label: 'Ajánlatok',
+      });
+    }
+    return items;
+  }, [user?.permissions]);
+
+  const adminItems = useMemo((): SidebarNavItem[] => {
+    if (!hasPermission('admin:access')) return [];
+    const items: SidebarNavItem[] = [];
+    if (hasPermission('users:read')) {
+      items.push({
+        href: '/admin/users',
+        icon: <UsersIcon className="h-4 w-4" />,
+        label: 'Felhasználók',
+      });
+    }
+    if (hasPermission('roles:manage')) {
+      items.push({
+        href: '/admin/permissions',
+        icon: <ShieldIcon className="h-4 w-4" />,
+        label: 'Szerepkörök',
+      });
+    }
+    if (hasPermission('warehouses:read')) {
+      items.push({
+        href: '/admin/warehouses',
+        icon: <Building2Icon className="h-4 w-4" />,
+        label: 'Raktárak',
+      });
+    }
+    return items;
+  }, [user?.permissions]);
+
   return (
     <Sidebar className="max-w-full">
       <SidebarHeader className="flex flex-row items-center gap-2 p-4">
         <div className="flex flex-col gap-0.5">
           <span className="truncate font-medium leading-none">tCrm</span>
-          <span className="text-muted-foreground truncate text-xs">Internal CRM</span>
+          <span className="text-muted-foreground truncate text-xs">Belső CRM</span>
         </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>General</SidebarGroupLabel>
+          <SidebarGroupLabel>Általános</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <MenuItem
                 href="/"
                 icon={<LayoutDashboardIcon className="h-4 w-4" />}
-                label="Dashboard"
+                label="Vezérlőpult"
                 onClick={linkClick}
               />
-              {hasPermission('inventory:read') && (
-                <>
-                  <MenuItem
-                    href="/inventory"
-                    icon={<PackageIcon className="h-4 w-4" />}
-                    label="Inventory (Products)"
-                    onClick={linkClick}
-                  />
-                  <MenuItem
-                    href="/inventory/categories"
-                    icon={<PackageIcon className="h-4 w-4" />}
-                    label="Inventory Categories"
-                    onClick={linkClick}
-                  />
-                  {hasPermission('inventory:import') && (
-                    <MenuItem
-                      href="/inventory/import"
-                      icon={<PackageIcon className="h-4 w-4" />}
-                      label="Inventory Import"
-                      onClick={linkClick}
-                    />
-                  )}
-                </>
-              )}
-              {hasPermission('logistics:read') && (
-                <>
-                  <MenuItem
-                    href="/logistics"
-                    icon={<TruckIcon className="h-4 w-4" />}
-                    label="Logistics"
-                    onClick={linkClick}
-                  />
-                  <MenuItem
-                    href="/logistics/movements"
-                    icon={<ArrowRightLeftIcon className="h-4 w-4" />}
-                    label="Movements"
-                    onClick={linkClick}
-                  />
-                  <MenuItem
-                    href="/logistics/reservations"
-                    icon={<LockIcon className="h-4 w-4" />}
-                    label="Reservations"
-                    onClick={linkClick}
-                  />
-                </>
-              )}
-              {hasPermission('offers:read') && (
-                <MenuItem
-                  href="/offers"
-                  icon={<FileTextIcon className="h-4 w-4" />}
-                  label="Offers"
-                  onClick={linkClick}
-                />
-              )}
-              {hasPermission('inventory:read') && (
-                <MenuItem
-                  href="/builds"
-                  icon={<WrenchIcon className="h-4 w-4" />}
-                  label="Builds"
-                  onClick={linkClick}
-                />
-              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <SidebarNavGroup label="Készletkezelés" items={inventoryItems} onLinkClick={linkClick} />
+
+        <SidebarNavGroup label="Logisztika" items={logisticsItems} onLinkClick={linkClick} />
+
+        {salesItems.length > 0 && (
+          <SidebarNavGroup label="Értékesítés" items={salesItems} onLinkClick={linkClick} />
+        )}
+
         <SidebarGroup>
-          <SidebarGroupLabel>Settings</SidebarGroupLabel>
+          <SidebarGroupLabel>Beállítások</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <MenuItem
                 href="/account"
                 icon={<UserIcon className="h-4 w-4" />}
-                label="Account"
+                label="Fiók"
                 onClick={linkClick}
               />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        {hasPermission('admin:access') && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Administration</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {hasPermission('users:read') && (
-                  <MenuItem
-                    href="/admin/users"
-                    icon={<UsersIcon className="h-4 w-4" />}
-                    label="Users"
-                    onClick={linkClick}
-                  />
-                )}
-                {hasPermission('roles:manage') && (
-                  <MenuItem
-                    href="/admin/permissions"
-                    icon={<ShieldIcon className="h-4 w-4" />}
-                    label="Roles & Permissions"
-                    onClick={linkClick}
-                  />
-                )}
-                {hasPermission('warehouses:read') && (
-                  <MenuItem
-                    href="/admin/warehouses"
-                    icon={<Building2Icon className="h-4 w-4" />}
-                    label="Warehouses"
-                    onClick={linkClick}
-                  />
-                )}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+
+        {adminItems.length > 0 && (
+          <SidebarNavGroup label="Adminisztráció" items={adminItems} onLinkClick={linkClick} />
         )}
       </SidebarContent>
       <SidebarFooter>
@@ -239,7 +254,7 @@ export function AppSidebar() {
         ) : (
           <Button asChild>
             <Link href="/login" onClick={linkClick}>
-              Sign in
+              Bejelentkezés
             </Link>
           </Button>
         )}

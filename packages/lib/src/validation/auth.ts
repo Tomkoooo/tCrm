@@ -31,5 +31,45 @@ export const registerSchema = z
     path: ['confirmPassword'],
   });
 
+export const updateProfileSchema = z.object({
+  name: nameSchema,
+});
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Current password is required'),
+    newPassword: passwordSchema,
+    confirmNewPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmNewPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmNewPassword'],
+  });
+
+const roleIdsSchema = z.array(z.string().min(1)).default([]);
+const directPermissionKeysSchema = z.array(z.string().min(1)).default([]);
+
+export const createUserSchema = z.object({
+  name: nameSchema,
+  email: emailSchema,
+  password: passwordSchema,
+  isActive: z.boolean().default(true),
+  roleIds: roleIdsSchema,
+  directPermissionKeys: directPermissionKeysSchema,
+});
+
+export const updateUserSchema = z.object({
+  name: nameSchema,
+  email: emailSchema,
+  password: z.union([z.literal(''), passwordSchema]).optional(),
+  isActive: z.boolean(),
+  roleIds: roleIdsSchema,
+  directPermissionKeys: directPermissionKeysSchema,
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+export type CreateUserInput = z.infer<typeof createUserSchema>;
+export type UpdateUserInput = z.infer<typeof updateUserSchema>;

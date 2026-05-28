@@ -16,18 +16,28 @@ import { ThemeToggle } from '@/components/theme-toggle';
 
 export function translateSegment(segment: string): string {
   const map: Record<string, string> = {
-    login: 'Sign in',
-    register: 'Register',
-    admin: 'Administration',
-    permissions: 'Roles & Permissions',
-    users: 'Users',
-    inventory: 'Inventory',
-    logistics: 'Logistics',
-    offers: 'Offers',
-    builds: 'Builds',
-    account: 'Account',
-    create: 'Create',
-    edit: 'Edit',
+    login: 'Bejelentkezés',
+    register: 'Regisztráció',
+    admin: 'Adminisztráció',
+    permissions: 'Szerepkörök és jogosultságok',
+    users: 'Felhasználók',
+    warehouses: 'Raktárak',
+    suppliers: 'Beszállítók',
+    inventory: 'Készlet',
+    categories: 'Termékkategóriák',
+    import: 'Importálás',
+    logistics: 'Logisztika',
+    movements: 'Készletmozgások',
+    reservations: 'Foglalások',
+    offers: 'Ajánlatok',
+    builds: 'Összeszerelések',
+    account: 'Fiók',
+    create: 'Létrehozás',
+    edit: 'Szerkesztés',
+    grn: 'Bevételezés',
+    pick: 'Kiadás',
+    transfer: 'Raktárközi',
+    new: 'Új',
   };
   return map[segment] ?? segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ');
 }
@@ -72,7 +82,7 @@ export default function AppHeader() {
             ) : (
               <BreadcrumbItem>
                 <BreadcrumbLink asChild>
-                  <Link href="/">Dashboard</Link>
+                  <Link href="/">Vezérlőpult</Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
             )}

@@ -104,6 +104,20 @@ const BASELINE_PERMISSIONS = [
     description: 'Create and edit warehouses',
     isSystem: true,
   },
+  {
+    key: 'suppliers:read',
+    label: 'View Suppliers',
+    group: 'inventory',
+    description: 'View supplier partners',
+    isSystem: true,
+  },
+  {
+    key: 'suppliers:manage',
+    label: 'Manage Suppliers',
+    group: 'inventory',
+    description: 'Create and edit suppliers (import partners)',
+    isSystem: true,
+  },
 ];
 
 const BASELINE_ROLES = [
@@ -128,6 +142,8 @@ const BASELINE_ROLES = [
       'logistics:write',
       'users:read',
       'warehouses:read',
+      'suppliers:read',
+      'suppliers:manage',
     ],
     isSystem: true,
   },
@@ -135,7 +151,13 @@ const BASELINE_ROLES = [
     key: 'viewer',
     name: 'Viewer',
     description: 'Read-only access',
-    permissionKeys: ['inventory:read', 'offers:read', 'logistics:read', 'warehouses:read'],
+    permissionKeys: [
+      'inventory:read',
+      'offers:read',
+      'logistics:read',
+      'warehouses:read',
+      'suppliers:read',
+    ],
     isSystem: true,
   },
 ];

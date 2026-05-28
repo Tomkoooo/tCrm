@@ -15,9 +15,18 @@ export interface ISupplier extends Document {
   registry?: string;
 
   contacts?: {
+    ceoName?: string;
+    ceoPhone?: string;
+    ceoEmail?: string;
     salesName?: string;
     salesPhone?: string;
     salesEmail?: string;
+    technicalName?: string;
+    technicalPhone?: string;
+    technicalEmail?: string;
+    warehouseName?: string;
+    warehousePhone?: string;
+    warehouseEmail?: string;
     financeName?: string;
     financePhone?: string;
     financeEmail?: string;
@@ -41,9 +50,18 @@ const SupplierSchema = new Schema<ISupplier>(
     euTaxNo: { type: String },
     registry: { type: String },
     contacts: {
+      ceoName: { type: String },
+      ceoPhone: { type: String },
+      ceoEmail: { type: String },
       salesName: { type: String },
       salesPhone: { type: String },
       salesEmail: { type: String },
+      technicalName: { type: String },
+      technicalPhone: { type: String },
+      technicalEmail: { type: String },
+      warehouseName: { type: String },
+      warehousePhone: { type: String },
+      warehouseEmail: { type: String },
       financeName: { type: String },
       financePhone: { type: String },
       financeEmail: { type: String },

@@ -2,10 +2,10 @@ import { Badge } from '@/components/ui/badge';
 import type { ReservationStatus } from '@crm/db';
 
 const LABELS: Record<ReservationStatus, string> = {
-  active: 'Active',
-  released: 'Released',
-  fulfilled: 'Fulfilled',
-  cancelled: 'Cancelled',
+  active: 'Aktív',
+  released: 'Feloldva',
+  fulfilled: 'Teljesítve',
+  cancelled: 'Törölve',
 };
 
 export function ReservationStatusBadge({ status }: { status: ReservationStatus }) {

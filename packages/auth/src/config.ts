@@ -39,6 +39,14 @@ export const authConfig: NextAuthConfig = {
         token.id = user.id;
       }
       if (token.id && (user?.id || trigger === 'update')) {
+        if (trigger === 'update') {
+          const dbUser = await User.findById(token.id).select('name email image').lean().exec();
+          if (dbUser) {
+            token.name = dbUser.name;
+            token.email = dbUser.email;
+            token.picture = dbUser.image ?? undefined;
+          }
+        }
         const permissions = await getEffectivePermissionKeys(token.id as string);
         token.permissions = Array.from(permissions);
       }

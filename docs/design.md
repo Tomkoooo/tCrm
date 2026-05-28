@@ -156,33 +156,33 @@ Server Actions + `useActionState`, `gap-6` form, `gap-2` fields, red asterisk on
 
 ---
 
-## 8. Dynamic DataTable Spec (Phase 1)
+## 8. DataTable & EntitySheet (`@crm/ui`)
 
-Contract for the inventory module:
+**DataTable** — mandatory for list views. Compact toolbar: Keresés · Szűrők · Rendezés · Oszlopok (each opens **EntitySheet**). URL drives server filters; `tableId` persists visible columns in `localStorage`.
 
 ```typescript
-interface ColumnDef<T> {
-  key: string;
-  label: string;
-  type?: 'string' | 'number' | 'date' | 'boolean' | 'enum';
-  sortable?: boolean;
-  filterable?: boolean;
-  enumValues?: string[];
-  render?: (value: unknown, row: T) => React.ReactNode;
-}
+// Server list page
+const query = parseDataTableQuery(await searchParams);
+const { filter, sort, skip, limit } = buildDataTableMongoQuery(query, columns);
 
-interface DataTableProps<T extends Record<string, unknown>> {
-  data: T[];
-  columns: ColumnDef<T>[];
-  searchKeys?: string[];
-  defaultSort?: { key: string; direction: 'asc' | 'desc' };
-  pagination?: { page: number; pageSize: number; total: number };
-  onPageChange?: (page: number) => void;
-  emptyMessage?: string;
-}
+<DataTable
+  tableId="inventory-products"
+  mode="server"
+  data={rows}
+  columns={columns}
+  query={query}
+  total={total}
+  basePath="/inventory"
+  rowHref={(r) => `/inventory/${r.sku}`}
+  rowOpen="sheet"  // optional rowDetail preview
+/>
 ```
 
-Features: auto-column from schema introspection, header sort toggles, filter row, global search, pagination footer matching admin table pattern.
+**Column types:** `string` | `number` | `boolean` | `enum` | `date` | `image` (`thumbnailUrl` + `DataTableImageCell`).
+
+**EntitySheet** — reusable slide-over (`size`: sm|md|lg|xl) for filters, create forms, row detail. Do not stack large Cards above tables for create flows.
+
+**Client mode:** `mode="client"` for in-memory data (builds, dashboard snippets). Same chrome; filters merge URL + default `query` prop.
 
 ---
 

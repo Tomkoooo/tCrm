@@ -5,7 +5,7 @@ alwaysApply: true
 
 # tCrm — Cursor Rules
 
-Internal CRM monorepo. Read `docs/ARCHITECTURE.md`, `docs/rules.md`, and `docs/design.md` before making changes.
+Internal CRM monorepo. Read `docs/ARCHITECTURE.md`, `docs/rules.md`, `docs/design.md`, and `docs/inventory_and_logistics_flows.md` before making changes. When a change affects user-visible flows, update that flows doc in the same task (see `.cursor/rules/flows-documentation.mdc`).
 
 ## Stack
 
@@ -19,6 +19,7 @@ Next.js 16 App Router · React 19 · TypeScript strict · Tailwind v4 · shadcn 
 - Models in `@crm/db`, auth in `@crm/auth`, shared utils in `@crm/lib`
 - Always use `requirePermission()` in admin routes and mutations
 - Wrap pages in `<Container>` from `@crm/ui`
+- List views → `DataTable` (`tableId` required); panels → `EntitySheet` (not inline Cards above tables)
 - Use semantic Tailwind tokens, not raw colors
 
 ## Workspace packages

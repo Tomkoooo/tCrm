@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requirePermission } from '@crm/auth';
+import { calculateBomAvailability } from '@crm/core';
 import { connectDB, Product, StockAdjustment, StockLevel, Warehouse } from '@crm/db';
 import { Container } from '@crm/ui';
 import { Button } from '@/components/ui/button';
@@ -38,41 +39,69 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     });
   }
 
-  const name = product.names?.en ?? product.names?.hu ?? product.names?.de ?? product.sku;
+  const name = product.names?.hu ?? product.names?.en ?? product.names?.de ?? product.sku;
+
+  const componentIds = product.components?.map((c) => c.productId) ?? [];
+  const componentProducts = await Product.find({ _id: { $in: componentIds } })
+    .select('sku names')
+    .lean()
+    .exec();
+  const componentById = new Map(
+    componentProducts.map((p) => [
+      String(p._id),
+      { sku: p.sku, name: p.names?.hu ?? p.names?.en ?? p.sku },
+    ])
+  );
+
+  const bomAvail =
+    (product.components?.length ?? 0) > 0 ? await calculateBomAvailability(product._id) : null;
 
   return (
     <Container className="flex max-w-6xl flex-col gap-4 pb-12 md:gap-6">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{name}</h1>
-          <p className="text-muted-foreground text-sm">
-            Internal SKU: {product.internalSku ?? '—'} · Manufacturer SKU: {product.sku}
-          </p>
+          <p className="text-muted-foreground font-mono text-sm">CRM SKU: {product.sku}</p>
         </div>
         <div className="flex gap-2">
-          <Button asChild variant="outline">
-            <Link href="/inventory">Back</Link>
+          {(product.components?.length ?? 0) > 0 && (
+            <Button asChild variant="secondary" size="sm">
+              <Link href="/inventory/builds">Összeszerelések</Link>
+            </Button>
+          )}
+          <Button asChild variant="outline" size="sm">
+            <Link href="/inventory">Vissza</Link>
           </Button>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Identification</CardTitle>
-          <CardDescription>Primary identifiers</CardDescription>
+          <CardTitle>Azonosítók</CardTitle>
+          <CardDescription>Három külön cikkszám-típus</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="md:col-span-2">
+            <p className="text-muted-foreground text-xs">
+              CRM SKU (kategória előtag + beszállítói)
+            </p>
+            <p className="font-mono text-sm font-medium">{product.sku}</p>
+          </div>
           <div>
-            <p className="text-muted-foreground text-xs">Brand</p>
+            <p className="text-muted-foreground text-xs">Beszállítói SKU</p>
+            <p className="font-mono text-sm">{product.supplierSku ?? '—'}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-xs">Beszállítói cikkszám (supplierNo)</p>
+            <p className="text-sm">{product.supplierNo ?? '—'}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-xs">Márka</p>
             <p className="text-sm">{product.brand ?? '—'}</p>
           </div>
           <div>
             <p className="text-muted-foreground text-xs">EAN</p>
             <p className="text-sm">{product.ean ?? '—'}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground text-xs">Owner</p>
-            <p className="text-sm">{product.owner ?? '—'}</p>
           </div>
         </CardContent>
       </Card>
@@ -140,17 +169,17 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
       <Card>
         <CardHeader>
-          <CardTitle>Stock by warehouse</CardTitle>
-          <CardDescription>On-hand and reserved</CardDescription>
+          <CardTitle>Készlet raktáronként</CardTitle>
+          <CardDescription>Kézi + foglalt = szabad (ajánlható)</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Warehouse</TableHead>
-                <TableHead className="text-right">On hand</TableHead>
-                <TableHead className="text-right">Reserved</TableHead>
-                <TableHead className="text-right">Available</TableHead>
+                <TableHead>Raktár</TableHead>
+                <TableHead className="text-right">Kézi</TableHead>
+                <TableHead className="text-right">Foglalt</TableHead>
+                <TableHead className="text-right">Szabad</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -172,19 +201,56 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
       <Card>
         <CardHeader>
-          <CardTitle>Components (BOM)</CardTitle>
+          <CardTitle>Összeszerelés (BOM)</CardTitle>
+          {bomAvail && (
+            <CardDescription>
+              Összesen ajánlható ebből az összeszerelésből: <strong>{bomAvail.canBuild}</strong> db
+            </CardDescription>
+          )}
         </CardHeader>
         <CardContent>
           {(product.components?.length ?? 0) === 0 ? (
-            <p className="text-muted-foreground text-sm">No components</p>
+            <p className="text-muted-foreground text-sm">
+              Nincs alkatrészlista — egyszerű termék, nem összeszerelés.
+            </p>
           ) : (
-            <ul className="list-disc pl-5 text-sm">
-              {(product.components as any[]).map((c, idx) => (
-                <li key={idx}>
-                  {String(c.productId)} × {c.quantity}
-                </li>
-              ))}
-            </ul>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Alkatrész CRM SKU</TableHead>
+                  <TableHead>Név</TableHead>
+                  <TableHead className="text-right">/db</TableHead>
+                  <TableHead className="text-right">Szabad készlet</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {product.components.map((c, idx) => {
+                  const comp = componentById.get(String(c.productId));
+                  const line = bomAvail?.limitingComponents.find(
+                    (l) => String(l.productId) === String(c.productId)
+                  );
+                  return (
+                    <TableRow key={idx}>
+                      <TableCell className="font-mono text-xs">
+                        {comp ? (
+                          <Link
+                            href={`/inventory/${encodeURIComponent(comp.sku)}`}
+                            className="text-primary hover:underline"
+                          >
+                            {comp.sku}
+                          </Link>
+                        ) : (
+                          '—'
+                        )}
+                      </TableCell>
+                      <TableCell>{comp?.name ?? '—'}</TableCell>
+                      <TableCell className="text-right">{c.quantity}</TableCell>
+                      <TableCell className="text-right">{line?.available ?? '—'}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>

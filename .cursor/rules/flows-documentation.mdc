@@ -1,0 +1,35 @@
+---
+description: Keep CRM operational flow docs in sync when behavior changes
+alwaysApply: true
+---
+
+# Flow documentation (`docs/inventory_and_logistics_flows.md`)
+
+This file is the **living map** of how tCrm works end-to-end (inventory, logistics, auth shell, and future modules). It complements `docs/ARCHITECTURE.md` (structure) with **user-visible flows** (Mermaid).
+
+## When you MUST update it
+
+Update `docs/inventory_and_logistics_flows.md` in the **same PR / task** when you change anything that alters:
+
+- Excel import columns, validation, or commit behavior (`@crm/core` import, import modal, template route)
+- Category / supplier / warehouse assignment rules
+- Stock movements, reservations, or BOM availability logic
+- Sidebar navigation groups or major route additions
+- New permissions that gate whole modules
+- Phase completion (add or extend the **CRM overview** section)
+
+Also update `docs/inventory.md` for inventory-specific schema/import notes, and `docs/ARCHITECTURE.md` §9 if navigation or cross-cutting rules change.
+
+## How to update
+
+1. Adjust affected Mermaid diagrams (keep Hungarian labels for user-facing steps).
+2. Refresh the **SKU / column glossary** table if Excel or Product fields change.
+3. Set `Utolsó frissítés` at the bottom to the current month/year and note the change in one line (e.g. `crm_supplier_slug`, Phase 3 offers).
+
+## Target shape
+
+- **§0** — Whole-CRM overview (high level; grows each phase).
+- **§1+** — Module flows (inventory import, logistics, …).
+- Tables for required Excel columns and permission keys.
+
+Do not duplicate full API docs here — link to `docs/inventory.md` and code (`packages/core/src/inventory/import.ts`).

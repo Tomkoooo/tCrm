@@ -8,7 +8,8 @@ export function normalizeDigits(value: string): string {
   return value.replace(/\D+/g, '');
 }
 
-export function generateInternalSku(settings: CategorySkuSettings, supplierSku: string): string {
+/** Belső kód: kategória előtag + a CRM SKU számjegyei */
+export function generateInternalSku(settings: CategorySkuSettings, crmSku: string): string {
   const prefix = String(settings.prefix ?? '').trim();
   const totalLength = Number(settings.totalLength);
   const padChar = (settings.padChar ?? '0').slice(0, 1);
@@ -19,7 +20,7 @@ export function generateInternalSku(settings: CategorySkuSettings, supplierSku: 
   }
 
   const skuPartLength = totalLength - prefix.length;
-  const digits = normalizeDigits(String(supplierSku ?? ''));
+  const digits = normalizeDigits(String(crmSku ?? ''));
   const trimmed = digits.slice(-skuPartLength);
   const padded = trimmed.padStart(skuPartLength, padChar);
   return `${prefix}${padded}`;

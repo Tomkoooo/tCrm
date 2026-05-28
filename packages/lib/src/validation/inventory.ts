@@ -82,6 +82,14 @@ export const productSchema = z
       })
       .optional(),
 
+    shipperCategoryPath: z
+      .object({
+        cat1: i18nTextSchema.optional(),
+        cat2: i18nTextSchema.optional(),
+        cat3: i18nTextSchema.optional(),
+      })
+      .optional(),
+
     components: z.array(productComponentSchema).optional(),
 
     inCategories: emptyToUndefined(z.string().max(5000)),
@@ -116,6 +124,43 @@ export const productSchema = z
     path: ['names'],
   });
 
+export const supplierSchema = z.object({
+  key: z
+    .string()
+    .min(1)
+    .max(64)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Csak kisbetű, szám és kötőjel'),
+  name: z.string().min(1).max(200),
+  address: emptyToUndefined(z.string().max(500)),
+  city: emptyToUndefined(z.string().max(120)),
+  postalCode: emptyToUndefined(z.string().max(32)),
+  country: emptyToUndefined(z.string().max(120)),
+  phone: emptyToUndefined(z.string().max(64)),
+  email: emptyToUndefined(z.string().max(200)),
+  taxNo: emptyToUndefined(z.string().max(64)),
+  euTaxNo: emptyToUndefined(z.string().max(64)),
+  registry: emptyToUndefined(z.string().max(500)),
+  contacts: z
+    .object({
+      ceoName: emptyToUndefined(z.string().max(120)),
+      ceoPhone: emptyToUndefined(z.string().max(64)),
+      ceoEmail: emptyToUndefined(z.string().max(200)),
+      salesName: emptyToUndefined(z.string().max(120)),
+      salesPhone: emptyToUndefined(z.string().max(64)),
+      salesEmail: emptyToUndefined(z.string().max(200)),
+      technicalName: emptyToUndefined(z.string().max(120)),
+      technicalPhone: emptyToUndefined(z.string().max(64)),
+      technicalEmail: emptyToUndefined(z.string().max(200)),
+      warehouseName: emptyToUndefined(z.string().max(120)),
+      warehousePhone: emptyToUndefined(z.string().max(64)),
+      warehouseEmail: emptyToUndefined(z.string().max(200)),
+      financeName: emptyToUndefined(z.string().max(120)),
+      financePhone: emptyToUndefined(z.string().max(64)),
+      financeEmail: emptyToUndefined(z.string().max(200)),
+    })
+    .optional(),
+});
+
 export const warehouseSchema = z.object({
   key: z
     .string()
@@ -128,7 +173,10 @@ export const warehouseSchema = z.object({
 });
 
 export const categorySchema = z.object({
-  level: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  level: z.coerce
+    .number()
+    .int()
+    .refine((v) => v === 1 || v === 2 || v === 3, { message: 'A szint 1, 2 vagy 3 lehet.' }),
   parentId: emptyToUndefined(z.string()),
   slug: z.string().min(1).max(200),
   names: i18nTextSchema,

@@ -1,7 +1,9 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { requirePermission } from '@crm/auth';
-import { connectDB, StockLevel, Warehouse } from '@crm/db';
+import { hasPermission, requirePermission } from '@crm/auth';
+import { connectDB, Product, StockLevel, Warehouse } from '@crm/db';
 import { Container } from '@crm/ui';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -11,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { EditWarehouseForm } from '../_components/edit-warehouse-form';
 
 export default async function WarehouseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePermission('warehouses:read');
@@ -26,39 +29,85 @@ export default async function WarehouseDetailPage({ params }: { params: Promise<
     .lean()
     .exec();
 
+  const productIds = levels.map((l) => l.productId);
+  const products = await Product.find({ _id: { $in: productIds } })
+    .select('sku names internalSku')
+    .lean()
+    .exec();
+  const productMap = new Map(
+    products.map((p) => [
+      String(p._id),
+      {
+        sku: p.sku,
+        name: p.names?.hu ?? p.names?.en ?? p.sku,
+        internalSku: p.internalSku,
+      },
+    ])
+  );
+
+  const canManage = await hasPermission('warehouses:manage');
+
   return (
     <Container className="flex max-w-6xl flex-col gap-4 md:gap-6">
-      <div>
-        <h1 className="text-2xl font-bold">{warehouse.name}</h1>
-        <p className="text-muted-foreground text-sm">Key: {warehouse.key}</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">{warehouse.name}</h1>
+          <p className="text-muted-foreground text-sm">Kulcs: {warehouse.key}</p>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/admin/warehouses">Vissza a listához</Link>
+        </Button>
       </div>
+
+      {canManage && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Raktár szerkesztése</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <EditWarehouseForm
+              id={id}
+              initial={{
+                key: warehouse.key,
+                name: warehouse.name,
+                address: warehouse.address ?? '',
+                isActive: Boolean(warehouse.isActive),
+              }}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
-          <CardTitle>Stock levels (top 50)</CardTitle>
+          <CardTitle>Készletszintek (top 50)</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Product</TableHead>
-                <TableHead className="text-right">On hand</TableHead>
-                <TableHead className="text-right">Reserved</TableHead>
+                <TableHead>SKU</TableHead>
+                <TableHead>Név</TableHead>
+                <TableHead className="text-right">Készleten</TableHead>
+                <TableHead className="text-right">Foglalt</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(levels as any[]).map((l) => (
-                <TableRow key={String(l._id)}>
-                  <TableCell>{String(l.productId)}</TableCell>
-                  <TableCell className="text-right">{l.onHand}</TableCell>
-                  <TableCell className="text-right">{l.reserved}</TableCell>
-                </TableRow>
-              ))}
+              {levels.map((l) => {
+                const p = productMap.get(String(l.productId));
+                return (
+                  <TableRow key={String(l._id)}>
+                    <TableCell className="font-mono text-xs">
+                      {p?.internalSku ?? p?.sku ?? '—'}
+                    </TableCell>
+                    <TableCell>{p?.name ?? '—'}</TableCell>
+                    <TableCell className="text-right">{l.onHand}</TableCell>
+                    <TableCell className="text-right">{l.reserved}</TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
-          <p className="text-muted-foreground mt-4 text-sm">
-            Phase 2 will join product name/SKU and add low-stock filtering.
-          </p>
         </CardContent>
       </Card>
     </Container>

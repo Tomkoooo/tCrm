@@ -29,8 +29,8 @@ export function DataTableSortHeader({
       )}
     >
       {label}
-      {isAsc && <ArrowUp className="h-3.5 w-3.5" />}
-      {isDesc && <ArrowDown className="h-3.5 w-3.5" />}
+      {isAsc && <ArrowUp className="size-2.5" />}
+      {isDesc && <ArrowDown className="size-2.5" />}
     </Link>
   );
 }

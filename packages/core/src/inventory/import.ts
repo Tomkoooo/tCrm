@@ -1,5 +1,13 @@
 import * as XLSX from 'xlsx';
-import { connectDB, Category, Product, StockAdjustment, StockLevel, Warehouse } from '@crm/db';
+import {
+  connectDB,
+  Category,
+  Product,
+  StockAdjustment,
+  StockLevel,
+  Supplier,
+  Warehouse,
+} from '@crm/db';
 import { inventoryImportRowSchema, productSchema, skuSchema } from '@crm/lib/validation';
 import type { ProductInput } from '@crm/lib/validation';
 import type { Types } from 'mongoose';
@@ -9,10 +17,31 @@ import { generateInternalSku } from './sku';
 export type ParseIssue = { row: number; field?: string; message: string };
 
 export type ParsedInventoryRow = {
+  rowNumber: number;
+  crmCategorySlug: string;
+  /** Per-row supplier key from Excel; falls back to import default when omitted */
+  crmSupplierSlug?: string;
+  /** Legacy Excel product_id_SM — validated against generated CRM SKU at prepare time */
+  legacyCrmSkuHint?: string;
   product: ProductInput;
   warehouses: Record<string, number>;
   componentSkus: Array<{ sku: string; quantity: number }>;
 };
+
+export type PrepareImportResult = {
+  ready: ParsedInventoryRow[];
+  skipped: ParseIssue[];
+  warnings: ParseIssue[];
+};
+
+const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+export function resolveRowSupplierKey(
+  row: ParsedInventoryRow,
+  defaultSupplierKey?: string
+): string | undefined {
+  return row.crmSupplierSlug || defaultSupplierKey;
+}
 
 export type ParseResult = {
   rows: ParsedInventoryRow[];
@@ -59,13 +88,25 @@ export function parseInventoryXlsx(buffer: ArrayBuffer): ParseResult {
 
   raw.forEach((r, idx) => {
     const rowNumber = idx + 2; // header row is 1
-    const skuRaw = toStringClean(r['product_id_SM']);
-    const skuParsed = skuSchema.safeParse(skuRaw);
+
+    const supplierSkuRaw = toStringClean(r['product_id']);
+    if (!supplierSkuRaw) {
+      errors.push({
+        row: rowNumber,
+        field: 'product_id',
+        message: 'Beszállítói SKU kötelező (product_id oszlop).',
+      });
+      return;
+    }
+
+    const legacySm = toStringClean(r['product_id_SM']);
+    const skuForSchema = legacySm ?? supplierSkuRaw;
+    const skuParsed = skuSchema.safeParse(skuForSchema);
     if (!skuParsed.success) {
       errors.push({
         row: rowNumber,
-        field: 'product_id_SM',
-        message: skuParsed.error.issues[0]?.message ?? 'Invalid SKU',
+        field: legacySm ? 'product_id_SM' : 'product_id',
+        message: skuParsed.error.issues[0]?.message ?? 'Érvénytelen SKU formátum.',
       });
       return;
     }
@@ -89,9 +130,60 @@ export function parseInventoryXlsx(buffer: ArrayBuffer): ParseResult {
       }
     }
 
+    const crmSlugRaw = toStringClean(r['crm_category_slug']);
+    if (!crmSlugRaw) {
+      errors.push({
+        row: rowNumber,
+        field: 'crm_category_slug',
+        message: 'CRM kategória slug kötelező (crm_category_slug oszlop).',
+      });
+      return;
+    }
+    const crmCategorySlug = crmSlugRaw.toLowerCase();
+    if (!SLUG_PATTERN.test(crmCategorySlug)) {
+      errors.push({
+        row: rowNumber,
+        field: 'crm_category_slug',
+        message: 'Érvénytelen slug formátum (kisbetű, szám, kötőjel).',
+      });
+      return;
+    }
+
+    const supplierSlugRaw = toStringClean(r['crm_supplier_slug']);
+    let crmSupplierSlug: string | undefined;
+    if (supplierSlugRaw) {
+      crmSupplierSlug = supplierSlugRaw.toLowerCase();
+      if (!SLUG_PATTERN.test(crmSupplierSlug)) {
+        errors.push({
+          row: rowNumber,
+          field: 'crm_supplier_slug',
+          message: 'Érvénytelen beszállító slug formátum (crm_supplier_slug).',
+        });
+        return;
+      }
+    }
+
+    const shipperCategoryPath = {
+      cat1: {
+        de: toStringClean(r['cat1Name']),
+        en: toStringClean(r['cat1Name_en']),
+        hu: toStringClean(r['cat1Name_hu']),
+      },
+      cat2: {
+        de: toStringClean(r['cat2Name']),
+        en: toStringClean(r['cat2Name_en']),
+        hu: toStringClean(r['cat2Name_hu']),
+      },
+      cat3: {
+        de: toStringClean(r['Cat3Name']),
+        en: toStringClean(r['cat3Name_en']),
+        hu: toStringClean(r['cat3Name_hu']),
+      },
+    };
+
     const productCandidate: ProductInput = {
       sku: skuParsed.data,
-      supplierSku: toStringClean(r['product_id']),
+      supplierSku: supplierSkuRaw,
       supplierNo: toStringClean(r['supplierNo']),
       brand: toStringClean(r['brand']),
       ean: toStringClean(r['ean']),
@@ -150,23 +242,7 @@ export function parseInventoryXlsx(buffer: ArrayBuffer): ParseResult {
       },
       externalImageHints,
       components: componentSkus.map((c) => ({ productSku: c.sku, quantity: c.quantity })),
-      categoryPath: {
-        cat1: {
-          de: toStringClean(r['cat1Name']),
-          en: toStringClean(r['cat1Name_en']),
-          hu: toStringClean(r['cat1Name_hu']),
-        },
-        cat2: {
-          de: toStringClean(r['cat2Name']),
-          en: toStringClean(r['cat2Name_en']),
-          hu: toStringClean(r['cat2Name_hu']),
-        },
-        cat3: {
-          de: toStringClean(r['Cat3Name']),
-          en: toStringClean(r['cat3Name_en']),
-          hu: toStringClean(r['cat3Name_hu']),
-        },
-      },
+      shipperCategoryPath,
     };
 
     const validated = productSchema.safeParse(productCandidate);
@@ -202,6 +278,10 @@ export function parseInventoryXlsx(buffer: ArrayBuffer): ParseResult {
     }
 
     rows.push({
+      rowNumber,
+      crmCategorySlug,
+      crmSupplierSlug,
+      legacyCrmSkuHint: legacySm,
       product: validated.data,
       warehouses,
       componentSkus,
@@ -218,6 +298,8 @@ export type ImportReport = {
   categoryUpserts: number;
   warehouseUpserts: number;
   componentLinkWarnings: number;
+  skipped: number;
+  skippedIssues: ParseIssue[];
 };
 
 async function upsertWarehouseByColumn(columnName: string): Promise<Types.ObjectId> {
@@ -235,89 +317,262 @@ async function upsertWarehouseByColumn(columnName: string): Promise<Types.Object
   return wh._id;
 }
 
-async function upsertCategoryPath(product: ProductInput): Promise<Types.ObjectId[]> {
-  const cat1Name = product.categoryPath?.cat1;
-  const cat2Name = product.categoryPath?.cat2;
-  const cat3Name = product.categoryPath?.cat3;
+/**
+ * Soronként: beszállító + kategória SKU beállítás → CRM SKU = előtag + beszállítói SKU.
+ * Hibás sorok kihagyva (skipped), nem állítja meg a teljes importot.
+ */
+export async function prepareImportRows(
+  parsed: ParseResult,
+  defaultSupplierKey?: string
+): Promise<PrepareImportResult> {
+  await connectDB();
 
-  const ids: Types.ObjectId[] = [];
-  let parentId: Types.ObjectId | undefined;
+  const ready: ParsedInventoryRow[] = [];
+  const skipped: ParseIssue[] = [...parsed.errors];
+  const warnings: ParseIssue[] = [...parsed.warnings];
 
-  const levels: Array<{ level: 1 | 2 | 3; names?: { de?: string; en?: string; hu?: string } }> = [
-    { level: 1, names: cat1Name },
-    { level: 2, names: cat2Name },
-    { level: 3, names: cat3Name },
-  ];
-
-  for (const l of levels) {
-    if (!l.names || (!l.names.de && !l.names.en && !l.names.hu)) break;
-    const basis = l.names.en ?? l.names.hu ?? l.names.de ?? `level-${l.level}`;
-    const slug = slugify(basis);
-    const cat = await Category.findOneAndUpdate(
-      { level: l.level, parentId: parentId ?? undefined, slug },
-      { $set: { names: l.names, slug }, $setOnInsert: { level: l.level, parentId } },
-      { upsert: true, new: true }
-    ).exec();
-    ids.push(cat._id);
-    parentId = cat._id;
+  if (parsed.rows.length === 0) {
+    return { ready, skipped, warnings };
   }
 
-  return ids;
+  const categorySlugs = [...new Set(parsed.rows.map((r) => r.crmCategorySlug))];
+  const categories = await Category.find({ slug: { $in: categorySlugs } })
+    .lean()
+    .exec();
+  const categoryBySlug = new Map(categories.map((c) => [c.slug, c]));
+
+  const supplierKeys = new Set<string>();
+  for (const row of parsed.rows) {
+    const key = resolveRowSupplierKey(row, defaultSupplierKey);
+    if (key) supplierKeys.add(key);
+  }
+  const suppliers = await Supplier.find({ key: { $in: [...supplierKeys] } })
+    .lean()
+    .exec();
+  const supplierByKey = new Map(suppliers.map((s) => [s.key, s]));
+
+  for (const row of parsed.rows) {
+    const supplierKey = resolveRowSupplierKey(row, defaultSupplierKey);
+    if (!supplierKey) {
+      skipped.push({
+        row: row.rowNumber,
+        field: 'crm_supplier_slug',
+        message:
+          'Adja meg a crm_supplier_slug oszlopot, vagy válasszon alapértelmezett beszállítót az import ablakban.',
+      });
+      continue;
+    }
+    if (!supplierByKey.has(supplierKey)) {
+      skipped.push({
+        row: row.rowNumber,
+        field: 'crm_supplier_slug',
+        message: `Ismeretlen beszállító slug: „${supplierKey}”. Hozza létre: Beszállítók menü.`,
+      });
+      continue;
+    }
+
+    const cat = categoryBySlug.get(row.crmCategorySlug);
+    if (!cat) {
+      skipped.push({
+        row: row.rowNumber,
+        field: 'crm_category_slug',
+        message: `Ismeretlen CRM kategória: „${row.crmCategorySlug}”.`,
+      });
+      continue;
+    }
+    if (!cat.skuPrefix || !cat.skuTotalLength) {
+      skipped.push({
+        row: row.rowNumber,
+        field: 'crm_category_slug',
+        message: `A „${cat.slug}” kategórián állítsa be az SKU előtagot és teljes hosszt (Termékkategóriák).`,
+      });
+      continue;
+    }
+
+    const supplierSku = row.product.supplierSku?.trim();
+    if (!supplierSku) {
+      skipped.push({
+        row: row.rowNumber,
+        field: 'product_id',
+        message: 'Beszállítói SKU (product_id) hiányzik.',
+      });
+      continue;
+    }
+
+    let crmSku: string;
+    try {
+      crmSku = generateInternalSku(
+        {
+          prefix: cat.skuPrefix,
+          totalLength: cat.skuTotalLength,
+          padChar: cat.skuPadChar ?? '0',
+        },
+        supplierSku
+      );
+    } catch (err) {
+      skipped.push({
+        row: row.rowNumber,
+        field: 'product_id',
+        message: err instanceof Error ? err.message : 'CRM SKU generálás sikertelen.',
+      });
+      continue;
+    }
+
+    if (row.legacyCrmSkuHint && row.legacyCrmSkuHint !== crmSku) {
+      warnings.push({
+        row: row.rowNumber,
+        field: 'product_id_SM',
+        message: `A product_id_SM („${row.legacyCrmSkuHint}”) nem egyezik a generált CRM SKU-val („${crmSku}”). A generált érték kerül mentésre.`,
+      });
+    }
+
+    const existing = await Product.findOne({ sku: crmSku }).select('sku supplierSku').lean().exec();
+    if (existing && existing.supplierSku && existing.supplierSku !== supplierSku) {
+      skipped.push({
+        row: row.rowNumber,
+        field: 'product_id',
+        message: `A CRM SKU „${crmSku}” már létezik más beszállítói SKU-val (${existing.supplierSku}).`,
+      });
+      continue;
+    }
+
+    row.product.sku = crmSku;
+    ready.push(row);
+  }
+
+  return { ready, skipped, warnings };
+}
+
+/** Ellenőrzi, hogy minden sor CRM slug-ja létező Category rekordra mutat. */
+export async function validateImportCategorySlugs(parsed: ParseResult): Promise<ParseIssue[]> {
+  if (parsed.rows.length === 0) return [];
+
+  await connectDB();
+  const slugs = [...new Set(parsed.rows.map((r) => r.crmCategorySlug))];
+  const found = await Category.find({ slug: { $in: slugs } })
+    .select('slug')
+    .lean()
+    .exec();
+  const foundSet = new Set(found.map((c) => c.slug));
+
+  const issues: ParseIssue[] = [];
+  for (const row of parsed.rows) {
+    if (!foundSet.has(row.crmCategorySlug)) {
+      issues.push({
+        row: row.rowNumber,
+        field: 'crm_category_slug',
+        message: `Ismeretlen CRM kategória slug: „${row.crmCategorySlug}”. Hozza létre a Termékkategóriák menüben.`,
+      });
+    }
+  }
+  return issues;
+}
+
+/** Soronkénti vagy alapértelmezett beszállító slug — létező Supplier.key */
+export async function validateImportSupplierSlugs(
+  parsed: ParseResult,
+  defaultSupplierKey?: string
+): Promise<ParseIssue[]> {
+  if (parsed.rows.length === 0) return [];
+
+  await connectDB();
+  const issues: ParseIssue[] = [];
+  const keysNeeded = new Set<string>();
+
+  for (const row of parsed.rows) {
+    const key = resolveRowSupplierKey(row, defaultSupplierKey);
+    if (!key) {
+      issues.push({
+        row: row.rowNumber,
+        field: 'crm_supplier_slug',
+        message:
+          'Adja meg a crm_supplier_slug oszlopot, vagy válasszon alapértelmezett beszállítót az import ablakban.',
+      });
+      continue;
+    }
+    keysNeeded.add(key);
+  }
+
+  if (keysNeeded.size === 0) return issues;
+
+  const found = await Supplier.find({ key: { $in: [...keysNeeded] } })
+    .select('key')
+    .lean()
+    .exec();
+  const foundSet = new Set(found.map((s) => s.key));
+
+  for (const row of parsed.rows) {
+    const key = resolveRowSupplierKey(row, defaultSupplierKey);
+    if (key && !foundSet.has(key)) {
+      issues.push({
+        row: row.rowNumber,
+        field: 'crm_supplier_slug',
+        message: `Ismeretlen beszállító slug: „${key}”. Hozza létre: Készletkezelés → Beszállítók.`,
+      });
+    }
+  }
+
+  return issues;
 }
 
 export async function commitInventoryImport(
   parsed: ParseResult,
   userId: string,
-  options?: { supplierId?: string; categoryId?: string }
+  options?: { defaultSupplierKey?: string }
 ): Promise<ImportReport> {
   await connectDB();
 
   let created = 0;
   let updated = 0;
   let stockUpserts = 0;
-  let categoryUpserts = 0;
+  const categoryUpserts = 0;
   let warehouseUpserts = 0;
   let componentLinkWarnings = 0;
 
   const skuToId = new Map<string, Types.ObjectId>();
   const skuToInternalSku = new Map<string, string>();
 
-  const forcedSupplierId = options?.supplierId ? String(options.supplierId) : undefined;
-  const forcedCategoryId = options?.categoryId ? String(options.categoryId) : undefined;
-  const forcedCategory = forcedCategoryId
-    ? await Category.findById(forcedCategoryId).lean().exec()
-    : null;
-
-  // First pass: upsert products and categories
+  const supplierKeys = new Set<string>();
   for (const row of parsed.rows) {
-    const categoryIds = await upsertCategoryPath(row.product);
-    if (categoryIds.length > 0) categoryUpserts += categoryIds.length;
+    const key = resolveRowSupplierKey(row, options?.defaultSupplierKey);
+    if (key) supplierKeys.add(key);
+  }
+  const suppliers = await Supplier.find({ key: { $in: [...supplierKeys] } })
+    .lean()
+    .exec();
+  const supplierByKey = new Map(suppliers.map((s) => [s.key, s]));
 
-    const chosenCategoryId = forcedCategoryId ?? categoryIds[categoryIds.length - 1]?.toString();
-    const chosenCategory =
-      forcedCategory ??
-      (chosenCategoryId ? await Category.findById(chosenCategoryId).lean().exec() : null);
+  const slugList = [...new Set(parsed.rows.map((r) => r.crmCategorySlug))];
+  const categories = await Category.find({ slug: { $in: slugList } })
+    .lean()
+    .exec();
+  const categoryBySlug = new Map(categories.map((c) => [c.slug, c]));
 
-    const internalSku =
-      chosenCategory?.skuPrefix && chosenCategory?.skuTotalLength
-        ? generateInternalSku(
-            {
-              prefix: chosenCategory.skuPrefix,
-              totalLength: chosenCategory.skuTotalLength,
-              padChar: chosenCategory.skuPadChar ?? '0',
-            },
-            row.product.sku
-          )
-        : undefined;
+  // First pass: upsert products
+  for (const row of parsed.rows) {
+    const supplierKey = resolveRowSupplierKey(row, options?.defaultSupplierKey);
+    const supplier = supplierKey ? supplierByKey.get(supplierKey) : undefined;
+    if (!supplier) {
+      throw new Error(`Missing supplier for key: ${supplierKey ?? '(none)'}`);
+    }
+    const supplierId = String(supplier._id);
 
-    const doc = await Product.findOne({ sku: row.product.sku }).exec();
+    const chosenCategory = categoryBySlug.get(row.crmCategorySlug);
+    if (!chosenCategory) {
+      throw new Error(`Missing CRM category for slug: ${row.crmCategorySlug}`);
+    }
+    const chosenCategoryId = String(chosenCategory._id);
+
+    const crmSku = row.product.sku;
+
+    const doc = await Product.findOne({ sku: crmSku }).exec();
     if (!doc) {
       const createdDoc = await Product.create({
-        sku: row.product.sku,
-        internalSku,
+        sku: crmSku,
+        internalSku: crmSku,
         supplierSku: row.product.supplierSku,
         supplierNo: row.product.supplierNo,
-        supplierId: forcedSupplierId ?? chosenCategory?.supplierId?.toString() ?? undefined,
+        supplierId,
         brand: row.product.brand,
         ean: row.product.ean,
         names: row.product.names,
@@ -335,12 +590,8 @@ export async function commitInventoryImport(
         freightLevel: row.product.freightLevel,
         stockLevelHint: row.product.stockLevelHint,
         availabilityWeeks: row.product.availabilityWeeks,
-        categoryIds: Array.from(
-          new Set([
-            ...(categoryIds ?? []).map((id) => id.toString()),
-            ...(chosenCategoryId ? [chosenCategoryId] : []),
-          ])
-        ),
+        categoryIds: [chosenCategoryId],
+        shipperCategoryPath: row.product.shipperCategoryPath,
         components: [],
         inCategories: row.product.inCategories,
         isDiscontinued: row.product.isDiscontinued ?? false,
@@ -350,17 +601,14 @@ export async function commitInventoryImport(
         discounts: row.product.discounts,
       });
       created++;
-      skuToId.set(row.product.sku, createdDoc._id);
-      if (internalSku) skuToInternalSku.set(row.product.sku, internalSku);
+      skuToId.set(crmSku, createdDoc._id);
+      skuToInternalSku.set(crmSku, crmSku);
     } else {
       doc.set({
-        internalSku,
+        internalSku: crmSku,
         supplierSku: row.product.supplierSku,
         supplierNo: row.product.supplierNo,
-        supplierId:
-          forcedSupplierId ??
-          chosenCategory?.supplierId?.toString() ??
-          (doc.supplierId ? doc.supplierId.toString() : undefined),
+        supplierId,
         brand: row.product.brand,
         ean: row.product.ean,
         names: row.product.names,
@@ -377,12 +625,8 @@ export async function commitInventoryImport(
         freightLevel: row.product.freightLevel,
         stockLevelHint: row.product.stockLevelHint,
         availabilityWeeks: row.product.availabilityWeeks,
-        categoryIds: Array.from(
-          new Set([
-            ...(categoryIds ?? []).map((id) => id.toString()),
-            ...(chosenCategoryId ? [chosenCategoryId] : []),
-          ])
-        ),
+        categoryIds: [chosenCategoryId],
+        shipperCategoryPath: row.product.shipperCategoryPath,
         inCategories: row.product.inCategories,
         isDiscontinued: row.product.isDiscontinued ?? false,
         owner: row.product.owner,
@@ -392,12 +636,12 @@ export async function commitInventoryImport(
       });
       await doc.save();
       updated++;
-      skuToId.set(row.product.sku, doc._id);
-      if (internalSku) skuToInternalSku.set(row.product.sku, internalSku);
+      skuToId.set(crmSku, doc._id);
+      skuToInternalSku.set(crmSku, crmSku);
     }
   }
 
-  // Second pass: link components (BOM)
+  // Second pass: link components (BOM) — componentSkus reference CRM SKU of components
   for (const row of parsed.rows) {
     const productId = skuToId.get(row.product.sku);
     if (!productId) continue;
@@ -456,5 +700,7 @@ export async function commitInventoryImport(
     categoryUpserts,
     warehouseUpserts,
     componentLinkWarnings,
+    skipped: 0,
+    skippedIssues: [],
   };
 }

@@ -4,6 +4,11 @@ export type { AlutentColumn } from './excel-columns';
 export {
   parseInventoryXlsx,
   commitInventoryImport,
+  validateImportCategorySlugs,
+  validateImportSupplierSlugs,
+  prepareImportRows,
+  resolveRowSupplierKey,
+  type PrepareImportResult,
   type ParseIssue,
   type ParsedInventoryRow,
   type ParseResult,

@@ -45,6 +45,10 @@ function escapeRegex(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function mongoField<T>(col: ColumnDef<T>): string {
+  return col.mongoKey ?? col.key;
+}
+
 export function buildDataTableMongoQuery<T>(
   query: DataTableQuery,
   columns: Array<ColumnDef<T>>
@@ -65,10 +69,12 @@ export function buildDataTableMongoQuery<T>(
     const type = col.type ?? 'string';
     const values = Array.isArray(raw) ? raw : [raw];
 
+    const field = mongoField(col);
+
     if (type === 'boolean') {
       const v = values[0];
-      if (v === 'true') filter[key] = true;
-      else if (v === 'false') filter[key] = false;
+      if (v === 'true') filter[field] = true;
+      else if (v === 'false') filter[field] = false;
       continue;
     }
 
@@ -78,20 +84,20 @@ export function buildDataTableMongoQuery<T>(
       const range: Record<string, number> = {};
       if (min !== undefined && !Number.isNaN(min)) range.$gte = min;
       if (max !== undefined && !Number.isNaN(max)) range.$lte = max;
-      if (Object.keys(range).length > 0) filter[key] = range;
+      if (Object.keys(range).length > 0) filter[field] = range;
       continue;
     }
 
     if (type === 'enum') {
       const cleaned = values.map((v) => String(v)).filter(Boolean);
-      if (cleaned.length === 1) filter[key] = cleaned[0];
-      else if (cleaned.length > 1) filter[key] = { $in: cleaned };
+      if (cleaned.length === 1) filter[field] = cleaned[0];
+      else if (cleaned.length > 1) filter[field] = { $in: cleaned };
       continue;
     }
 
     // string default
     const v = String(values[0] ?? '').trim();
-    if (v) filter[key] = { $regex: escapeRegex(v), $options: 'i' };
+    if (v) filter[field] = { $regex: escapeRegex(v), $options: 'i' };
   }
 
   // Search: $text if available, else regex across searchable columns
@@ -99,7 +105,7 @@ export function buildDataTableMongoQuery<T>(
     const searchable = columns.filter((c) => c.searchable);
     if (searchable.length > 0) {
       const or = searchable.map((c) => ({
-        [c.key]: { $regex: escapeRegex(query.search!), $options: 'i' },
+        [mongoField(c)]: { $regex: escapeRegex(query.search!), $options: 'i' },
       }));
       filter.$and = filter.$and ? [...(filter.$and as unknown[]), { $or: or }] : [{ $or: or }];
     } else {
@@ -113,7 +119,7 @@ export function buildDataTableMongoQuery<T>(
     const isDesc = query.sort.startsWith('-');
     const key = isDesc ? query.sort.slice(1) : query.sort;
     const col = columns.find((c) => c.key === key);
-    if (col?.sortable) sort[key] = isDesc ? -1 : 1;
+    if (col?.sortable) sort[mongoField(col)] = isDesc ? -1 : 1;
   }
   if (Object.keys(sort).length === 0) sort.createdAt = -1;
 

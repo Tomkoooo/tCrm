@@ -134,28 +134,18 @@ Grids: stats `lg:grid-cols-4`, cards `lg:grid-cols-3`, filters `md:grid-cols-5`.
 
 ---
 
-## 9. Dynamic DataTable (Phase 1 contract)
+## 9. Dynamic DataTable & EntitySheet (mandatory)
 
-Phase 1 will ship a `DataTable` that reads column metadata from schemas:
+All **list / tabular UI** must use `@crm/ui` **`DataTable`** with `ColumnDef<T>` metadata. Panels (filters, sort, columns, create, row preview) use **`EntitySheet`**.
 
-```typescript
-interface ColumnDef<T> {
-  key: keyof T | string;
-  label: string;
-  sortable?: boolean;
-  filterable?: boolean;
-  render?: (value: unknown, row: T) => React.ReactNode;
-}
+| Mode | When |
+|------|------|
+| `server` (default) | RSC page: `parseDataTableQuery` → `buildDataTableMongoQuery` → pass `data`, `query`, `total`, `basePath`, **`tableId`** |
+| `client` | In-memory rows (builds, permissions snippets, dashboard tables): `mode="client"` + optional URL filters |
 
-interface DataTableProps<T> {
-  data: T[];
-  columns: ColumnDef<T>[];
-  searchable?: boolean;
-  pagination?: { page: number; pageSize: number; total: number };
-}
-```
+Column types: `string`, `number`, `boolean`, `enum`, `date`, **`image`**. User column visibility persists in `localStorage` per `tableId`.
 
-Do not build ad-hoc tables that bypass this pattern in Phase 1+.
+Do **not** add new raw shadcn `Table` list views. Exceptions: documented in [ARCHITECTURE.md](./ARCHITECTURE.md) (RBAC matrix, small detail sub-grids).
 
 ---
 

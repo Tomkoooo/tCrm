@@ -3,3 +3,9 @@ export * from './models';
 export * from './repositories';
 export { ensureBaselineRbac, seedDatabase } from './seed';
 export { hasAnyAdminUser } from './system';
+export {
+  getAdminRoleId,
+  countActiveAdminUsers,
+  userHasAdminRole,
+  isLastActiveAdmin,
+} from './users';

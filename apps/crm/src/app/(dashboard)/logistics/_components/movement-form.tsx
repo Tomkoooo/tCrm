@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { SearchAutocomplete, type SearchItem } from '@/components/ui/search-autocomplete';
+import { searchProductsAction } from '../../inventory/search-actions';
 import { createMovementAction, type LogisticsFormState } from '../actions';
 import type { MovementType } from '@crm/db';
 import { cn } from '@/lib/utils';
 
 type WarehouseOption = { _id: string; name: string; key: string };
-type ProductOption = { _id: string; sku: string; name: string };
 
 const selectClassName = cn(
   'border-input bg-background ring-offset-background flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-xs',
@@ -22,17 +23,16 @@ const initialState: LogisticsFormState = { success: false };
 export function MovementForm({
   type,
   warehouses,
-  products,
   title,
 }: {
   type: MovementType;
   warehouses: WarehouseOption[];
-  products: ProductOption[];
   title: string;
 }) {
   const router = useRouter();
   const [state, action, pending] = useActionState(createMovementAction, initialState);
-  const [productId, setProductId] = useState(products[0]?._id ?? '');
+  const [productId, setProductId] = useState('');
+  const [productLabel, setProductLabel] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [fromWarehouseId, setFromWarehouseId] = useState(warehouses[0]?._id ?? '');
   const [toWarehouseId, setToWarehouseId] = useState(
@@ -44,6 +44,11 @@ export function MovementForm({
       router.push(`/logistics/movements/${state.id}`);
     }
   }, [state, router]);
+
+  const onProductSelect = (item: SearchItem) => {
+    setProductId(item.value);
+    setProductLabel(item.sublabel ? `${item.label} — ${item.sublabel}` : item.label);
+  };
 
   const linesJson = JSON.stringify([
     {
@@ -59,7 +64,7 @@ export function MovementForm({
 
       <div>
         <h1 className="text-2xl font-bold">{title}</h1>
-        <p className="text-muted-foreground text-sm">Creates a draft movement document.</p>
+        <p className="text-muted-foreground text-sm">Tervezet készletmozgás létrehozása.</p>
       </div>
 
       {state.message && !state.success && (
@@ -71,7 +76,7 @@ export function MovementForm({
       <div className="grid gap-4 md:grid-cols-2">
         {(type === 'pick' || type === 'transfer') && (
           <div className="flex flex-col gap-2">
-            <Label htmlFor="fromWarehouseId">Source warehouse</Label>
+            <Label htmlFor="fromWarehouseId">Forrás raktár</Label>
             <select
               id="fromWarehouseId"
               name="fromWarehouseId"
@@ -91,7 +96,7 @@ export function MovementForm({
 
         {(type === 'grn' || type === 'transfer' || type === 'return') && (
           <div className="flex flex-col gap-2">
-            <Label htmlFor="toWarehouseId">Destination warehouse</Label>
+            <Label htmlFor="toWarehouseId">Cél raktár</Label>
             <select
               id="toWarehouseId"
               name="toWarehouseId"
@@ -109,26 +114,25 @@ export function MovementForm({
           </div>
         )}
 
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="productId">Product</Label>
-          <select
-            id="productId"
-            className={selectClassName}
-            value={productId}
-            onChange={(e) => setProductId(e.target.value)}
-            required
-          >
-            {products.map((p) => (
-              <option key={p._id} value={p._id}>
-                {p.sku} — {p.name}
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-col gap-2 md:col-span-2">
+          <Label>Termék (SKU vagy név)</Label>
+          <SearchAutocomplete
+            onSearch={searchProductsAction}
+            onSelect={onProductSelect}
+            placeholder="Keresés SKU vagy név alapján…"
+            emptyMessage="Nincs találat"
+          />
+          {productLabel && (
+            <p className="text-muted-foreground text-xs">
+              Kiválasztva: <span className="text-foreground font-medium">{productLabel}</span>
+            </p>
+          )}
+          {!productId && <p className="text-xs text-amber-600">Válasszon terméket a keresőből.</p>}
         </div>
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="quantity">
-            Quantity <span className="text-red-600">*</span>
+            Mennyiség <span className="text-red-600">*</span>
           </Label>
           <Input
             id="quantity"
@@ -142,17 +146,17 @@ export function MovementForm({
         </div>
 
         <div className="flex flex-col gap-2 md:col-span-2">
-          <Label htmlFor="note">Note</Label>
+          <Label htmlFor="note">Megjegyzés</Label>
           <Input id="note" name="note" />
         </div>
       </div>
 
       <div className="flex gap-2">
-        <Button type="submit" disabled={pending}>
-          {pending ? 'Saving…' : 'Create draft'}
+        <Button type="submit" disabled={pending || !productId}>
+          {pending ? 'Mentés…' : 'Tervezet létrehozása'}
         </Button>
         <Button type="button" variant="outline" onClick={() => router.back()}>
-          Cancel
+          Mégse
         </Button>
       </div>
     </form>

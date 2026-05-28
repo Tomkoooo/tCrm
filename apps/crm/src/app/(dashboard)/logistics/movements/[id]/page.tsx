@@ -14,6 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { MovementActions } from '../../_components/movement-actions';
+import { MovementStatusLabel, MovementTypeLabel } from '../../_components/movement-labels';
 
 export default async function MovementDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePermission('logistics:read');
@@ -50,12 +51,13 @@ export default async function MovementDetailPage({ params }: { params: Promise<{
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{movement.reference}</h1>
-          <p className="text-muted-foreground text-sm capitalize">
-            {movement.type} · {movement.status}
+          <p className="text-muted-foreground text-sm">
+            <MovementTypeLabel type={movement.type} /> ·{' '}
+            <MovementStatusLabel status={movement.status} />
           </p>
         </div>
         <Button asChild variant="outline" size="sm">
-          <Link href="/logistics/movements">Back to list</Link>
+          <Link href="/logistics/movements">Vissza a listához</Link>
         </Button>
       </div>
 
@@ -63,30 +65,30 @@ export default async function MovementDetailPage({ params }: { params: Promise<{
 
       <Card>
         <CardHeader>
-          <CardTitle>Details</CardTitle>
+          <CardTitle>Részletek</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-2 text-sm">
           {movement.fromWarehouseId && (
             <p>
-              <span className="text-muted-foreground">From:</span>{' '}
+              <span className="text-muted-foreground">Forrás:</span>{' '}
               {warehouseMap.get(String(movement.fromWarehouseId)) ??
                 String(movement.fromWarehouseId)}
             </p>
           )}
           {movement.toWarehouseId && (
             <p>
-              <span className="text-muted-foreground">To:</span>{' '}
+              <span className="text-muted-foreground">Cél:</span>{' '}
               {warehouseMap.get(String(movement.toWarehouseId)) ?? String(movement.toWarehouseId)}
             </p>
           )}
           {movement.note && (
             <p>
-              <span className="text-muted-foreground">Note:</span> {movement.note}
+              <span className="text-muted-foreground">Megjegyzés:</span> {movement.note}
             </p>
           )}
           {movement.confirmedAt && (
             <p>
-              <span className="text-muted-foreground">Confirmed:</span>{' '}
+              <span className="text-muted-foreground">Megerősítve:</span>{' '}
               {new Date(movement.confirmedAt).toLocaleString()}
             </p>
           )}
@@ -95,16 +97,16 @@ export default async function MovementDetailPage({ params }: { params: Promise<{
 
       <Card>
         <CardHeader>
-          <CardTitle>Lines</CardTitle>
+          <CardTitle>Tételek</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Product</TableHead>
-                <TableHead>Qty</TableHead>
-                <TableHead>From</TableHead>
-                <TableHead>To</TableHead>
+                <TableHead>Termék</TableHead>
+                <TableHead>Menny.</TableHead>
+                <TableHead>Forrás</TableHead>
+                <TableHead>Cél</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

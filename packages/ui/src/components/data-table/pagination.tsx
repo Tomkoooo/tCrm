@@ -20,7 +20,7 @@ export function DataTablePagination({
   return (
     <div className="flex items-center justify-between gap-4">
       <p className="text-muted-foreground text-sm">
-        Page {page} of {totalPages} · {total} items
+        {page}. oldal / {totalPages} · {total} tétel
       </p>
       <div className="flex gap-2">
         {prevDisabled ? (
@@ -29,14 +29,14 @@ export function DataTablePagination({
             disabled
             className="bg-background inline-flex h-9 items-center justify-center rounded-md border px-3 text-sm opacity-50"
           >
-            Previous
+            Előző
           </button>
         ) : (
           <Link
             className="bg-background inline-flex h-9 items-center justify-center rounded-md border px-3 text-sm"
             href={`${basePath}?${queryString({ page: page - 1 })}`}
           >
-            Previous
+            Előző
           </Link>
         )}
 
@@ -46,14 +46,14 @@ export function DataTablePagination({
             disabled
             className="bg-background inline-flex h-9 items-center justify-center rounded-md border px-3 text-sm opacity-50"
           >
-            Next
+            Következő
           </button>
         ) : (
           <Link
             className="bg-background inline-flex h-9 items-center justify-center rounded-md border px-3 text-sm"
             href={`${basePath}?${queryString({ page: page + 1 })}`}
           >
-            Next
+            Következő
           </Link>
         )}
       </div>

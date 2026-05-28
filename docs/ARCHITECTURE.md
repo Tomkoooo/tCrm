@@ -181,13 +181,63 @@ Client forms use `useActionState(action, initialState)`.
 
 ---
 
-## 9. Design System
+## 9. Application shell & navigation
+
+The CRM uses a **collapsible sidebar** (`apps/crm/src/components/app-sidebar.tsx`) built on shadcn `Sidebar` + Radix `Collapsible` via `SidebarNavGroup`.
+
+| Group (HU) | Routes | Typical permissions |
+|------------|--------|-------------------|
+| Általános | `/` (dashboard) | authenticated |
+| Készletkezelés | `/inventory`, `/inventory/categories`, `/inventory/suppliers`, `/inventory/builds` | `inventory:read`, `suppliers:*` |
+| Logisztika | `/logistics`, `/logistics/movements`, `/logistics/reservations` | `logistics:read` |
+| Értékesítés | `/offers`, `/builds` | `offers:read`, `inventory:read` |
+| Beállítások | `/account` | authenticated |
+| Adminisztráció | `/admin/users`, `/admin/permissions`, `/admin/warehouses` | `admin:access` + module keys |
+
+Groups expand/collapse independently; the active route’s group opens by default. Breadcrumb labels are localized in `app-header.tsx` (`translateSegment`).
+
+**Suppliers (beszállítók/partnerek):** managed at `/inventory/suppliers` (`suppliers:read`, `suppliers:manage` — no `admin:access` required). Legacy `/admin/suppliers` redirects here. Each supplier has a unique `key` (slug) used as `crm_supplier_slug` in Excel.
+
+### List & table UI standard (`@crm/ui`)
+
+| Component | Use |
+|-----------|-----|
+| **`DataTable`** | All list / tabular views. Modes: **server** (URL + Mongo via `parseDataTableQuery` / `buildDataTableMongoQuery`) or **client** (in-memory rows). Supports `tableId` + localStorage column prefs, `mongoKey` for nested fields, optional `image` columns, header tooltips, compact toolbar icons (`size-2.5`). |
+| **`EntitySheet`** | Slide-over panels: filters, sort, columns, create forms, row quick-view. |
+
+**Rules:** Do not add new raw shadcn `Table` list views. Use `variant="compact"` for dashboard snippets.
+
+**Documented exceptions:** RBAC permission matrix (`/admin/permissions`) — role × permission checkboxes. Product detail sub-grids (BOM, stock by warehouse) may stay static `Table` until migrated.
+
+**Product images:** Up to five Excel hints (`bild1`–`bild5` → `externalImageHints[]`) plus GridFS `imageIds[]`. List table shows optional **Kép előnézet** (first image) and **Képek (db)** count; full gallery on product detail. Thumbnails: `GET /api/inventory/images/[id]` or first http(s) hint.
+
+**Import categories:** CRM uses simplified `Category` documents (slug + SKU prefix). Excel import requires `crm_category_slug` per row; shipper taxonomy columns (`cat*Name_*`) are stored on the product as `shipperCategoryPath` only. See [inventory.md](./inventory.md).
+
+**Import SKUs:** `product_id_SM` → CRM SKU (`Product.sku`, unique in tCrm). `product_id` → supplier/manufacturer SKU (`Product.supplierSku`). Do not confuse them in UI or docs.
+
+**Import suppliers:** `crm_supplier_slug` per row (`Supplier.key`), or optional default supplier in the import modal when every row omits the column.
+
+### Operational flow documentation (living doc)
+
+[`docs/inventory_and_logistics_flows.md`](./inventory_and_logistics_flows.md) is the **canonical flow map** (Mermaid + tables). It must stay aligned with the product:
+
+| Trigger | Action |
+|---------|--------|
+| Phase milestone completed | Extend §0 CRM overview; add module section |
+| Import / logistics / RBAC behavior change | Update diagrams + glossary in same PR |
+| New major routes in sidebar | Update §0 and navigation notes |
+
+Agents and contributors: follow [`.cursor/rules/flows-documentation.mdc`](../.cursor/rules/flows-documentation.mdc). `docs/ARCHITECTURE.md` describes structure; the flows doc describes **what happens step by step**.
+
+---
+
+## 10. Design System
 
 See [design.md](./design.md) for tokens, typography, layout shell, and component patterns.
 
 ---
 
-## 10. Testing Strategy
+## 11. Testing Strategy
 
 | Layer | Tool | CI |
 |-------|------|-----|
@@ -199,7 +249,7 @@ See [design.md](./design.md) for tokens, typography, layout shell, and component
 
 ---
 
-## 11. CI/CD & Deployment
+## 12. CI/CD & Deployment
 
 ```mermaid
 flowchart LR
@@ -221,17 +271,17 @@ docker compose -f docker/docker-compose.yml up
 
 ---
 
-## 12. Future Plans
+## 13. Future Plans
 
 | Phase | Scope |
 |-------|-------|
 | Phase 1 | Inventory — product schema, Excel parser, dynamic DataTable |
-| Phase 2 | Logistics, offers, builds; `apps/landing` tWeb fork |
-| Phase 3 | Accounting, multi-tenant SaaS, reporting, customer portal |
+| Phase 2 ✓ | Logistics, warehouses, suppliers, builds/BOM, user/account admin, inventory DataTable columns |
+| Phase 3 | Offers, `apps/landing` (tWeb fork), accounting, multi-tenant SaaS, reporting |
 
 ---
 
-## 13. Architectural Decision Records
+## 14. Architectural Decision Records
 
 ### ADR-001: Auth.js v5 over custom JWT
 

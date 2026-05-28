@@ -14,9 +14,9 @@ export type ProductComponent = {
 export interface IProduct extends Document {
   _id: Types.ObjectId;
 
-  sku: string; // product_id_SM
+  sku: string; // product_id_SM — CRM SKU (unique tCrm identifier)
   internalSku?: string;
-  supplierSku?: string; // product_id
+  supplierSku?: string; // product_id — manufacturer / partner SKU
   supplierNo?: string;
   supplierId?: Types.ObjectId;
   brand?: string;
@@ -56,6 +56,13 @@ export interface IProduct extends Document {
   availabilityWeeks?: number;
 
   categoryIds: Types.ObjectId[];
+
+  /** Beszállító (Alutent) kategóriafa — csak tárolás, nem CRM Category */
+  shipperCategoryPath?: {
+    cat1?: I18nText;
+    cat2?: I18nText;
+    cat3?: I18nText;
+  };
 
   components: ProductComponent[];
 
@@ -142,6 +149,12 @@ const ProductSchema = new Schema<IProduct>(
     availabilityWeeks: { type: Number },
 
     categoryIds: [{ type: Schema.Types.ObjectId, ref: 'Category', index: true }],
+
+    shipperCategoryPath: {
+      cat1: { type: I18nTextSchema },
+      cat2: { type: I18nTextSchema },
+      cat3: { type: I18nTextSchema },
+    },
 
     components: { type: [ProductComponentSchema], default: [] },
 

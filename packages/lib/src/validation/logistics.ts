@@ -61,6 +61,24 @@ export const releaseReservationSchema = z.object({
   reason: z.enum(['fulfilled', 'cancelled']),
 });
 
+export const reservationLineSchema = z.object({
+  productId: objectIdSchema,
+  quantity: positiveQty,
+});
+
+export const createReservationsBatchSchema = z.object({
+  warehouseId: objectIdSchema,
+  sourceType: z.enum(['order', 'build', 'manual']).default('manual'),
+  sourceRef: z.string().min(1).max(128),
+  note: z.string().max(2000).optional(),
+  linesJson: z.string().min(1, 'Legalább egy tétel szükséges'),
+});
+
+export function parseReservationLinesJson(json: string): z.infer<typeof reservationLineSchema>[] {
+  const parsed = JSON.parse(json) as unknown;
+  return z.array(reservationLineSchema).parse(parsed);
+}
+
 export type CreateMovementInput = z.infer<typeof createMovementSchema>;
 export type MovementLineInput = z.infer<typeof movementLineSchema>;
 export type CreateReservationInput = z.infer<typeof createReservationSchema>;

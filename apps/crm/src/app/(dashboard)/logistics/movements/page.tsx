@@ -4,8 +4,6 @@ import { connectDB, StockMovement } from '@crm/db';
 import { Container, DataTable, parseDataTableQuery, buildDataTableMongoQuery } from '@crm/ui';
 import type { ColumnDef } from '@crm/ui';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
 type Row = {
   _id: string;
   reference: string;
@@ -27,16 +25,16 @@ export default async function MovementsPage({
   const columns: Array<ColumnDef<Row>> = [
     {
       key: 'reference',
-      label: 'Reference',
+      label: 'Hivatkozás',
       type: 'string',
       sortable: true,
       filterable: true,
       searchable: true,
     },
-    { key: 'type', label: 'Type', type: 'string', sortable: true, filterable: true },
-    { key: 'status', label: 'Status', type: 'string', sortable: true, filterable: true },
-    { key: 'lineCount', label: 'Lines', type: 'number', sortable: true },
-    { key: 'createdAt', label: 'Created', type: 'date', sortable: true },
+    { key: 'type', label: 'Típus', type: 'string', sortable: true, filterable: true },
+    { key: 'status', label: 'Státusz', type: 'string', sortable: true, filterable: true },
+    { key: 'lineCount', label: 'Sorok', type: 'number', sortable: true },
+    { key: 'createdAt', label: 'Létrehozva', type: 'date', sortable: true },
   ];
 
   const { filter, sort, skip, limit } = buildDataTableMongoQuery(query, columns);
@@ -45,11 +43,24 @@ export default async function MovementsPage({
     StockMovement.countDocuments(filter).exec(),
   ]);
 
+  const typeLabels: Record<string, string> = {
+    grn: 'Bevételezés',
+    pick: 'Kiadás',
+    transfer: 'Raktárközi',
+    return: 'Visszáru',
+    adjustment: 'Korrekció',
+  };
+  const statusLabels: Record<string, string> = {
+    draft: 'Tervezet',
+    confirmed: 'Megerősítve',
+    cancelled: 'Elutasítva',
+  };
+
   const data: Row[] = items.map((m) => ({
     _id: String(m._id),
     reference: m.reference,
-    type: m.type,
-    status: m.status,
+    type: typeLabels[m.type] ?? m.type,
+    status: statusLabels[m.status] ?? m.status,
     lineCount: m.lines?.length ?? 0,
     createdAt: m.createdAt,
   }));
@@ -58,41 +69,37 @@ export default async function MovementsPage({
     <Container className="flex max-w-6xl flex-col gap-4 md:gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Stock movements</h1>
-          <p className="text-muted-foreground text-sm">GRN, pick lists, transfers, and returns.</p>
+          <h1 className="text-2xl font-bold">Készletmozgások</h1>
+          <p className="text-muted-foreground text-sm">
+            Bevételezés, kiadás, raktárközi átadás és visszáru.
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild size="sm" variant="outline">
-            <Link href="/logistics">Dashboard</Link>
+            <Link href="/logistics">Logisztika</Link>
           </Button>
           <Button asChild size="sm">
-            <Link href="/logistics/movements/new/grn">New GRN</Link>
+            <Link href="/logistics/movements/new/grn">Új bevételezés</Link>
           </Button>
           <Button asChild size="sm" variant="secondary">
-            <Link href="/logistics/movements/new/pick">New pick</Link>
+            <Link href="/logistics/movements/new/pick">Új kiadás</Link>
           </Button>
           <Button asChild size="sm" variant="secondary">
-            <Link href="/logistics/movements/new/transfer">New transfer</Link>
+            <Link href="/logistics/movements/new/transfer">Új átadás</Link>
           </Button>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All movements</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <DataTable<Row>
-            data={data}
-            columns={columns}
-            query={query}
-            total={total}
-            basePath="/logistics/movements"
-            rowHref={(row) => `/logistics/movements/${row._id}`}
-            emptyMessage="No movements yet."
-          />
-        </CardContent>
-      </Card>
+      <DataTable<Row>
+        tableId="logistics-movements"
+        data={data}
+        columns={columns}
+        query={query}
+        total={total}
+        basePath="/logistics/movements"
+        rowHref={(row) => `/logistics/movements/${row._id}`}
+        emptyMessage="Még nincs készletmozgás."
+      />
     </Container>
   );
 }

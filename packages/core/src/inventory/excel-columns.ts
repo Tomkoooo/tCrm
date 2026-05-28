@@ -40,6 +40,8 @@ export const ALUTENT_COLUMNS = [
   'cat2Name',
   'Cat3Name',
   'inCategories',
+  'crm_category_slug',
+  'crm_supplier_slug',
   'discontinued',
   'cat1Name_en',
   'cat2Name_en',

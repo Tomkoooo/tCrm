@@ -20,32 +20,47 @@ export default async function DashboardPage() {
   const has = (key: string) => permissions.includes(key);
 
   const stats = [
-    { label: 'Products', value: '—', icon: PackageIcon, show: has('inventory:read') },
-    { label: 'Open Offers', value: '—', icon: FileTextIcon, show: has('offers:read') },
-    { label: 'Shipments', value: '—', icon: TruckIcon, show: has('logistics:read') },
-    { label: 'Users', value: '—', icon: UsersIcon, show: has('users:read') },
+    { label: 'Termékek', value: '—', icon: PackageIcon, show: has('inventory:read') },
+    { label: 'Nyitott ajánlatok', value: '—', icon: FileTextIcon, show: has('offers:read') },
+    { label: 'Szállítások', value: '—', icon: TruckIcon, show: has('logistics:read') },
+    { label: 'Felhasználók', value: '—', icon: UsersIcon, show: has('users:read') },
   ].filter((s) => s.show);
 
   const quickActions = [
-    { label: 'View inventory', href: '/inventory', icon: PackageIcon, show: has('inventory:read') },
-    { label: 'Create offer', href: '/offers', icon: FileTextIcon, show: has('offers:write') },
     {
-      label: 'Manage roles',
+      label: 'Készlet megtekintése',
+      href: '/inventory',
+      icon: PackageIcon,
+      show: has('inventory:read'),
+    },
+    {
+      label: 'Ajánlat létrehozása',
+      href: '/offers',
+      icon: FileTextIcon,
+      show: has('offers:write'),
+    },
+    {
+      label: 'Szerepkörök kezelése',
       href: '/admin/permissions',
       icon: ShieldIcon,
       show: has('roles:manage'),
     },
-    { label: 'Manage users', href: '/admin/users', icon: UsersIcon, show: has('users:read') },
+    {
+      label: 'Felhasználók kezelése',
+      href: '/admin/users',
+      icon: UsersIcon,
+      show: has('users:read'),
+    },
   ].filter((a) => a.show);
 
   return (
     <Container className="flex max-w-6xl flex-col gap-4 pb-20 md:gap-6">
       <div>
         <h1 className="text-3xl font-bold">
-          Welcome back{user?.name ? `, ${user.name.split(' ')[0]}` : ''}
+          Üdv újra{user?.name ? `, ${user.name.split(' ')[0]}` : ''}!
         </h1>
         <p className="text-muted-foreground text-sm">
-          Your operations dashboard — inventory, offers, logistics, and more.
+          Működési vezérlőpult — készlet, ajánlatok, logisztika és egyebek.
         </p>
       </div>
 
@@ -69,17 +84,17 @@ export default async function DashboardPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <TrendingUpIcon className="h-5 w-5" />
-            Getting started
+            Első lépések
           </CardTitle>
           <CardDescription>
-            Phase 0 foundation is ready. Inventory, logistics, and offers modules arrive in Phase
-            1+.
+            Az alaprendszer kész. A készlet, logisztika és ajánlat modulok folyamatosan bővülnek.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground text-sm">
-            You have {permissions.length} active permission{permissions.length !== 1 ? 's' : ''}.
-            {has('roles:manage') && ' Use Roles & Permissions to configure access for your team.'}
+            {permissions.length} aktív jogosultsága van.
+            {has('roles:manage') &&
+              ' A Szerepkörök és jogosultságok menüpontban állíthatja be a csapat hozzáférését.'}
           </p>
         </CardContent>
       </Card>
@@ -90,7 +105,7 @@ export default async function DashboardPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <ListIcon className="h-5 w-5" />
-                Quick actions
+                Gyors műveletek
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-2">

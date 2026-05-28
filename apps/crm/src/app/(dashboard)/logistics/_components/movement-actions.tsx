@@ -19,13 +19,13 @@ export function MovementActions({ id, status }: { id: string; status: string }) 
           startTransition(async () => {
             const result = await confirmMovementAction(id);
             if (!result.success) {
-              alert(result.message ?? 'Failed to confirm');
+              alert(result.message ?? 'Megerősítés sikertelen');
             }
             router.refresh();
           })
         }
       >
-        Confirm
+        Megerősítés
       </Button>
       <Button
         variant="outline"
@@ -34,13 +34,13 @@ export function MovementActions({ id, status }: { id: string; status: string }) 
           startTransition(async () => {
             const result = await cancelMovementAction(id);
             if (!result.success) {
-              alert(result.message ?? 'Failed to cancel');
+              alert(result.message ?? 'Visszavonás sikertelen');
             }
             router.refresh();
           })
         }
       >
-        Cancel draft
+        Tervezet visszavonása
       </Button>
     </div>
   );
