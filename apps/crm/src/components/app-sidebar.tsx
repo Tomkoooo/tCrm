@@ -5,8 +5,11 @@ import { useCallback, useMemo } from 'react';
 import { signOut } from 'next-auth/react';
 import {
   LayoutDashboardIcon,
+  BarChart3Icon,
   PackageIcon,
   TruckIcon,
+  CarIcon,
+  ClipboardListIcon,
   ArrowRightLeftIcon,
   LockIcon,
   FileTextIcon,
@@ -84,6 +87,12 @@ export function AppSidebar() {
     if (!hasPermission('inventory:read')) return [];
     const items: SidebarNavItem[] = [
       {
+        href: '/inventory/dashboard',
+        icon: <BarChart3Icon className="h-4 w-4" />,
+        label: 'Termékmenedzsment',
+      },
+
+      {
         href: '/inventory',
         icon: <PackageIcon className="h-4 w-4" />,
         label: 'Termékek',
@@ -126,6 +135,16 @@ export function AppSidebar() {
         href: '/logistics/reservations',
         icon: <LockIcon className="h-4 w-4" />,
         label: 'Foglalások',
+      },
+      {
+        href: '/logistics/jobs',
+        icon: <ClipboardListIcon className="h-4 w-4" />,
+        label: 'Szállítások',
+      },
+      {
+        href: '/logistics/vehicles',
+        icon: <CarIcon className="h-4 w-4" />,
+        label: 'Járműflotta',
       },
     ];
   }, [user?.permissions]);

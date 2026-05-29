@@ -3,7 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { requirePermission } from '@crm/auth';
 import { connectDB, Warehouse } from '@crm/db';
-import { warehouseSchema } from '@crm/lib/validation';
+import { parseAssignedUserIdsJson, warehouseSchema } from '@crm/lib/validation';
+import mongoose from 'mongoose';
 
 export type WarehouseFormState =
   | { success: false; fieldErrors?: Record<string, string[]>; message?: string }
@@ -26,10 +27,18 @@ export async function createWarehouseAction(
   await requirePermission('warehouses:manage');
   await connectDB();
 
+  let assignedUserIds: string[] = [];
+  try {
+    assignedUserIds = parseAssignedUserIdsJson(formData.get('assignedUserIdsJson') as string);
+  } catch {
+    return { success: false, message: 'Érvénytelen munkatárs lista.' };
+  }
+
   const parsed = warehouseSchema.safeParse({
     key: formData.get('key'),
     name: formData.get('name'),
     address: formData.get('address') || undefined,
+    assignedUserIds,
     isActive: formData.get('isActive') === 'on' || formData.get('isActive') === 'true',
   });
 
@@ -42,7 +51,10 @@ export async function createWarehouseAction(
     return { success: false, message: 'Ez a raktár kulcs már létezik.' };
   }
 
-  const wh = await Warehouse.create(parsed.data);
+  const wh = await Warehouse.create({
+    ...parsed.data,
+    assignedUserIds: parsed.data.assignedUserIds.map((id) => new mongoose.Types.ObjectId(id)),
+  });
   revalidatePath('/admin/warehouses');
   return { success: true, message: 'Raktár létrehozva.', id: wh._id.toString() };
 }
@@ -55,10 +67,18 @@ export async function updateWarehouseAction(
   await requirePermission('warehouses:manage');
   await connectDB();
 
+  let assignedUserIds: string[] = [];
+  try {
+    assignedUserIds = parseAssignedUserIdsJson(formData.get('assignedUserIdsJson') as string);
+  } catch {
+    return { success: false, message: 'Érvénytelen munkatárs lista.' };
+  }
+
   const parsed = warehouseSchema.safeParse({
     key: formData.get('key'),
     name: formData.get('name'),
     address: formData.get('address') || undefined,
+    assignedUserIds,
     isActive: formData.get('isActive') === 'on' || formData.get('isActive') === 'true',
   });
 
@@ -78,6 +98,9 @@ export async function updateWarehouseAction(
   wh.name = parsed.data.name;
   wh.address = parsed.data.address;
   wh.isActive = parsed.data.isActive ?? true;
+  wh.assignedUserIds = parsed.data.assignedUserIds.map(
+    (uid) => new mongoose.Types.ObjectId(uid)
+  ) as never;
   await wh.save();
 
   revalidatePath('/admin/warehouses');

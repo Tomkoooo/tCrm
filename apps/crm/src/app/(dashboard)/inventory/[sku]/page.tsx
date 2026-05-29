@@ -16,6 +16,10 @@ import {
 } from '@/components/ui/table';
 import { EnDeReadonlyDetails } from '@/components/en-de-readonly-details';
 import { resolveProductImageUrls } from '@/lib/product-thumbnail';
+import {
+  canAccessProductWarehouses,
+  getInventoryWarehouseScope,
+} from '@/lib/inventory/warehouse-scope';
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ sku: string }> }) {
   await requirePermission('inventory:read');
@@ -25,7 +29,18 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const product = await Product.findOne({ sku }).lean().exec();
   if (!product) return notFound();
 
-  const warehouses = await Warehouse.find({ isActive: true }).lean().exec();
+  const allowed = await canAccessProductWarehouses(
+    (product.warehouseIds ?? []).map((id) => String(id))
+  );
+  if (!allowed) return notFound();
+
+  const scope = await getInventoryWarehouseScope();
+  const warehouseQuery =
+    scope.isGlobal || !scope.warehouseIds.length
+      ? { isActive: true }
+      : { _id: { $in: scope.warehouseIds }, isActive: true };
+
+  const warehouses = await Warehouse.find(warehouseQuery).lean().exec();
   const stock = await StockLevel.find({ productId: product._id }).lean().exec();
   const adjustments = await StockAdjustment.find({ productId: product._id })
     .sort({ at: -1 })

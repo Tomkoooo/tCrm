@@ -2,7 +2,10 @@ import * as XLSX from 'xlsx';
 import type { IProduct } from '@crm/db';
 import { ALUTENT_COLUMNS } from './excel-columns';
 
-export function exportInventoryXlsx(products: Array<Partial<IProduct>>): ArrayBuffer {
+export function exportInventoryXlsx(
+  products: Array<Partial<IProduct>>,
+  options?: { warehouseSlugByProductId?: Map<string, string> }
+): ArrayBuffer {
   const rows: Record<string, unknown>[] = products.map((p) => {
     const row: Record<string, unknown> = {};
 
@@ -53,6 +56,8 @@ export function exportInventoryXlsx(products: Array<Partial<IProduct>>): ArrayBu
     row.cat2Name = '';
     row.Cat3Name = '';
     row.inCategories = p.inCategories ?? '';
+    row.crm_warehouse_slug = (p._id && options?.warehouseSlugByProductId?.get(String(p._id))) ?? '';
+    row.is_consumable = p.isConsumable ? 1 : '';
     row.discontinued = p.isDiscontinued ? 1 : 0;
     row.cat1Name_en = '';
     row.cat2Name_en = '';

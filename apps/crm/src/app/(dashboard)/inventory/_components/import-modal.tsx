@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchAutocomplete, type SearchItem } from '@/components/ui/search-autocomplete';
 import { commitImportAction, previewImportAction, type ImportState } from '../import-actions';
-import { searchSuppliersAction } from '../search-actions';
+import { searchSuppliersAction, searchWarehousesAction } from '../search-actions';
 
 type ImportModalProps = {
   open: boolean;
@@ -19,6 +19,8 @@ export function ImportModal({ open, onOpenChange }: ImportModalProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [supplierKey, setSupplierKey] = useState('');
   const [supplierLabel, setSupplierLabel] = useState('');
+  const [warehouseKey, setWarehouseKey] = useState('');
+  const [warehouseLabel, setWarehouseLabel] = useState('');
   const [preview, setPreview] = useState<Extract<ImportState, { success: true }> | null>(null);
   const [commitResult, setCommitResult] = useState<Extract<ImportState, { success: true }> | null>(
     null
@@ -30,12 +32,15 @@ export function ImportModal({ open, onOpenChange }: ImportModalProps) {
     setCommitResult(null);
     setSupplierKey('');
     setSupplierLabel('');
+    setWarehouseKey('');
+    setWarehouseLabel('');
     if (fileRef.current) fileRef.current.value = '';
   };
 
   const buildFormData = () => {
     const fd = new FormData();
     fd.set('supplierKey', supplierKey);
+    fd.set('warehouseKey', warehouseKey);
     const file = fileRef.current?.files?.[0];
     if (file) fd.set('file', file);
     return fd;
@@ -150,6 +155,28 @@ export function ImportModal({ open, onOpenChange }: ImportModalProps) {
               Kiválasztva: {supplierLabel} ({supplierKey})
             </p>
           )}
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Label>Alapértelmezett raktár (opcionális)</Label>
+          <SearchAutocomplete
+            placeholder="Ha a sorban nincs crm_warehouse_slug…"
+            emptyMessage="Nincs raktár — hozza létre: Admin → Raktárak"
+            onSearch={searchWarehousesAction}
+            onSelect={(item: SearchItem) => {
+              setWarehouseKey(item.value);
+              setWarehouseLabel(item.label);
+            }}
+          />
+          {warehouseLabel && (
+            <p className="text-muted-foreground text-xs">
+              Kiválasztva: {warehouseLabel} ({warehouseKey})
+            </p>
+          )}
+          <p className="text-muted-foreground text-xs">
+            Oszlop: <code className="text-xs">crm_warehouse_slug</code> — több raktár:{' '}
+            <code className="text-xs">kispest,erzsebet</code>
+          </p>
         </div>
 
         <div className="flex flex-col gap-2">

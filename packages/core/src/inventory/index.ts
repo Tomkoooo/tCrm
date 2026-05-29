@@ -17,6 +17,21 @@ export {
 
 export { exportInventoryXlsx, getImportTemplateXlsx } from './export';
 
+export {
+  getInventoryDashboardSummary,
+  type InventoryDashboardSummary,
+  type InventoryDashboardOptions,
+} from './dashboard';
+
+export {
+  hasGlobalProductWarehouseScope,
+  getWarehouseIdsForUser,
+  buildProductWarehouseFilter,
+  mergeProductListFilter,
+} from './product-warehouse-scope';
+
+export { resolveRowWarehouseKeys } from './import';
+
 export { generateInternalSku, normalizeDigits, type CategorySkuSettings } from './sku';
 
 export {

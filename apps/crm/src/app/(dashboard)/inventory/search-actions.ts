@@ -3,6 +3,7 @@
 import { requirePermission } from '@crm/auth';
 import { connectDB, Category, Product, Supplier } from '@crm/db';
 import type { SearchItem } from '@/components/ui/search-autocomplete';
+import { buildScopedProductFilter } from '@/lib/inventory/warehouse-scope';
 
 export async function searchProductsAction(query: string): Promise<SearchItem[]> {
   await requirePermission('inventory:read');
@@ -11,7 +12,7 @@ export async function searchProductsAction(query: string): Promise<SearchItem[]>
   const q = query.trim();
   if (!q) return [];
 
-  const filter = {
+  const textFilter = {
     $or: [
       { sku: { $regex: q, $options: 'i' } },
       { internalSku: { $regex: q, $options: 'i' } },
@@ -21,6 +22,8 @@ export async function searchProductsAction(query: string): Promise<SearchItem[]>
     ],
     isActive: true,
   };
+
+  const filter = await buildScopedProductFilter(textFilter);
 
   const products = await Product.find(filter)
     .select('sku internalSku names brand')
@@ -81,5 +84,24 @@ export async function searchCategoriesAction(query: string): Promise<SearchItem[
     label: c.names?.hu ?? c.names?.en ?? c.slug,
     sublabel: `Szint ${c.level} · ${c.slug}`,
     raw: c,
+  }));
+}
+
+export async function searchWarehousesAction(query: string): Promise<SearchItem[]> {
+  await requirePermission('inventory:read');
+  await connectDB();
+
+  const { getInventoryWarehouseScope } = await import('@/lib/inventory/warehouse-scope');
+  const scope = await getInventoryWarehouseScope();
+
+  const q = query.trim().toLowerCase();
+  const list = scope.warehouses.filter(
+    (w) => !q || w.name.toLowerCase().includes(q) || w.key.toLowerCase().includes(q)
+  );
+
+  return list.slice(0, 20).map((w) => ({
+    value: w.key,
+    label: w.name,
+    sublabel: w.key,
   }));
 }

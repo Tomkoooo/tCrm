@@ -5,7 +5,8 @@ import { revalidatePath } from 'next/cache';
 import { requirePermission } from '@crm/auth';
 import { connectDB, Product } from '@crm/db';
 import { syncMediaUsage, linkUrlsFromMediaIds } from '@crm/core';
-import { buildKitSchema } from '@crm/lib/validation';
+import { buildKitSchema, parseWarehouseIdsJson } from '@crm/lib/validation';
+import { getInventoryWarehouseScope } from '@/lib/inventory/warehouse-scope';
 
 export type BuildFormState =
   | { success: false; fieldErrors?: Record<string, string[]>; message?: string }
@@ -72,6 +73,21 @@ export async function createBuildAction(
     return { success: false, message: 'Egy vagy több alkatrész nem található vagy inaktív.' };
   }
 
+  let warehouseIdStrings: string[] = [];
+  try {
+    warehouseIdStrings = parseWarehouseIdsJson(formData.get('warehouseIdsJson') as string);
+  } catch {
+    return { success: false, message: 'Érvénytelen raktár lista.' };
+  }
+  const scope = await getInventoryWarehouseScope();
+  if (!scope.isGlobal && warehouseIdStrings.length === 0) {
+    return { success: false, message: 'Legalább egy raktár kötelező.' };
+  }
+  if (!scope.isGlobal && warehouseIdStrings.some((id) => !scope.warehouseIds.includes(id))) {
+    return { success: false, message: 'Nincs jogosultság a kiválasztott raktárhoz.' };
+  }
+  const warehouseIds = warehouseIdStrings.map((id) => new mongoose.Types.ObjectId(id));
+
   const imageIds = formData
     .getAll('imageId')
     .map((v) => String(v))
@@ -86,6 +102,7 @@ export async function createBuildAction(
     externalImageHints,
     imageIds: imageIds.map((id) => new mongoose.Types.ObjectId(id)),
     categoryIds: [],
+    warehouseIds,
     components: parsed.data.components.map((c) => ({
       productId: new mongoose.Types.ObjectId(c.productId),
       quantity: c.quantity,

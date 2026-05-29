@@ -2,10 +2,12 @@ import Link from 'next/link';
 import { requirePermission } from '@crm/auth';
 import { Container } from '@crm/ui';
 import { Button } from '@/components/ui/button';
+import { getInventoryWarehouseScope } from '@/lib/inventory/warehouse-scope';
 import { BuildForm } from '../_components/build-form';
 
 export default async function NewBuildPage() {
   await requirePermission('inventory:write');
+  const scope = await getInventoryWarehouseScope();
 
   return (
     <Container className="flex max-w-4xl flex-col gap-4 pb-12 md:gap-6">
@@ -20,7 +22,10 @@ export default async function NewBuildPage() {
           <Link href="/inventory/builds">Vissza</Link>
         </Button>
       </div>
-      <BuildForm />
+      <BuildForm
+        warehouses={scope.warehouses}
+        initialWarehouseIds={scope.warehouses.length === 1 ? [scope.warehouses[0]!.id] : []}
+      />
     </Container>
   );
 }

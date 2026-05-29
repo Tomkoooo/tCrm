@@ -94,7 +94,10 @@ export const productSchema = z
 
     inCategories: emptyToUndefined(z.string().max(5000)),
     isDiscontinued: z.coerce.boolean().optional().default(false),
+    isConsumable: z.coerce.boolean().optional().default(false),
     isActive: z.coerce.boolean().optional().default(true),
+
+    warehouseIds: z.array(z.string().min(1)).optional().default([]),
 
     owner: emptyToUndefined(z.string().max(128)),
 
@@ -160,8 +163,37 @@ export const warehouseSchema = z.object({
     .regex(/^[a-z0-9_-]+$/, 'Key must be lowercase (a-z0-9_-).'),
   name: z.string().min(1).max(200),
   address: emptyToUndefined(z.string().max(500)),
+  assignedUserIds: z.array(z.string().min(1)).optional().default([]),
   isActive: z.coerce.boolean().optional().default(true),
 });
+
+export function parseAssignedUserIdsJson(json: string | null | undefined): string[] {
+  if (!json?.trim()) return [];
+  const parsed = JSON.parse(json) as unknown;
+  return z.array(z.string().min(1)).parse(parsed);
+}
+
+export function parseWarehouseIdsJson(json: string | null | undefined): string[] {
+  if (!json?.trim()) return [];
+  const parsed = JSON.parse(json) as unknown;
+  return z.array(z.string().min(1)).parse(parsed);
+}
+
+const warehouseSlugSchema = z
+  .string()
+  .min(1)
+  .max(32)
+  .regex(/^[a-z0-9_-]+$/, 'Warehouse key must be lowercase (a-z0-9_-).');
+
+/** Comma/semicolon-separated warehouse keys from Excel. */
+export function parseCrmWarehouseSlugList(raw: string | undefined): string[] {
+  if (!raw?.trim()) return [];
+  const parts = raw
+    .split(/[,;]/)
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  return z.array(warehouseSlugSchema).parse(parts);
+}
 
 export const categorySchema = z.object({
   level: z.coerce

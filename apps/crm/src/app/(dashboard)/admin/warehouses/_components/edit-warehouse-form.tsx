@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { deleteWarehouseAction, updateWarehouseAction, type WarehouseFormState } from '../actions';
+import { WarehouseStaffSelect } from './warehouse-staff-select';
 
 const initial: WarehouseFormState = { success: false };
 
@@ -15,7 +16,13 @@ export function EditWarehouseForm({
   initial: data,
 }: {
   id: string;
-  initial: { key: string; name: string; address: string; isActive: boolean };
+  initial: {
+    key: string;
+    name: string;
+    address: string;
+    isActive: boolean;
+    assignedUserIds: string[];
+  };
 }) {
   const router = useRouter();
   const boundUpdate = updateWarehouseAction.bind(null, id);
@@ -60,6 +67,7 @@ export function EditWarehouseForm({
           <input type="checkbox" id="isActive" name="isActive" defaultChecked={data.isActive} />
           <Label htmlFor="isActive">Aktív</Label>
         </div>
+        <WarehouseStaffSelect initialSelected={data.assignedUserIds} />
         <div className="flex gap-2 md:col-span-2">
           <Button type="submit" disabled={pending}>
             {pending ? 'Mentés…' : 'Mentés'}

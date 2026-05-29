@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requirePermission } from '@crm/auth';
-import { connectDB, Reservation, StockMovement } from '@crm/db';
+import { connectDB, Reservation, StockMovement, User } from '@crm/db';
+import { getLogisticsKpiSummary } from '@crm/core';
 import { Container } from '@crm/ui';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,11 +10,19 @@ import {
   RecentMovementsTable,
 } from './_components/logistics-snippet-tables';
 
+function formatHuf(n: number) {
+  return new Intl.NumberFormat('hu-HU', {
+    style: 'currency',
+    currency: 'HUF',
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
 export default async function LogisticsPage() {
   await requirePermission('logistics:read');
   await connectDB();
 
-  const [recentMovements, activeReservations, draftCount, confirmedToday] = await Promise.all([
+  const [recentMovements, activeReservations, draftCount, confirmedToday, kpi] = await Promise.all([
     StockMovement.find().sort({ createdAt: -1 }).limit(5).lean().exec(),
     Reservation.find({ status: 'active' }).sort({ createdAt: -1 }).limit(5).lean().exec(),
     StockMovement.countDocuments({ status: 'draft' }).exec(),
@@ -21,7 +30,19 @@ export default async function LogisticsPage() {
       status: 'confirmed',
       confirmedAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) },
     }).exec(),
+    getLogisticsKpiSummary(),
   ]);
+
+  const driverIds = kpi.topDriversByLoss.map((d) => d.driverId);
+  const drivers = driverIds.length
+    ? await User.find({ _id: { $in: driverIds } })
+        .select('name email')
+        .lean()
+        .exec()
+    : [];
+  const driverNameMap = new Map(
+    drivers.map((d) => [String(d._id), d.name || d.email || String(d._id)])
+  );
 
   const typeLabels: Record<string, string> = {
     grn: 'Bevételezés',
@@ -56,10 +77,13 @@ export default async function LogisticsPage() {
         <div>
           <h1 className="text-2xl font-bold">Logisztika</h1>
           <p className="text-muted-foreground text-sm">
-            Készletmozgások, foglalások és raktári műveletek.
+            Készletmozgások, szállítások, hiánykövetés és KPI-k.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/logistics/jobs">Szállítások</Link>
+          </Button>
           <Button asChild variant="outline" size="sm">
             <Link href="/logistics/movements">Összes mozgás</Link>
           </Button>
@@ -72,42 +96,83 @@ export default async function LogisticsPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Aktív szállítások</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{kpi.activeJobs}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Hiány arány</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{kpi.lossRatePercent}%</div>
+            <p className="text-muted-foreground text-xs">
+              {kpi.totalLost} / {kpi.totalGathered} db (lezárt szállítások)
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Hiány értéke (HUF)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatHuf(kpi.lostValueHuf)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Tervezet mozgások</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{draftCount}</div>
+            <p className="text-muted-foreground text-xs">Mai megerősítés: {confirmedToday}</p>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Mai megerősítések</CardTitle>
+          <CardHeader>
+            <CardTitle className="text-base">Helyszínek — legtöbb hiány</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{confirmedToday}</div>
+            {kpi.topSitesByLoss.length === 0 ? (
+              <p className="text-muted-foreground text-sm">Még nincs lezárt hiány adat.</p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {kpi.topSitesByLoss.map((s) => (
+                  <li key={s.siteAddress} className="flex justify-between gap-2 border-b pb-2">
+                    <span>
+                      {s.eventName}
+                      <span className="text-muted-foreground block text-xs">{s.siteAddress}</span>
+                    </span>
+                    <span className="shrink-0 font-medium text-amber-700">{s.totalLost} db</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
+
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Aktív foglalások</CardTitle>
+          <CardHeader>
+            <CardTitle className="text-base">Sofőr / csapat — legtöbb hiány</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{activeReservations.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Gyors műveletek</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-1 text-sm">
-            <Link href="/logistics/movements/new/grn" className="text-primary hover:underline">
-              Új bevételezés (GRN)
-            </Link>
-            <Link href="/logistics/movements/new/pick" className="text-primary hover:underline">
-              Új kiadás (PICK)
-            </Link>
-            <Link href="/logistics/movements/new/transfer" className="text-primary hover:underline">
-              Új raktárközi átadás
-            </Link>
+            {kpi.topDriversByLoss.length === 0 ? (
+              <p className="text-muted-foreground text-sm">Még nincs hozzárendelt hiány.</p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {kpi.topDriversByLoss.map((d) => (
+                  <li key={d.driverId} className="flex justify-between gap-2 border-b pb-2">
+                    <span>{driverNameMap.get(d.driverId) ?? d.driverId}</span>
+                    <span className="shrink-0 font-medium text-amber-700">{d.totalLost} db</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -131,6 +196,26 @@ export default async function LogisticsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">Gyors műveletek</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-3 text-sm">
+          <Link href="/logistics/jobs/new" className="text-primary hover:underline">
+            Új szállítás
+          </Link>
+          <Link href="/logistics/movements/new/grn" className="text-primary hover:underline">
+            Új bevételezés (GRN)
+          </Link>
+          <Link href="/logistics/movements/new/pick" className="text-primary hover:underline">
+            Új kiadás (PICK)
+          </Link>
+          <Link href="/logistics/vehicles" className="text-primary hover:underline">
+            Járműflotta
+          </Link>
+        </CardContent>
+      </Card>
     </Container>
   );
 }

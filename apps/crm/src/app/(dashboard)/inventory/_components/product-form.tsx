@@ -8,16 +8,21 @@ import { MediaSelector } from '@/components/media/media-selector';
 import type { SelectedMedia } from '@/lib/media-types';
 import type { InventoryFormState } from '../actions';
 import { ProductFormExcelSections } from './product-form-excel';
+import { ProductWarehouseFields } from './product-warehouse-fields';
 
 export function ProductForm({
   mode,
   action,
   initialMedia,
+  warehouses = [],
+  initialWarehouseIds = [],
 }: {
   mode: 'create' | 'edit';
   action: (prev: InventoryFormState, formData: FormData) => Promise<InventoryFormState>;
   initialSku?: string;
   initialMedia?: SelectedMedia[];
+  warehouses?: Array<{ id: string; name: string; key: string }>;
+  initialWarehouseIds?: string[];
 }) {
   const router = useRouter();
   const [media, setMedia] = useState<SelectedMedia[]>(initialMedia ?? []);
@@ -48,6 +53,7 @@ export function ProductForm({
       )}
 
       <ProductFormExcelSections mode={mode} />
+      <ProductWarehouseFields warehouses={warehouses} initialSelected={initialWarehouseIds} />
 
       <Card>
         <CardHeader>

@@ -13,7 +13,11 @@ import {
 } from '@crm/db';
 import { requirePermission, requireAuth } from '@crm/auth';
 import { syncMediaUsage, linkUrlsFromMediaIds } from '@crm/core';
-import { productSchema, stockAdjustmentSchema } from '@crm/lib/validation';
+import { parseWarehouseIdsJson, productSchema, stockAdjustmentSchema } from '@crm/lib/validation';
+import {
+  canAccessProductWarehouses,
+  getInventoryWarehouseScope,
+} from '@/lib/inventory/warehouse-scope';
 
 export type InventoryFormState =
   | { success: false; fieldErrors?: Record<string, string[]>; message?: string }
@@ -122,6 +126,30 @@ async function resolveCategoryAndSupplier(formData: FormData) {
   return { categoryIds, supplierId };
 }
 
+async function parseWarehouseIdsFromForm(
+  formData: FormData
+): Promise<{ warehouseIds: mongoose.Types.ObjectId[] } | { error: string }> {
+  let ids: string[] = [];
+  try {
+    ids = parseWarehouseIdsJson(formData.get('warehouseIdsJson') as string);
+  } catch {
+    return { error: 'Érvénytelen raktár lista.' };
+  }
+
+  const scope = await getInventoryWarehouseScope();
+  if (!scope.isGlobal && ids.length === 0) {
+    return { error: 'Legalább egy raktár kötelező.' };
+  }
+  if (!scope.isGlobal) {
+    const invalid = ids.find((id) => !scope.warehouseIds.includes(id));
+    if (invalid) return { error: 'Nincs jogosultság a kiválasztott raktárhoz.' };
+  }
+
+  return {
+    warehouseIds: ids.map((id) => new mongoose.Types.ObjectId(id)),
+  };
+}
+
 export async function createProductAction(
   _prev: InventoryFormState,
   formData: FormData
@@ -146,6 +174,11 @@ export async function createProductAction(
   const links = await resolveCategoryAndSupplier(formData);
   if ('error' in links) {
     return { success: false, message: links.error };
+  }
+
+  const warehouses = await parseWarehouseIdsFromForm(formData);
+  if ('error' in warehouses) {
+    return { success: false, message: warehouses.error };
   }
 
   const imageIds = formData
@@ -186,6 +219,7 @@ export async function createProductAction(
     externalImageHints,
     imageIds: imageIds.map((id) => new mongoose.Types.ObjectId(id)),
     categoryIds: links.categoryIds,
+    warehouseIds: warehouses.warehouseIds,
     components: [],
   });
 
@@ -213,6 +247,11 @@ export async function updateProductAction(
   const sku = String(formData.get('sku') ?? '').trim();
   const existing = await Product.findOne({ sku });
   if (!existing) return { success: false, message: 'Product not found.' };
+
+  const allowed = await canAccessProductWarehouses(
+    (existing.warehouseIds ?? []).map((id) => String(id))
+  );
+  if (!allowed) return { success: false, message: 'Nincs jogosultság ehhez a termékhez.' };
 
   const candidate = {
     ...existing.toObject(),

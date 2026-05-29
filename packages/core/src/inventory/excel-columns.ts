@@ -42,6 +42,8 @@ export const ALUTENT_COLUMNS = [
   'inCategories',
   'crm_category_slug',
   'crm_supplier_slug',
+  'crm_warehouse_slug',
+  'is_consumable',
   'discontinued',
   'cat1Name_en',
   'cat2Name_en',

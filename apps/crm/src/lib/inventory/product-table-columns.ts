@@ -42,6 +42,7 @@ export type ProductTableRow = {
   discount1Max?: number;
   discount2Owner?: number;
   rentFlag?: number;
+  warehouseKeys?: string;
   isDiscontinued: boolean;
   isActive: boolean;
   thumbnailUrl?: string;
@@ -165,6 +166,17 @@ export const INVENTORY_PRODUCT_COLUMNS: Array<ColumnDef<ProductTableRow>> = [
   },
   strCol('internalSku', 'Belső SKU'),
   strCol('supplierNo', 'Beszállítói szám'),
+  {
+    key: 'warehouseKeys',
+    label: 'Raktár',
+    mongoKey: 'warehouseIds',
+    type: 'string',
+    sortable: false,
+    filterable: false,
+    searchable: false,
+    defaultVisible: true,
+    headerHint: 'crm_warehouse_slug — termékhez rendelt raktár(ok)',
+  },
   {
     key: 'brand',
     label: 'Márka',
@@ -295,9 +307,14 @@ export const INVENTORY_PRODUCT_SELECT = {
   createdAt: 1,
 } as const;
 
-export function mapProductToTableRow(p: ProductLean, thumbnailUrl?: string): ProductTableRow {
+export function mapProductToTableRow(
+  p: ProductLean,
+  thumbnailUrl?: string,
+  warehouseKeys?: string[]
+): ProductTableRow {
   return {
     sku: p.sku,
+    warehouseKeys: warehouseKeys?.length ? warehouseKeys.join(', ') : undefined,
     internalSku: p.internalSku,
     supplierSku: p.supplierSku,
     supplierNo: p.supplierNo,

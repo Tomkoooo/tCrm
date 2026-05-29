@@ -27,3 +27,14 @@ export {
 } from './StockMovement';
 export { Media, type IMedia, type MediaType, type MediaUsage } from './Media';
 export { SecretProject, type ISecretProject, type ISecretItem } from './SecretProject';
+export { Vehicle, type IVehicle } from './Vehicle';
+export {
+  LogisticsJob,
+  type ILogisticsJob,
+  type IJobLine,
+  type ILogisticsPickup,
+  type ILogisticsPickupDocuments,
+  type ILogisticsPickupNotifications,
+  type JobStatus,
+  type PickupStatus,
+} from './LogisticsJob';

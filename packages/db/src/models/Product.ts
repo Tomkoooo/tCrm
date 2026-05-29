@@ -57,6 +57,9 @@ export interface IProduct extends Document {
 
   categoryIds: Types.ObjectId[];
 
+  /** Catalog / ownership warehouses (filtering, scoped views, notifications). */
+  warehouseIds: Types.ObjectId[];
+
   /** Beszállító (Alutent) kategóriafa — csak tárolás, nem CRM Category */
   shipperCategoryPath?: {
     cat1?: I18nText;
@@ -71,6 +74,8 @@ export interface IProduct extends Document {
 
   inCategories?: string;
   isDiscontinued: boolean;
+  /** Consumables are not expected back from events; no loss is logged on return check-in. */
+  isConsumable: boolean;
   isActive: boolean;
 
   owner?: string;
@@ -152,6 +157,7 @@ const ProductSchema = new Schema<IProduct>(
     availabilityWeeks: { type: Number },
 
     categoryIds: [{ type: Schema.Types.ObjectId, ref: 'Category', index: true }],
+    warehouseIds: [{ type: Schema.Types.ObjectId, ref: 'Warehouse', index: true }],
 
     shipperCategoryPath: {
       cat1: { type: I18nTextSchema },
@@ -165,6 +171,7 @@ const ProductSchema = new Schema<IProduct>(
 
     inCategories: { type: String },
     isDiscontinued: { type: Boolean, default: false, index: true },
+    isConsumable: { type: Boolean, default: false, index: true },
     isActive: { type: Boolean, default: true, index: true },
 
     owner: { type: String },

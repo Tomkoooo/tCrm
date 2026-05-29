@@ -72,6 +72,7 @@ export default async function WarehouseDetailPage({ params }: { params: Promise<
                 name: warehouse.name,
                 address: warehouse.address ?? '',
                 isActive: Boolean(warehouse.isActive),
+                assignedUserIds: (warehouse.assignedUserIds ?? []).map((id) => String(id)),
               }}
             />
           </CardContent>

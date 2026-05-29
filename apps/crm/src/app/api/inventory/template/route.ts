@@ -28,6 +28,12 @@ const MUNKA2_HELP: string[][] = [
     'Beszállító slug (Supplier.key) — soronként',
     'Supplier slug per row — for mixed-supplier files',
   ],
+  [
+    'crm_warehouse_slug',
+    'Opcionális*',
+    'Raktár slug (Warehouse.key) — soronként, vesszővel több',
+    'Warehouse slug per row — comma-separated for multiple',
+  ],
   ['name_hu', 'Ajánlott', 'Magyar terméknév', 'Hungarian product name'],
   [
     'cat1Name_hu',
@@ -56,6 +62,12 @@ const MUNKA2_HELP: string[][] = [
     '',
     'Ha minden sorban van crm_supplier_slug, az import ablakban nem kell alapértelmezett. Egyébként válasszon alapértelmezett beszállítót, vagy töltse ki minden sort.',
     'Use crm_supplier_slug per row OR default supplier in import modal.',
+  ],
+  [
+    '* Raktár',
+    '',
+    'crm_warehouse_slug = Warehouse.key (Admin → Raktárak). Több raktár: kispest,erzsebet. Alapértelmezett raktár az import ablakban, ha a sor üres.',
+    'Default warehouse in import modal when row omits crm_warehouse_slug.',
   ],
   [
     'CRM kategória',

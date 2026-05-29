@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createWarehouseAction, type WarehouseFormState } from '../actions';
+import { WarehouseStaffSelect } from './warehouse-staff-select';
 
 const initial: WarehouseFormState = { success: false };
 
@@ -43,6 +44,7 @@ export function CreateWarehouseForm({ onSuccess }: { onSuccess?: () => void }) {
         <input type="checkbox" id="isActive" name="isActive" defaultChecked />
         <Label htmlFor="isActive">Aktív</Label>
       </div>
+      <WarehouseStaffSelect initialSelected={[]} />
       <div>
         <Button type="submit" disabled={pending}>
           {pending ? 'Mentés…' : 'Raktár létrehozása'}

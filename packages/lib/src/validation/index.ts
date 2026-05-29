@@ -25,6 +25,9 @@ export {
   productComponentSchema,
   productSchema,
   warehouseSchema,
+  parseAssignedUserIdsJson,
+  parseWarehouseIdsJson,
+  parseCrmWarehouseSlugList,
   supplierSchema,
   categorySchema,
   stockAdjustmentSchema,
@@ -52,6 +55,26 @@ export {
 } from './logistics';
 
 export type { CreateMovementInput, MovementLineInput, CreateReservationInput } from './logistics';
+
+export {
+  createJobSchema,
+  createPickupInputSchema,
+  jobLineInputSchema,
+  vehicleSchema,
+  suggestVehiclesSchema,
+  gatherJobLinesSchema,
+  installJobLinesSchema,
+  returnJobLinesSchema,
+  checkInJobLinesSchema,
+  parseJobLinesJson,
+  parsePickupsJson,
+  parseGatherLinesJson,
+  parseInstallLinesJson,
+  parseReturnLinesJson,
+  parseCheckInLinesJson,
+} from './jobs';
+
+export type { VehicleInput, CreatePickupInput } from './jobs';
 
 export { secretProjectSchema, secretItemSchema, secretProjectAccessSchema } from './secrets';
 export type { SecretProjectInput, SecretItemInput, SecretProjectAccessInput } from './secrets';

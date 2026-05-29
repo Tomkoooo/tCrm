@@ -11,8 +11,15 @@ import type { SelectedMedia } from '@/lib/media-types';
 import { createBuildAction, type BuildFormState } from '../actions';
 import { ComponentLinesEditor } from '../../_components/component-lines-editor';
 import { OptionalEnDeFields } from '@/components/optional-en-de-fields';
+import { ProductWarehouseFields } from '../../_components/product-warehouse-fields';
 
-export function BuildForm() {
+export function BuildForm({
+  warehouses = [],
+  initialWarehouseIds = [],
+}: {
+  warehouses?: Array<{ id: string; name: string; key: string }>;
+  initialWarehouseIds?: string[];
+}) {
   const router = useRouter();
   const [media, setMedia] = useState<SelectedMedia[]>([]);
   const [state, action, pending] = useActionState(createBuildAction, {
@@ -64,6 +71,8 @@ export function BuildForm() {
           </div>
         </CardContent>
       </Card>
+
+      <ProductWarehouseFields warehouses={warehouses} initialSelected={initialWarehouseIds} />
 
       <Card>
         <CardHeader>

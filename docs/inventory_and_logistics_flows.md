@@ -71,7 +71,8 @@ flowchart TB
 | Készlet | `/inventory`, `/inventory/categories`, `/inventory/builds` | Phase 1–2 ✓ |
 | Beszállítók | `/inventory/suppliers` | Phase 2 ✓ |
 | Raktárak | `/admin/warehouses` | Phase 2 ✓ |
-| Logisztika | `/logistics/*` | Phase 2 ✓ |
+| Logisztika | `/logistics/*`, `/logistics/jobs`, `/logistics/vehicles` | Phase 2–3 ✓ |
+| Termékmenedzsment KPI | `/inventory/dashboard` | Phase 3 ✓ |
 | Titoktár | `/secrets`, `/secrets/[id]` | Phase 3 ✓ |
 | Ajánlatok | `/offers` | Placeholder (Phase 3) |
 | Nyilvános web | `apps/landing` | Phase 3 |
@@ -89,6 +90,8 @@ flowchart TB
 | `product_id_SM` | *(opcionális)* | Ellenőrzés: ha eltér a generált CRM SKU-tól → figyelmeztetés |
 | `crm_category_slug` | `Product.categoryIds[]` | Létező CRM kategória (`Category.slug`) |
 | `crm_supplier_slug` | `Product.supplierId` | Beszállító (`Supplier.key`) — soronként; vegyes fájlhoz |
+| `crm_warehouse_slug` | `Product.warehouseIds[]` | Raktár (`Warehouse.key`) — vesszővel több; modal alapértelmezett |
+| `is_consumable` | `Product.isConsumable` | Üres = tartós (visszavárható); 1/igen = fogyó (nincs hiánykövetés) |
 | `cat*Name_*` | `Product.shipperCategoryPath` | Beszállító eredeti kategóriái (nem CRM fa) |
 | `warehouse 1.` … | `StockLevel` | Kezdeti készlet |
 
@@ -119,9 +122,15 @@ flowchart TD
 | `crm_category_slug` | Igen | Előbb hozza létre: Termékkategóriák |
 | `crm_supplier_slug` | Soronként* | `Supplier.key` — vegyes beszállítós fájlhoz |
 | Alapértelmezett beszállító | Modal* | Ha a sorban nincs `crm_supplier_slug` |
+| `crm_warehouse_slug` | Soronként** | `Warehouse.key` — több: `kispest,erzsebet` |
+| Alapértelmezett raktár | Modal** | Ha a sorban nincs `crm_warehouse_slug` |
 | Beszállító kategóriák | Opcionális | `cat*Name_*` → `shipperCategoryPath` |
 
 \* Legalább az egyik: sor `crm_supplier_slug` **vagy** modal alapértelmezett minden olyan sorra, ahol üres az oszlop.
+
+\** Ugyanígy a raktárhoz: sor `crm_warehouse_slug` **vagy** modal alapértelmezett raktár.
+
+**Raktár szűrés (UI):** Termékek, összeszerelések, termékmenedzsment — `?warehouseId=` + `logistics:scope_all` / `admin:access` = minden raktár; egyébként csak `Warehouse.assignedUserIds`.
 
 Sablon: `GET /api/inventory/template` · Partnerek: `/inventory/suppliers`
 
@@ -179,7 +188,55 @@ flowchart TD
 
 ---
 
-## 5. Összeszerelések (BOM)
+## 5. Esemény szállítások (`LogisticsJob`)
+
+Logisztikai vezető létrehozza a szállítást alkatrészekkel és összeszerelésekkel; raktáros összeszed, építő átvesz és kiszállít, opcionálisan telepít, visszaszállít, raktáros ellenőriz — hiány esemény/helyszín szerint.
+
+```mermaid
+stateDiagram-v2
+  [*] --> draft: Létrehozás
+  draft --> scheduled: Közzététel
+  scheduled --> gathered: Raktár összeszedés
+  gathered --> picked_up: Építő átvétel
+  picked_up --> delivered: Helyszínen
+  delivered --> returning: Visszaszállítás indul
+  returning --> completed: Raktár bevételezés
+  draft --> cancelled: Törlés
+  scheduled --> cancelled: Törlés
+  completed --> [*]
+  cancelled --> [*]
+```
+
+| Lépés | Szerepkör | Készlet hatás |
+|-------|-----------|---------------|
+| Összeszedés megerősítése | Raktár | `pick` mozgás → **− készlet** forrás raktár |
+| Átvétel / kiszállítás | Építő | Csak állapot (nincs készletmozgás) |
+| Telepítés (opc.) | Építő | `installedQuantity`, `installedLocation` |
+| Visszaszállítás | Építő | `returnedQuantity` |
+| Bevételezés ellenőrzés | Raktár | `return` mozgás → **+ készlet**; hiány = `gathered − checked` (tartós) |
+
+| Mező / jog | Jelentés |
+|------------|----------|
+| `LogisticsJob.reference` | `JOB-ÉÉÉÉ-NNNN` (esemény) |
+| `LogisticsJob.pickups[]` | Több átvételi kör / eseményenként: raktár, jármű, csapat, tételek |
+| `pickup.reference` | `JOB-ÉÉÉÉ-NNNN-P01` — PDF/e-mail hivatkozás |
+| `pickup.teamMemberIds[]` | Építőcsapat — kereshető többválasztó, szerepkör szerint csoportosítva |
+| `Warehouse.assignedUserIds[]` | Raktári munkatársak (admin raktár szerkesztés); új szállításnál automatikus csapat-javaslat |
+| `logistics:scope_all` | Minden raktár szállítása; nélküle csak hozzárendelt raktár(ok) |
+| `pickup.contactEmails[]` | Értesítési címek (jövőbeli mail) |
+| `pickup.notifications.pendingKinds` | Várakozó értesítések (mail worker) |
+| `pickup.notifications.pendingRecipientEmails` | Feloldott címzettek (raktár staff + csapat + contact) |
+| `pickup.documents.*` | PDF meta (csomaglista, visszáru) |
+| `buildLogisticsPickupDocument` | Sablon JSON PDF generáláshoz |
+| Összeszerelés a listán | Prebuild sor összecsukható alkatrészlista (raktár + építő UI, PDF payload) |
+| `Vehicle` | Flotta — mm, max súly/térfogat; `suggestVehiclesForCargo` |
+| `Product.isConsumable` | Fogyó: nincs `lostQuantity` |
+| Útvonalak | `/logistics/jobs`, `/logistics/vehicles`, KPI: `/logistics` |
+| Termék KPI | `/inventory/dashboard` — érték, alacsony készlet, BOM |
+
+---
+
+## 6. Összeszerelések (BOM)
 
 Összeszerelés = termék `components` listával. UI: **Készletkezelés → Összeszerelések** (`/inventory/builds`).
 
@@ -187,7 +244,7 @@ flowchart TD
 
 ---
 
-## 6. Médiatár (fájl + link)
+## 7. Médiatár (fájl + link)
 
 ```mermaid
 flowchart TD
@@ -226,7 +283,7 @@ Termék és összeszerelés űrlap: **Médiatár** gomb → többes kiválasztá
 
 ---
 
-## 7. Készlet táblázat (DataTable)
+## 8. Készlet táblázat (DataTable)
 
 - **Oszlopok** panel: minden import mező megjeleníthető (`mongoKey` a beágyazott Mongo mezőkhöz); mentés `localStorage` + `tableId`.
 - **Kép előnézet** oszlop: opcionális (alapból rejtett) — első Media (`imageIds`) vagy legacy `bild1` URL.
@@ -235,7 +292,7 @@ Termék és összeszerelés űrlap: **Médiatár** gomb → többes kiválasztá
 
 ---
 
-## 8. Kereső (`SearchAutocomplete`)
+## 9. Kereső (`SearchAutocomplete`)
 
 | Használat | Action |
 |-----------|--------|
@@ -245,7 +302,7 @@ Termék és összeszerelés űrlap: **Médiatár** gomb → többes kiválasztá
 
 ---
 
-## 9. Felhasználók és fiók
+## 10. Felhasználók és fiók
 
 ```mermaid
 flowchart TD
@@ -276,19 +333,20 @@ flowchart TD
 
 ---
 
-## 10. Jogosultságok (összefoglaló)
+## 11. Jogosultságok (összefoglaló)
 
 | Kulcs | Funkció |
 |-------|---------|
 | `inventory:read` / `write` / `import` | Készlet |
 | `suppliers:read` / `manage` | Beszállítók |
 | `warehouses:read` / `manage` | Raktárak |
-| `logistics:read` / `write` | Mozgások, foglalások |
+| `logistics:read` / `write` | Szállítások, workflow |
+| `logistics:scope_all` | Minden raktár (nem csak `assignedUserIds`) |
 | `media:read` / `upload` / `delete` | Központi médiatár |
 
 ---
 
-## 11. Beszállító felvétel
+## 12. Beszállító felvétel
 
 Sablon: [`docs/excel/supplier.csv`](./excel/supplier.csv) — cégnév, cím, központi elérhetőség, majd kapcsolatok: ügyvezető, értékesítő, technikai, **mérnök**, **iroda**, raktár, pénzügy (név / mobil / e-mail).
 
@@ -300,7 +358,7 @@ Sablon: [`docs/excel/supplier.csv`](./excel/supplier.csv) — cégnév, cím, k�
 
 ---
 
-## 12. Titoktár (secret storage)
+## 13. Titoktár (secret storage)
 
 Projekt alapú kulcs–érték tárolás (jelszavak, API kulcsok, deployment titkok). Értékek **AES-256-GCM** titkosítással a MongoDB-ben; visszafejtés csak szerveren, **kérésre** (Megjelenítés / Másolás).
 
@@ -338,4 +396,4 @@ flowchart LR
 
 ---
 
-*Utolsó frissítés: 2026-05 — **Titoktár:** SecretProject modell, AES-256-GCM, privát megosztás, on-demand reveal + vágólap.*
+*Utolsó frissítés: 2026-05 — **Termék raktár:** `Product.warehouseIds`, `crm_warehouse_slug` import/export, raktár szűrő, raktáros láthatóság.*

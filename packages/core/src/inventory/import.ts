@@ -8,7 +8,12 @@ import {
   Supplier,
   Warehouse,
 } from '@crm/db';
-import { inventoryImportRowSchema, productSchema, skuSchema } from '@crm/lib/validation';
+import {
+  inventoryImportRowSchema,
+  parseCrmWarehouseSlugList,
+  productSchema,
+  skuSchema,
+} from '@crm/lib/validation';
 import type { ProductInput } from '@crm/lib/validation';
 import mongoose, { type Types } from 'mongoose';
 import { ALUTENT_COLUMNS } from './excel-columns';
@@ -22,6 +27,8 @@ export type ParsedInventoryRow = {
   crmCategorySlug: string;
   /** Per-row supplier key from Excel; falls back to import default when omitted */
   crmSupplierSlug?: string;
+  /** Per-row warehouse keys; falls back to import default when omitted */
+  crmWarehouseSlugs?: string[];
   /** Legacy Excel product_id_SM — validated against generated CRM SKU at prepare time */
   legacyCrmSkuHint?: string;
   product: ProductInput;
@@ -44,6 +51,15 @@ export function resolveRowSupplierKey(
   return row.crmSupplierSlug || defaultSupplierKey;
 }
 
+export function resolveRowWarehouseKeys(
+  row: ParsedInventoryRow,
+  defaultWarehouseKey?: string
+): string[] {
+  if (row.crmWarehouseSlugs?.length) return row.crmWarehouseSlugs;
+  if (defaultWarehouseKey) return [defaultWarehouseKey];
+  return [];
+}
+
 export type ParseResult = {
   rows: ParsedInventoryRow[];
   errors: ParseIssue[];
@@ -58,6 +74,16 @@ function toNumber(value: unknown): number | undefined {
   if (!trimmed || trimmed === '-') return undefined;
   const n = Number(trimmed);
   return Number.isFinite(n) ? n : undefined;
+}
+
+function parseConsumableFlag(value: unknown): boolean {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'number') return value === 1;
+  const s = String(value).trim().toLowerCase();
+  if (!s || s === '-' || s === '0' || s === 'false' || s === 'nem' || s === 'no') {
+    return false;
+  }
+  return ['1', 'true', 'yes', 'igen', 'i', 'y', 'consumable', 'fogyó'].includes(s);
 }
 
 function toStringClean(value: unknown): string | undefined {
@@ -164,6 +190,21 @@ export function parseInventoryXlsx(buffer: ArrayBuffer): ParseResult {
       }
     }
 
+    const warehouseSlugRaw = toStringClean(r['crm_warehouse_slug']);
+    let crmWarehouseSlugs: string[] | undefined;
+    if (warehouseSlugRaw) {
+      try {
+        crmWarehouseSlugs = parseCrmWarehouseSlugList(warehouseSlugRaw);
+      } catch {
+        errors.push({
+          row: rowNumber,
+          field: 'crm_warehouse_slug',
+          message: 'Érvénytelen raktár slug (crm_warehouse_slug) — vesszővel több is megadható.',
+        });
+        return;
+      }
+    }
+
     const shipperCategoryPath = {
       cat1: {
         de: toStringClean(r['cat1Name']),
@@ -226,6 +267,7 @@ export function parseInventoryXlsx(buffer: ArrayBuffer): ParseResult {
       availabilityWeeks: toNumber(r['availability_in_weeks']),
       inCategories: toStringClean(r['inCategories']),
       isDiscontinued: Boolean(toNumber(r['discontinued']) ?? 0),
+      isConsumable: parseConsumableFlag(r['is_consumable']),
       isActive: true,
       owner: toStringClean(r['Owner']),
       rental: {
@@ -243,6 +285,7 @@ export function parseInventoryXlsx(buffer: ArrayBuffer): ParseResult {
       },
       externalImageHints,
       components: componentSkus.map((c) => ({ productSku: c.sku, quantity: c.quantity })),
+      warehouseIds: [],
       shipperCategoryPath,
     };
 
@@ -282,6 +325,7 @@ export function parseInventoryXlsx(buffer: ArrayBuffer): ParseResult {
       rowNumber,
       crmCategorySlug,
       crmSupplierSlug,
+      crmWarehouseSlugs,
       legacyCrmSkuHint: legacySm,
       product: validated.data,
       warehouses,
@@ -324,7 +368,8 @@ async function upsertWarehouseByColumn(columnName: string): Promise<Types.Object
  */
 export async function prepareImportRows(
   parsed: ParseResult,
-  defaultSupplierKey?: string
+  defaultSupplierKey?: string,
+  defaultWarehouseKey?: string
 ): Promise<PrepareImportResult> {
   await connectDB();
 
@@ -352,6 +397,18 @@ export async function prepareImportRows(
     .exec();
   const supplierByKey = new Map(suppliers.map((s) => [s.key, s]));
 
+  const warehouseKeys = new Set<string>();
+  if (defaultWarehouseKey) warehouseKeys.add(defaultWarehouseKey);
+  for (const row of parsed.rows) {
+    for (const key of resolveRowWarehouseKeys(row, defaultWarehouseKey)) {
+      warehouseKeys.add(key);
+    }
+  }
+  const warehouseDocs = await Warehouse.find({ key: { $in: [...warehouseKeys] } })
+    .lean()
+    .exec();
+  const warehouseByKey = new Map(warehouseDocs.map((w) => [w.key, w]));
+
   for (const row of parsed.rows) {
     const supplierKey = resolveRowSupplierKey(row, defaultSupplierKey);
     if (!supplierKey) {
@@ -371,6 +428,33 @@ export async function prepareImportRows(
       });
       continue;
     }
+
+    const warehouseKeysForRow = resolveRowWarehouseKeys(row, defaultWarehouseKey);
+    if (!warehouseKeysForRow.length) {
+      skipped.push({
+        row: row.rowNumber,
+        field: 'crm_warehouse_slug',
+        message:
+          'Adja meg a crm_warehouse_slug oszlopot (vesszővel több raktár), vagy válasszon alapértelmezett raktárat az import ablakban.',
+      });
+      continue;
+    }
+    let unknownWarehouse: string | undefined;
+    for (const whKey of warehouseKeysForRow) {
+      if (!warehouseByKey.has(whKey)) {
+        unknownWarehouse = whKey;
+        break;
+      }
+    }
+    if (unknownWarehouse) {
+      skipped.push({
+        row: row.rowNumber,
+        field: 'crm_warehouse_slug',
+        message: `Ismeretlen raktár slug: „${unknownWarehouse}”. Hozza létre: Admin → Raktárak.`,
+      });
+      continue;
+    }
+    row.crmWarehouseSlugs = warehouseKeysForRow;
 
     const cat = categoryBySlug.get(row.crmCategorySlug);
     if (!cat) {
@@ -519,7 +603,7 @@ export async function validateImportSupplierSlugs(
 export async function commitInventoryImport(
   parsed: ParseResult,
   userId: string,
-  options?: { defaultSupplierKey?: string }
+  options?: { defaultSupplierKey?: string; defaultWarehouseKey?: string }
 ): Promise<ImportReport> {
   await connectDB();
 
@@ -549,6 +633,17 @@ export async function commitInventoryImport(
     .exec();
   const categoryBySlug = new Map(categories.map((c) => [c.slug, c]));
 
+  const warehouseKeys = new Set<string>();
+  for (const row of parsed.rows) {
+    for (const key of resolveRowWarehouseKeys(row, options?.defaultWarehouseKey)) {
+      warehouseKeys.add(key);
+    }
+  }
+  const warehouseDocs = await Warehouse.find({ key: { $in: [...warehouseKeys] } })
+    .lean()
+    .exec();
+  const warehouseByKey = new Map(warehouseDocs.map((w) => [w.key, w]));
+
   // First pass: upsert products
   for (const row of parsed.rows) {
     const supplierKey = resolveRowSupplierKey(row, options?.defaultSupplierKey);
@@ -565,6 +660,13 @@ export async function commitInventoryImport(
     const chosenCategoryId = String(chosenCategory._id);
 
     const crmSku = row.product.sku;
+
+    const rowWarehouseKeys = resolveRowWarehouseKeys(row, options?.defaultWarehouseKey);
+    const catalogWarehouseIds = rowWarehouseKeys.map((key) => {
+      const wh = warehouseByKey.get(key);
+      if (!wh) throw new Error(`Missing warehouse for key: ${key}`);
+      return new mongoose.Types.ObjectId(String(wh._id));
+    });
 
     const bildUrls = (row.product.externalImageHints ?? []).filter((h) => h?.trim());
     const importLinkMediaIds = await resolveLinkUrlsToMediaIds(bildUrls);
@@ -595,10 +697,12 @@ export async function commitInventoryImport(
         stockLevelHint: row.product.stockLevelHint,
         availabilityWeeks: row.product.availabilityWeeks,
         categoryIds: [chosenCategoryId],
+        warehouseIds: catalogWarehouseIds,
         shipperCategoryPath: row.product.shipperCategoryPath,
         components: [],
         inCategories: row.product.inCategories,
         isDiscontinued: row.product.isDiscontinued ?? false,
+        isConsumable: row.product.isConsumable ?? false,
         isActive: true,
         owner: row.product.owner,
         rental: row.product.rental,
@@ -644,9 +748,11 @@ export async function commitInventoryImport(
         stockLevelHint: row.product.stockLevelHint,
         availabilityWeeks: row.product.availabilityWeeks,
         categoryIds: [chosenCategoryId],
+        warehouseIds: catalogWarehouseIds,
         shipperCategoryPath: row.product.shipperCategoryPath,
         inCategories: row.product.inCategories,
         isDiscontinued: row.product.isDiscontinued ?? false,
+        isConsumable: row.product.isConsumable ?? false,
         owner: row.product.owner,
         rental: row.product.rental,
         discounts: row.product.discounts,
@@ -689,9 +795,18 @@ export async function commitInventoryImport(
     const productId = skuToId.get(row.product.sku);
     if (!productId) continue;
 
+    const rowWarehouseKeys = resolveRowWarehouseKeys(row, options?.defaultWarehouseKey);
+    const catalogWarehouseIds = rowWarehouseKeys.map((key) => {
+      const wh = warehouseByKey.get(key);
+      if (!wh) throw new Error(`Missing warehouse for key: ${key}`);
+      return new mongoose.Types.ObjectId(String(wh._id));
+    });
+    const stockWarehouseIds: Types.ObjectId[] = [...catalogWarehouseIds];
+
     for (const [colName, qty] of Object.entries(row.warehouses)) {
       const warehouseId = await upsertWarehouseByColumn(colName);
       warehouseUpserts++;
+      stockWarehouseIds.push(warehouseId);
 
       await StockLevel.findOneAndUpdate(
         { productId, warehouseId },
@@ -715,6 +830,16 @@ export async function commitInventoryImport(
         byUserId: userId,
         at: new Date(),
       });
+    }
+
+    const uniqueWarehouseIds = [...new Set(stockWarehouseIds.map((id) => String(id)))].map(
+      (id) => new mongoose.Types.ObjectId(id)
+    );
+    if (uniqueWarehouseIds.length > 0) {
+      await Product.updateOne(
+        { _id: productId },
+        { $addToSet: { warehouseIds: { $each: uniqueWarehouseIds } } }
+      ).exec();
     }
   }
 

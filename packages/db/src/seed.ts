@@ -91,6 +91,13 @@ const BASELINE_PERMISSIONS = [
     isSystem: true,
   },
   {
+    key: 'logistics:scope_all',
+    label: 'All logistics sites',
+    group: 'logistics',
+    description: 'View and manage shipments for all warehouses (not scoped to assignment)',
+    isSystem: true,
+  },
+  {
     key: 'warehouses:read',
     label: 'View Warehouses',
     group: 'inventory',
@@ -189,6 +196,7 @@ const BASELINE_ROLES = [
       'offers:write',
       'logistics:read',
       'logistics:write',
+      'logistics:scope_all',
       'users:read',
       'warehouses:read',
       'suppliers:read',

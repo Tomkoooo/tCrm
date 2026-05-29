@@ -188,8 +188,8 @@ The CRM uses a **collapsible sidebar** (`apps/crm/src/components/app-sidebar.tsx
 | Group (HU) | Routes | Typical permissions |
 |------------|--------|-------------------|
 | Általános | `/` (dashboard) | authenticated |
-| Készletkezelés | `/inventory`, `/inventory/categories`, `/inventory/suppliers`, `/inventory/builds` | `inventory:read`, `suppliers:*` |
-| Logisztika | `/logistics`, `/logistics/movements`, `/logistics/reservations` | `logistics:read` |
+| Készletkezelés | `/inventory`, `/inventory/dashboard`, `/inventory/categories`, `/inventory/suppliers`, `/inventory/builds` | `inventory:read`, `suppliers:*` |
+| Logisztika | `/logistics`, `/logistics/jobs`, `/logistics/vehicles`, `/logistics/movements`, `/logistics/reservations` | `logistics:read` |
 | Értékesítés | `/offers`, `/builds` | `offers:read`, `inventory:read` |
 | Beállítások | `/account`, `/secrets` (Titoktár) | authenticated; `secrets:read` |
 | Adminisztráció | `/admin/users`, `/admin/permissions`, `/admin/warehouses` | `admin:access` + module keys |
