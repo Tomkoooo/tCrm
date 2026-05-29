@@ -1,9 +1,14 @@
 'use server';
 
-import bcrypt from 'bcryptjs';
-import { connectDB, ensureBaselineRbac, hasAnyAdminUser, Role, User } from '@crm/db';
+import mongoose from 'mongoose';
+import { connectDB, ensureBaselineRbac, hasAnyAdminUser, Role } from '@crm/db';
+import { provisionUserWithEmployee } from '@crm/core';
 import { isPublicRegistrationEnabled } from '@crm/lib';
-import { registerSchema } from '@crm/lib/validation';
+import {
+  registerSchema,
+  parseLinkEmployeeFromForm,
+  employeeProfileFromForm,
+} from '@crm/lib/validation';
 
 export type RegisterFormState =
   | {
@@ -20,7 +25,7 @@ export async function registerAction(
   if (!isPublicRegistrationEnabled()) {
     return {
       success: false,
-      message: 'Registration is disabled. Please contact an administrator.',
+      message: 'A regisztráció le van tiltva. Forduljon az adminisztrátorhoz.',
     };
   }
 
@@ -28,7 +33,7 @@ export async function registerAction(
   if (!(await hasAnyAdminUser())) {
     return {
       success: false,
-      message: 'Complete initial setup before registering.',
+      message: 'Előbb fejezze be a kezdeti telepítést.',
     };
   }
 
@@ -48,25 +53,51 @@ export async function registerAction(
       fieldErrors[field] = fieldErrors[field] ?? [];
       fieldErrors[field].push(issue.message);
     }
-    return { success: false, fieldErrors, message: 'Please fix the errors below.' };
+    return { success: false, fieldErrors, message: 'Javítsa a hibákat.' };
   }
 
-  const existing = await User.findOne({ email: parsed.data.email.toLowerCase() });
-  if (existing) {
-    return { success: false, message: 'An account with this email already exists.' };
+  const linkEmployee = parseLinkEmployeeFromForm(formData);
+  const profile = employeeProfileFromForm(formData, linkEmployee);
+
+  if (linkEmployee && !profile?.companyId) {
+    return { success: false, message: 'Dolgozóként regisztráláshoz válasszon céget.' };
   }
 
-  const viewerRole = await Role.findOne({ key: 'viewer' });
-  const passwordHash = await bcrypt.hash(parsed.data.password, 10);
+  if (profile?.companyId && !mongoose.Types.ObjectId.isValid(profile.companyId)) {
+    return { success: false, message: 'Érvénytelen cég.' };
+  }
 
-  await User.create({
-    email: parsed.data.email.toLowerCase(),
-    name: parsed.data.name,
-    passwordHash,
-    roleIds: viewerRole ? [viewerRole._id] : [],
-    directPermissionKeys: [],
-    isActive: true,
-  });
+  try {
+    const viewerRole = await Role.findOne({ key: 'viewer' }).exec();
+    const roleIds = viewerRole ? [viewerRole._id] : [];
 
-  return { success: true, message: 'Account created. You can now sign in.' };
+    await provisionUserWithEmployee({
+      name: parsed.data.name,
+      email: parsed.data.email,
+      password: parsed.data.password,
+      roleIds,
+      skipCompanyScope: true,
+      employee: profile?.companyId
+        ? {
+            companyId: new mongoose.Types.ObjectId(profile.companyId),
+            employeeNumber: profile.employeeNumber,
+            department: profile.department,
+            phone: profile.phone,
+            hrNotes: profile.hrNotes,
+          }
+        : undefined,
+    });
+
+    return {
+      success: true,
+      message: profile?.companyId
+        ? 'Fiók és dolgozói profil létrehozva. Bejelentkezhet.'
+        : 'Fiók létrehozva. Bejelentkezhet.',
+    };
+  } catch (e) {
+    return {
+      success: false,
+      message: e instanceof Error ? e.message : 'Regisztráció sikertelen.',
+    };
+  }
 }

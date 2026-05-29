@@ -191,6 +191,7 @@ The CRM uses a **collapsible sidebar** (`apps/crm/src/components/app-sidebar.tsx
 | Készletkezelés | `/inventory`, `/inventory/dashboard`, `/inventory/categories`, `/inventory/suppliers`, `/inventory/builds` | `inventory:read`, `suppliers:*` |
 | Logisztika | `/logistics`, `/logistics/jobs`, `/logistics/vehicles`, `/logistics/movements`, `/logistics/reservations` | `logistics:read` |
 | Értékesítés | `/offers`, `/builds` | `offers:read`, `inventory:read` |
+| Könyvelés és HR | `/accounting`, `/accounting/companies`, `/accounting/employees`, `/accounting/schedule`, `/accounting/requests`, `/accounting/reports`, `/accounting/my` | `accounting:*`, `hr:*` (see [`hr.md`](./hr.md)) |
 | Beállítások | `/account`, `/secrets` (Titoktár) | authenticated; `secrets:read` |
 | Adminisztráció | `/admin/users`, `/admin/permissions`, `/admin/warehouses` | `admin:access` + module keys |
 
@@ -277,7 +278,7 @@ docker compose -f docker/docker-compose.yml up
 |-------|-------|
 | Phase 1 | Inventory — product schema, Excel parser, dynamic DataTable |
 | Phase 2 ✓ | Logistics, warehouses, suppliers, builds/BOM, user/account admin, inventory DataTable columns |
-| Phase 3 | Offers, `apps/landing` (tWeb fork), accounting, multi-tenant SaaS, reporting |
+| Phase 3 | Offers, `apps/landing` (tWeb fork), **HR/accounting module** (in progress), multi-tenant SaaS, reporting |
 
 ---
 

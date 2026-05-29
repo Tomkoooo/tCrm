@@ -11,7 +11,8 @@
   "scripts": {
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
-    "seed": "tsx src/seed-cli.ts"
+    "seed": "tsx src/seed-cli.ts",
+    "sync-rbac": "tsx src/sync-rbac-cli.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

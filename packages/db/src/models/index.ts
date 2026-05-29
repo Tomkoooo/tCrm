@@ -38,3 +38,15 @@ export {
   type JobStatus,
   type PickupStatus,
 } from './LogisticsJob';
+export { Company, type ICompany } from './Company';
+export { Employee, type IEmployee, type EmploymentType } from './Employee';
+export { HrCompanyScope, type IHrCompanyScope } from './HrCompanyScope';
+export { ScheduleEntry, type IScheduleEntry, type ScheduleEntryKind } from './ScheduleEntry';
+export {
+  HrRequest,
+  type IHrRequest,
+  type IHrRequestPayload,
+  type HrRequestType,
+  type HrRequestStatus,
+} from './HrRequest';
+export { MonthlyWorkSummary, type IMonthlyWorkSummary } from './MonthlyWorkSummary';

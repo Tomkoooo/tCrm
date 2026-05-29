@@ -78,3 +78,25 @@ export type { VehicleInput, CreatePickupInput } from './jobs';
 
 export { secretProjectSchema, secretItemSchema, secretProjectAccessSchema } from './secrets';
 export type { SecretProjectInput, SecretItemInput, SecretProjectAccessInput } from './secrets';
+
+export {
+  companySchema,
+  employeeSchema,
+  inviteEmployeeSchema,
+  scheduleEntrySchema,
+  hrRequestSchema,
+  hrRequestHolidaySchema,
+  hrRequestSickSchema,
+  hrRequestScheduleChangeSchema,
+  monthlyWorkSummarySchema,
+  userEmployeeProfileSchema,
+  parseLinkEmployeeFromForm,
+  employeeProfileFromForm,
+} from './hr';
+export type {
+  CompanyInput,
+  EmployeeInput,
+  ScheduleEntryInput,
+  HrRequestInput,
+  MonthlyWorkSummaryInput,
+} from './hr';

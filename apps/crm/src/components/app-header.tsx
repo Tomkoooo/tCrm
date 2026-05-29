@@ -42,6 +42,13 @@ export function translateSegment(segment: string): string {
     pick: 'Kiadás',
     transfer: 'Raktárközi',
     new: 'Új',
+    accounting: 'Könyvelés és HR',
+    companies: 'Cégek',
+    employees: 'Dolgozók',
+    schedule: 'Beosztás',
+    requests: 'Kérelmek',
+    reports: 'Kimutatások',
+    my: 'Saját beosztás',
   };
   return map[segment] ?? segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ');
 }

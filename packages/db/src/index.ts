@@ -2,6 +2,7 @@ export { connectDB, getNativeClient, getUploadsBucket, DB_NAME } from './connect
 export * from './models';
 export * from './repositories';
 export { ensureBaselineRbac, seedDatabase } from './seed';
+export { ensureBaselineRbacOnce } from './rbac-sync';
 export { hasAnyAdminUser } from './system';
 export {
   getAdminRoleId,

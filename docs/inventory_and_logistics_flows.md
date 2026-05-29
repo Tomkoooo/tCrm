@@ -50,9 +50,21 @@ flowchart TB
     secProj --> secEnc
   end
 
+  subgraph hr [Könyvelés és HR]
+    companiesHR[Cégek]
+    empHR[Dolgozók + vendég]
+    schedHR[Beosztás naptár]
+    reqHR[Kérelmek jóváhagyás]
+    repHR[Havi kimutatás export]
+    companiesHR --> empHR
+    empHR --> schedHR
+    empHR --> reqHR
+    reqHR --> schedHR
+    schedHR --> repHR
+  end
+
   subgraph future [Phase 3+]
     offers[Ajánlatok]
-    acct[Könyvelés]
     landing[Nyilvános web]
   end
 
@@ -60,6 +72,7 @@ flowchart TB
   rbac --> log
   rbac --> phase2done
   rbac --> secrets
+  rbac --> hr
   rbac --> future
   products -.-> offers
   res -.-> mov
@@ -74,6 +87,7 @@ flowchart TB
 | Logisztika | `/logistics/*`, `/logistics/jobs`, `/logistics/vehicles` | Phase 2–3 ✓ |
 | Termékmenedzsment KPI | `/inventory/dashboard` | Phase 3 ✓ |
 | Titoktár | `/secrets`, `/secrets/[id]` | Phase 3 ✓ |
+| Könyvelés / HR | `/accounting/*` | Phase 3 ✓ |
 | Ajánlatok | `/offers` | Placeholder (Phase 3) |
 | Nyilvános web | `apps/landing` | Phase 3 |
 
@@ -396,4 +410,34 @@ flowchart LR
 
 ---
 
-*Utolsó frissítés: 2026-05 — **Termék raktár:** `Product.warehouseIds`, `crm_warehouse_slug` import/export, raktár szűrő, raktáros láthatóság.*
+## 6. HR — beosztás, kérelmek, kimutatás
+
+```mermaid
+sequenceDiagram
+  participant HR as HR hr:write
+  participant Emp as Dolgozó hr:self
+  participant Appr as Jóváhagyó hr:approve
+  participant DB as MongoDB
+
+  HR->>DB: Cég + dolgozó vendég rekord
+  HR->>Emp: Meghívás User + employee szerep
+  HR->>DB: ScheduleEntry műszakok
+  Emp->>DB: HrRequest szabadság/beteg
+  Appr->>DB: Jóváhagyás
+  DB->>DB: off esemény + MonthlyWorkSummary
+  HR->>HR: XLSX export hr:reports
+```
+
+| Lépés | Leírás |
+|-------|--------|
+| Cég scope | `HrCompanyScope` vagy `hr:scope_all` |
+| Vendég | `employmentType: guest`, nincs `userId` |
+| Meghívás | User létrehozás, `hr:self`, `userId` link |
+| Naptár | `react-big-calendar`, `/accounting/schedule` |
+| Export | `GET /accounting/reports/export?year=&month=` |
+
+Részletek: [`hr.md`](./hr.md).
+
+---
+
+*Utolsó frissítés: 2026-05 — **HR modul:** cégek, dolgozók, beosztás, kérelmek, havi kimutatás XLSX.*

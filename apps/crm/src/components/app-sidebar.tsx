@@ -23,8 +23,15 @@ import {
   TagsIcon,
   ImagesIcon,
   KeyRoundIcon,
+  CalculatorIcon,
+  CalendarDaysIcon,
+  ClipboardCheckIcon,
+  UserCircleIcon,
 } from 'lucide-react';
 import {
+  ACCOUNTING_NAV_PERMISSION_KEYS,
+  HR_READ_PERMISSION_KEYS,
+  HR_REPORTS_PERMISSION_KEYS,
   MEDIA_READ_PERMISSION_KEYS,
   SECRETS_READ_PERMISSION_KEYS,
   SUPPLIER_READ_PERMISSION_KEYS,
@@ -149,6 +156,56 @@ export function AppSidebar() {
     ];
   }, [user?.permissions]);
 
+  const accountingItems = useMemo((): SidebarNavItem[] => {
+    if (!ACCOUNTING_NAV_PERMISSION_KEYS.some((key) => hasPermission(key))) return [];
+    const items: SidebarNavItem[] = [];
+    if (
+      ACCOUNTING_NAV_PERMISSION_KEYS.filter((k) => k !== 'hr:self').some((key) =>
+        hasPermission(key)
+      )
+    ) {
+      items.push({
+        href: '/accounting',
+        icon: <CalculatorIcon className="h-4 w-4" />,
+        label: 'Áttekintés',
+      });
+    }
+    if (hasPermission('hr:write')) {
+      items.push({
+        href: '/accounting/companies',
+        icon: <Building2Icon className="h-4 w-4" />,
+        label: 'Cégek',
+      });
+    }
+    if (HR_READ_PERMISSION_KEYS.some((key) => hasPermission(key))) {
+      items.push(
+        {
+          href: '/accounting/employees',
+          icon: <UsersIcon className="h-4 w-4" />,
+          label: 'Dolgozók',
+        },
+        {
+          href: '/accounting/schedule',
+          icon: <CalendarDaysIcon className="h-4 w-4" />,
+          label: 'Beosztás',
+        },
+        {
+          href: '/accounting/requests',
+          icon: <ClipboardCheckIcon className="h-4 w-4" />,
+          label: 'Kérelmek',
+        }
+      );
+    }
+    if (HR_REPORTS_PERMISSION_KEYS.some((key) => hasPermission(key))) {
+      items.push({
+        href: '/accounting/reports',
+        icon: <FileTextIcon className="h-4 w-4" />,
+        label: 'Kimutatások',
+      });
+    }
+    return items;
+  }, [user?.permissions]);
+
   const salesItems = useMemo((): SidebarNavItem[] => {
     const items: SidebarNavItem[] = [];
     if (hasPermission('offers:read')) {
@@ -226,6 +283,8 @@ export function AppSidebar() {
           <SidebarNavGroup label="Értékesítés" items={salesItems} onLinkClick={linkClick} />
         )}
 
+        <SidebarNavGroup label="Könyvelés és HR" items={accountingItems} onLinkClick={linkClick} />
+
         <SidebarGroup>
           <SidebarGroupLabel>Beállítások</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -234,6 +293,12 @@ export function AppSidebar() {
                 href="/account"
                 icon={<UserIcon className="h-4 w-4" />}
                 label="Fiók"
+                onClick={linkClick}
+              />
+              <MenuItem
+                href="/accounting/my"
+                icon={<UserCircleIcon className="h-4 w-4" />}
+                label="Saját beosztás"
                 onClick={linkClick}
               />
               {SECRETS_READ_PERMISSION_KEYS.some((key) => hasPermission(key)) && (

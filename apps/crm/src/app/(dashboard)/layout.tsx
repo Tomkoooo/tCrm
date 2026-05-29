@@ -3,8 +3,10 @@ import { AppSidebar } from '@/components/app-sidebar';
 import AppHeader from '@/components/app-header';
 import { Toaster } from '@/components/ui/sonner';
 import { requireAuth } from '@crm/auth';
+import { ensureBaselineRbacOnce } from '@crm/db';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  await ensureBaselineRbacOnce();
   await requireAuth();
 
   return (

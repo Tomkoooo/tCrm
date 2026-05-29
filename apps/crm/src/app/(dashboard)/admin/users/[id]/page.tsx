@@ -18,7 +18,7 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
   if (!user) return notFound();
 
   return (
-    <Container className="flex max-w-4xl flex-col gap-4 md:gap-6">
+    <Container className="flex max-w-3xl flex-col gap-4 md:gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{user.name}</h1>
@@ -44,6 +44,7 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
             mode="edit"
             roles={editorData.roles}
             permissions={editorData.permissions}
+            companies={editorData.companies}
             initial={user}
             currentUserId={current.id}
           />

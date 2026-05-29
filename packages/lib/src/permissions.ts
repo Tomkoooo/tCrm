@@ -38,3 +38,29 @@ export const SECRETS_DELETE_PERMISSION_KEYS = ['secrets:delete', 'secrets:manage
 
 /** Configure sharing on secret projects (all projects). */
 export const SECRETS_MANAGE_PERMISSION_KEYS = ['secrets:manage'] as const;
+
+/** Access accounting / HR module navigation. */
+export const ACCOUNTING_NAV_PERMISSION_KEYS = [
+  'accounting:read',
+  'accounting:write',
+  'hr:read',
+  'hr:write',
+  'hr:approve',
+  'hr:reports',
+  'hr:self',
+] as const;
+
+/** View HR data (employees, schedules, requests). */
+export const HR_READ_PERMISSION_KEYS = ['hr:read', 'hr:write', 'hr:approve', 'hr:reports'] as const;
+
+/** Manage companies, employees, schedules. */
+export const HR_WRITE_PERMISSION_KEYS = ['hr:write'] as const;
+
+/** Approve or reject HR requests. */
+export const HR_APPROVE_PERMISSION_KEYS = ['hr:approve', 'hr:write'] as const;
+
+/** Monthly summaries and export. */
+export const HR_REPORTS_PERMISSION_KEYS = ['hr:reports', 'hr:write'] as const;
+
+/** Employee self-service. */
+export const HR_SELF_PERMISSION_KEYS = ['hr:self'] as const;

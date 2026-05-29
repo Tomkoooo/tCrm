@@ -15,16 +15,9 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { PermissionGroupSections } from '@/components/admin/permission-group-sections';
 
 type Permission = {
   id: string;
@@ -91,11 +84,12 @@ function RolePermissionsCard({
   groupedPermissions: Record<string, Permission[]>;
 }) {
   const enabledCount = role.permissionIds.length;
+  const locked = role.isSystem && role.key === 'admin';
 
   return (
     <Collapsible defaultOpen={false}>
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+        <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0 pb-3">
           <CollapsibleTrigger className="flex min-w-0 flex-1 items-start gap-2 text-left [&[data-state=open]>svg]:rotate-180">
             <ChevronDownIcon className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0 transition-transform" />
             <div className="min-w-0 flex-1">
@@ -108,7 +102,7 @@ function RolePermissionsCard({
               </CardTitle>
               <CardDescription className="mt-1">
                 {role.description ?? role.key}
-                {role.isSystem && role.key === 'admin' && ' — jogosultságok zárolva'}
+                {locked && ' — jogosultságok zárolva'}
               </CardDescription>
             </div>
           </CollapsibleTrigger>
@@ -134,36 +128,27 @@ function RolePermissionsCard({
         </CardHeader>
         <CollapsibleContent>
           <CardContent className="pt-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Jogosultság</TableHead>
-                  <TableHead>Kulcs</TableHead>
-                  <TableHead className="w-24 text-center">Engedélyezve</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {Object.entries(groupedPermissions).flatMap(([group, perms]) =>
-                  perms.map((perm) => (
-                    <TableRow key={`${role.id}-${perm.id}`}>
-                      <TableCell>
-                        <span className="font-medium">{perm.label}</span>
-                        <span className="text-muted-foreground ml-2 text-xs">({group})</span>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-xs">{perm.key}</TableCell>
-                      <TableCell className="text-center">
-                        <PermissionToggle
-                          roleId={role.id}
-                          permissionId={perm.id}
-                          enabled={role.permissionIds.includes(perm.id)}
-                          disabled={role.isSystem && role.key === 'admin'}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+            <PermissionGroupSections
+              grouped={groupedPermissions}
+              defaultOpen={false}
+              renderPermission={(perm) => (
+                <div
+                  key={perm.id}
+                  className="grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b py-2.5 last:border-0"
+                >
+                  <PermissionToggle
+                    roleId={role.id}
+                    permissionId={perm.id}
+                    enabled={role.permissionIds.includes(perm.id)}
+                    disabled={locked}
+                  />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium leading-tight">{perm.label}</p>
+                    <p className="text-muted-foreground font-mono text-xs">{perm.key}</p>
+                  </div>
+                </div>
+              )}
+            />
           </CardContent>
         </CollapsibleContent>
       </Card>
