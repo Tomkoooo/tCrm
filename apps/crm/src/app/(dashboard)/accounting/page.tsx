@@ -20,7 +20,9 @@ export default async function AccountingOverviewPage() {
   return (
     <Container className="flex max-w-4xl flex-col gap-4">
       <div>
-        <h1 className="text-2xl font-bold">Könyvelés és HR</h1>
+        <h1 className="text-2xl font-bold" data-testid="accounting-overview">
+          Könyvelés és HR
+        </h1>
         <p className="text-muted-foreground text-sm">
           Cégek, dolgozók, beosztás, kérelmek és havi kimutatások.
         </p>

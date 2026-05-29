@@ -47,6 +47,7 @@ export default async function SecretProjectDetailPage({
   const items = project.secrets.map((s) => ({
     id: s._id.toString(),
     key: s.key,
+    valueFormat: s.valueFormat,
     description: s.description,
   }));
 
@@ -74,14 +75,7 @@ export default async function SecretProjectDetailPage({
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Titkok</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <SecretItemsPanel projectId={id} items={items} canWrite={canWrite} />
-        </CardContent>
-      </Card>
+      <SecretItemsPanel projectId={id} items={items} canWrite={canWrite} />
 
       {canManageAccess && (
         <Card>

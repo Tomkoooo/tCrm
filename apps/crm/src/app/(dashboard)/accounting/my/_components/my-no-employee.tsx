@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 
 export function MyNoEmployee() {
   return (
-    <Container className="flex max-w-lg flex-col gap-4">
+    <Container className="flex max-w-lg flex-col gap-4" data-testid="my-no-employee">
       <div>
         <h1 className="text-2xl font-bold">Saját beosztás</h1>
         <p className="text-muted-foreground mt-2 text-sm">

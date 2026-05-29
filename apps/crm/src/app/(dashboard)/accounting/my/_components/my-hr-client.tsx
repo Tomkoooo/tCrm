@@ -37,7 +37,7 @@ export function MyHrClient({
   );
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6" data-testid="my-hr-schedule">
       <p className="text-muted-foreground text-sm">
         {employeeName} · {companyName}
       </p>

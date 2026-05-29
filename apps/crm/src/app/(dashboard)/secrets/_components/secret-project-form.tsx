@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { createSecretProjectAction, type SecretFormState } from '../actions';
 
 const initial: SecretFormState = { success: false };
@@ -38,8 +39,16 @@ export function CreateSecretProjectForm({ onSuccess }: { onSuccess?: () => void 
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="description">Leírás (opcionális)</Label>
-        <Input id="description" name="description" placeholder="Rövid megjegyzés" />
+        <Textarea
+          id="description"
+          name="description"
+          rows={2}
+          placeholder="pl. Alutent éles környezet — bank és API titkok"
+        />
       </div>
+      <p className="text-muted-foreground text-xs">
+        A létrehozás után a projekt oldalán adhat hozzá titkokat (kulcs–érték párok).
+      </p>
       <Button type="submit" disabled={pending}>
         {pending ? 'Létrehozás…' : 'Projekt létrehozása'}
       </Button>

@@ -29,7 +29,7 @@ export function LoginForm({ showRegisterLink = false }: { showRegisterLink?: boo
         <CardDescription>Enter your credentials to access the CRM</CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={formAction} className="flex flex-col gap-6">
+        <form action={formAction} className="flex flex-col gap-6" data-testid="login-form">
           {state.success === false && state.message && (
             <p className="text-destructive text-sm">{state.message}</p>
           )}
@@ -53,7 +53,7 @@ export function LoginForm({ showRegisterLink = false }: { showRegisterLink?: boo
               <p className="text-sm text-red-600">{state.fieldErrors.password[0]}</p>
             )}
           </div>
-          <Button type="submit" disabled={pending} className="w-full">
+          <Button type="submit" disabled={pending} className="w-full" data-testid="login-submit">
             {pending ? 'Signing in...' : 'Sign in'}
           </Button>
           {showRegisterLink && (

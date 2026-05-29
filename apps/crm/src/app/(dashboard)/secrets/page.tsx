@@ -105,12 +105,21 @@ export default async function SecretsPage({
       <div>
         <h1 className="text-2xl font-bold">Titoktár</h1>
         <p className="text-muted-foreground text-sm">
-          Projekt alapú titkok tárolása (jelszavak, API kulcsok). Az értékek titkosítva vannak;
-          megtekintés és másolás kérésre történik.
+          Titkok projektenként: először hozzon létre egy projektet (pl. ügyfél vagy rendszer neve),
+          majd a projekt oldalán adjon hozzá kulcs–érték párokat — egysoros (jelszó) vagy többsoros
+          (cég-, bankadatok) mezővel. Az értékek titkosítva tárolódnak; megtekintés és másolás
+          kérésre történik.
           {canManageAllSecrets(accessUser) && (
             <span className="block">Ön minden projektet lát (secrets:manage).</span>
           )}
         </p>
+        {canWrite && (
+          <ol className="text-muted-foreground mt-2 list-decimal space-y-1 pl-5 text-sm">
+            <li>Kattintson az „Új projekt” gombra a táblázat felett.</li>
+            <li>Nyissa meg a projektet, és adja hozzá a titkokat kulcsonként.</li>
+            <li>Opcionálisan ossza meg a projektet szerepkörökkel vagy felhasználókkal.</li>
+          </ol>
+        )}
       </div>
 
       <SecretsTable data={data} columns={columns} query={query} total={total} canWrite={canWrite} />

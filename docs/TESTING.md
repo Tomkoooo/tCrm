@@ -1,129 +1,132 @@
-# Unit and integration tests
+# Unit, integration, and E2E tests
 
 Last updated: 2026-05.
 
-## How to run
+## CI vs local
+
+| Command | Runs in GitHub CI | What it runs |
+|---------|-------------------|--------------|
+| `pnpm test` / `pnpm test:unit` | Yes | Vitest across `@crm/lib`, `@crm/core`, `@crm/auth`, `@crm/app`, `@crm/ui` |
+| `pnpm test:e2e` | **No** | Playwright in `apps/crm` (browser + Next server) |
+| `pnpm test:all` | No | Unit then E2E (full local check) |
+
+**Pass rate (unit):** **72 / 72 tests passing (100%)** via `pnpm test`.
+
+**Code coverage:** Not measured (no `@vitest/coverage-v8` in CI).
+
+---
+
+## Local commands
+
+### Unit / integration
 
 ```bash
-pnpm test          # all packages with a "test" script (Turbo)
+pnpm test              # same as test:unit (Turbo)
+pnpm test:unit
 pnpm --filter @crm/core test
-pnpm --filter @crm/lib test
-pnpm --filter @crm/auth test
-pnpm --filter @crm/app test
 ```
 
-**Pass rate (last run):** **28 / 28 tests passing (100%)** across the four packages wired into `pnpm test`.
+### E2E (Playwright)
 
-**Code coverage:** Vitest **coverage is not configured** in this repo (no `@vitest/coverage-v8` / CI threshold). The percentages below describe **which areas have automated tests**, not line coverage from Istanbul.
+**Prerequisites**
 
-| Package | Test files | Tests | In `pnpm test` | Approx. scope covered |
-|---------|------------|-------|----------------|------------------------|
-| `@crm/core` | 6 | 17 | Yes | Inventory SKU/import, logistics domain + DB integration |
-| `@crm/lib` | 3 | 8 | Yes | `cn`, secrets crypto, logistics Zod |
-| `@crm/auth` | 1 | 1 | Yes | Permission key format smoke check |
-| `@crm/app` | 1 | 2 | Yes | Login Zod schema |
-| `@crm/ui` | 2 | ~9 | **No** (no `test` script) | DataTable query + preferences (run manually if needed) |
-| `@crm/db` | 0 | 0 | No | — |
-| HR / accounting | 0 | 0 | No | New module; no tests yet |
+1. MongoDB running (`MONGODB_URI` in `apps/crm/.env.local`).
+2. Seeded admin (or defaults): `pnpm --filter @crm/db seed`
+3. Browsers once: `pnpm test:e2e:install`
 
-**Overall:** Automated tests focus on **logistics stock**, **inventory import/SKU**, and small **shared utilities**. Most UI routes, auth session, RBAC resolution, and the **HR/accounting** module are untested.
+```bash
+pnpm test:e2e              # list reporter + HTML report path
+pnpm test:e2e:ui           # interactive UI mode
+pnpm test:e2e:report       # open last HTML report
+pnpm test:all              # unit then E2E
+```
 
----
+E2E uses `next start` (builds first if `.next` missing). With `pnpm dev` already on port 3000, Playwright reuses that server.
 
-## `@crm/core` (17 tests)
+**Env vars** (optional; see [`.env.example`](../.env.example)):
 
-### `src/inventory/sku.test.ts` (unit)
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `E2E_ADMIN_EMAIL` | `admin@tcrm.local` | Admin login |
+| `E2E_ADMIN_PASSWORD` | `admin123456` | Admin password |
+| `E2E_EMPLOYEE_EMAIL` | `e2e-employee@tcrm.local` | Self-service HR user |
+| `E2E_EMPLOYEE_PASSWORD` | `e2eemployee123` | Employee password |
+| `PLAYWRIGHT_BASE_URL` | `http://localhost:3000` | App base URL |
 
-| Scenario | What it verifies |
-|----------|------------------|
-| Prefix + pad to total length | `generateInternalSku` builds CRM SKU from category prefix and supplier digits |
-| Normalize non-digits | Strips/normalizes input (e.g. `AB-60303008` → padded numeric SKU) |
-
-### `src/inventory/import.test.ts` (integration-ish)
-
-| Scenario | What it verifies |
-|----------|------------------|
-| Parse `docs/excel/Alutent.xlsx` | `parseInventoryXlsx` returns rows; each row has `supplierSku` and `crmCategorySlug` |
-
-### `src/logistics/references.test.ts` (unit)
-
-| Scenario | What it verifies |
-|----------|------------------|
-| GRN reference format | `formatMovementReference('grn', year, seq)` → `GRN-YYYY-NNNNN` |
-| Pick / transfer prefixes | `PICK-` and `TRF-` reference strings |
-
-### `src/logistics/vehicles.test.ts` (unit)
-
-| Scenario | What it verifies |
-|----------|------------------|
-| Cargo within limits | `evaluateVehicleFit` accepts weight/volume under vehicle caps |
-| Overweight cargo | Rejects with Hungarian reason containing „Súly” |
-
-### `src/logistics/availability.test.ts` (unit)
-
-| Scenario | What it verifies |
-|----------|------------------|
-| No BOM | `computeBomAvailabilityFromComponents` uses own stock only |
-| Limiting component | Buildable qty = min over components (floor division) |
-| Missing stock | Returns `canBuild: 0` when component not in stock map |
-
-### `src/logistics/logistics.integration.test.ts` (integration, MongoMemoryServer)
-
-Uses in-memory MongoDB; seeds user, two warehouses, product, stock at warehouse A.
-
-**Reservations**
-
-| Scenario | What it verifies |
-|----------|------------------|
-| Create reservation | Status `active`; `reserved` incremented on `StockLevel` |
-| Insufficient stock | Throws when quantity > available |
-| Release reservation | `reserved` back to 0 after cancel |
-
-**Movements**
-
-| Scenario | What it verifies |
-|----------|------------------|
-| GRN confirm | Increases `onHand` at destination; status `confirmed`; `GRN-` reference |
-| Pick + reservation | Decreases on-hand and reserved; reservation `fulfilled` |
-| Transfer | Moves qty between warehouses (70 / 30 split) |
-| Cancel draft | No stock change; movement `cancelled` |
+`e2e/global-setup.ts` ensures the E2E employee user and linked `Employee` record exist.
 
 ---
 
-## `@crm/lib` (8 tests)
+## `@crm/lib` (21 tests)
 
-### `src/utils/cn.test.ts`
+### `src/validation/hr.test.ts`
 
-| Scenario | What it verifies |
-|----------|------------------|
-| Merge classes | Basic string join |
-| Conditional | Falsy values skipped |
-| Tailwind merge | Conflicting utilities resolved (`px-4` wins) |
+| Scenario | Verifies |
+|----------|----------|
+| Valid / invalid company slug | `companySchema` |
+| Valid / invalid employee email | `employeeSchema` |
+| User employee profile schema | `userEmployeeProfileSchema` |
+| Checkbox parsing | `parseLinkEmployeeFromForm` |
+| Form profile extraction | `employeeProfileFromForm` |
+| Schedule window | `scheduleEntrySchema` end after start |
 
-### `src/utils/crypto.test.ts`
+### `src/utils/cn.test.ts`, `crypto.test.ts`, `validation/logistics.test.ts`
 
-| Scenario | What it verifies |
-|----------|------------------|
-| Round-trip | `encryptSecret` / `decryptSecret` with `SECRETS_ENCRYPTION_KEY` |
-| Unique ciphertext | Same plaintext → different encodings; both decrypt correctly |
-
-### `src/validation/logistics.test.ts`
-
-| Scenario | What it verifies |
-|----------|------------------|
-| GRN without destination | `createMovementSchema` fails without `toWarehouseId` |
-| Valid reservation input | `createReservationSchema` accepts well-formed payload |
-| Parse movement lines JSON | `parseMovementLinesJson` extracts product lines |
+Unchanged — class merge, secret round-trip, movement/reservation Zod.
 
 ---
 
-## `@crm/auth` (1 test)
+## `@crm/core` (37 tests)
 
-### `src/permissions.test.ts`
+### `src/hr/company-scope.test.ts` (unit)
 
-| Scenario | What it verifies |
-|----------|------------------|
-| Key pattern | Sample keys match `/^[a-z]+:[a-z]+$/` (note: keys like `logistics:scope_all` use underscores and may not match this pattern in production) |
+| Scenario | Verifies |
+|----------|----------|
+| Global scope flags | `hasGlobalHrScope` |
+| Company filters | `buildCompanyFilter`, `buildCompanyIdFilter` |
+
+### `src/hr/user-provisioning.integration.test.ts`
+
+| Scenario | Verifies |
+|----------|----------|
+| Provision with employee | User + employee + `employee` role |
+| Duplicate email | Hungarian error |
+| HR scope denial | Out-of-scope company blocked |
+| Upsert employee | Create and update single record |
+
+### `src/hr/requests.integration.test.ts`
+
+| Scenario | Verifies |
+|----------|----------|
+| Submit / wrong user | Own requests only |
+| Cancel pending | Status `cancelled` |
+| Approve holiday | Summary + schedule `off` entry |
+| Reject | No side effects |
+| Self-approval | Blocked |
+
+### `src/hr/schedules.integration.test.ts`
+
+| Scenario | Verifies |
+|----------|----------|
+| Shift hours sum | `suggestWorkedHoursFromSchedule` excludes `off` |
+
+### Logistics / inventory
+
+Existing: SKU, import, vehicles, availability, references, `logistics.integration.test.ts`.
+
+---
+
+## `@crm/auth` (4 tests)
+
+### `src/permissions.integration.test.ts`
+
+| Scenario | Verifies |
+|----------|----------|
+| Role + direct merge | `getEffectivePermissionKeys` |
+| Inactive user | Empty set |
+| `userHasPermission` / `userHasAnyPermission` | Key checks |
+
+Uses `mongodb-memory-server` + `ensureBaselineRbac()`.
 
 ---
 
@@ -131,45 +134,39 @@ Uses in-memory MongoDB; seeds user, two warehouses, product, stock at warehouse 
 
 ### `src/app/(auth)/login/actions.test.ts`
 
-| Scenario | What it verifies |
-|----------|------------------|
-| Valid login payload | `loginSchema` accepts email + password |
-| Invalid email | `loginSchema` rejects malformed email |
+`loginSchema` valid email / invalid email.
 
 ---
 
-## `@crm/ui` (not in Turbo `test`; ~9 cases if run manually)
-
-Add `"test": "vitest run"` to `packages/ui/package.json` to include in `pnpm test`.
+## `@crm/ui` (8 tests)
 
 ### `src/components/data-table/query.test.ts`
 
-| Scenario | What it verifies |
-|----------|------------------|
-| Pagination | `skip` / `limit` from page + pageSize |
-| Sort | Asc and desc on column key |
-| Boolean filter | Parses `true` / `false` |
-| Enum filter | `$in` array |
-| Number range | `$gte` / `$lte` |
-| Search | Builds `$and` with searchable columns |
+Pagination, sort, boolean/enum/number filters, search.
 
 ### `src/components/data-table/preferences.test.ts`
 
-| Scenario | What it verifies |
-|----------|------------------|
-| Default visible columns | Uses `defaultVisible` when no localStorage |
-| Persist preferences | `setTablePreferences` / `getTablePreferences` round-trip |
+Default visible columns, persisted preferences.
 
 ---
 
-## Gaps and recommendations
+## Playwright E2E (`apps/crm/e2e`)
 
-| Area | Status |
-|------|--------|
-| HR (`packages/core/src/hr`, accounting routes) | No tests |
-| RBAC (`getEffectivePermissionKeys`, seed) | No tests |
-| User provisioning / register with employee | No tests |
-| Inventory commit / stock adjustments (beyond logistics path) | Partial via logistics integration only |
-| E2E / Playwright | Not present |
+| Spec | Flow |
+|------|------|
+| `auth.spec.ts` | Admin login → dashboard |
+| `accounting-hr.spec.ts` | Admin → `/accounting` → overview heading |
+| `accounting-my.spec.ts` | E2E employee → `/accounting/my` → schedule UI |
 
-To add coverage reporting: install `@vitest/coverage-v8` per package, enable `coverage` in `vitest.config.ts`, and optionally add a CI job with a minimum threshold.
+**Selectors:** `data-testid` on `login-form`, `login-submit`, `accounting-overview`, `my-hr-schedule`, `my-no-employee`.
+
+**Reports:** Terminal `list` reporter + `apps/crm/playwright-report/index.html`.
+
+---
+
+## Gaps (follow-up)
+
+- Vitest coverage thresholds (`@vitest/coverage-v8`)
+- Full HR approval flows in browser
+- Inventory commit beyond logistics integration
+- Register-with-employee server action test

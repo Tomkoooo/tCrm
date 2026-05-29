@@ -30,7 +30,7 @@ describe('table preferences', () => {
   it('persists visible columns', () => {
     setTablePreferences('t1', { visibleColumns: ['b'] });
     expect(getTablePreferences('t1').visibleColumns).toEqual(['b']);
-    const cols = [{ key: 'a' }, { key: 'b' }];
+    const cols = [{ key: 'a', defaultVisible: false }, { key: 'b' }];
     expect(getDefaultVisibleColumns('t1', cols)).toEqual(['b']);
   });
 });

@@ -118,6 +118,7 @@ export async function addSecretItemAction(
   const parsed = secretItemSchema.safeParse({
     key: formData.get('key'),
     value: formData.get('value'),
+    valueFormat: formData.get('valueFormat') === 'multiline' ? 'multiline' : 'single',
     description: formData.get('description') || undefined,
   });
 
@@ -143,6 +144,7 @@ export async function addSecretItemAction(
   project.secrets.push({
     key: parsed.data.key,
     value: encrypted,
+    valueFormat: parsed.data.valueFormat,
     description: parsed.data.description || undefined,
     updatedBy: new mongoose.Types.ObjectId(accessUser.id),
     updatedAt: new Date(),

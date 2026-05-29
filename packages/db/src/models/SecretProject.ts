@@ -1,10 +1,14 @@
 import mongoose, { Schema, type Document, type Types } from 'mongoose';
 
+export type SecretValueFormat = 'single' | 'multiline';
+
 export interface ISecretItem {
   _id: Types.ObjectId;
   key: string;
   /** AES-256-GCM ciphertext: salt:iv:authTag:hex */
   value: string;
+  /** single = one-line (passwords); multiline = textarea (bank, company blocks) */
+  valueFormat?: SecretValueFormat;
   description?: string;
   updatedBy: Types.ObjectId;
   updatedAt: Date;
@@ -26,6 +30,7 @@ const SecretItemSchema = new Schema<ISecretItem>(
   {
     key: { type: String, required: true, trim: true },
     value: { type: String, required: true },
+    valueFormat: { type: String, enum: ['single', 'multiline'], default: 'single' },
     description: { type: String, trim: true },
     updatedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     updatedAt: { type: Date, default: Date.now },

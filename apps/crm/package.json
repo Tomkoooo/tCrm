@@ -8,7 +8,11 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test && node ./e2e/print-report.mjs",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report",
+    "test:e2e:install": "playwright install chromium"
   },
   "dependencies": {
     "@crm/auth": "workspace:*",
@@ -55,6 +59,7 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4.4.1",
     "babel-plugin-react-compiler": "1.0.0",
+    "@playwright/test": "^1.51.0",
     "eslint": "^9",
     "jsdom": "^26.0.0",
     "tailwindcss": "^4",

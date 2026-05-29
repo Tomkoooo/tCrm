@@ -34,6 +34,7 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # Unit/integration only — E2E (Playwright) runs locally: pnpm test:e2e
       - name: Test
         run: pnpm test
 

@@ -14,6 +14,7 @@ export const secretItemSchema = z.object({
     .max(120, 'A kulcs legfeljebb 120 karakter')
     .regex(/^[A-Za-z0-9_.-]+$/, 'A kulcs csak betűket, számokat, _, . és - jelet tartalmazhat'),
   value: z.string().min(1, 'Az érték kötelező').max(16_000, 'Az érték legfeljebb 16000 karakter'),
+  valueFormat: z.enum(['single', 'multiline']).default('single'),
   description: z.string().max(500, 'A leírás legfeljebb 500 karakter').optional().or(z.literal('')),
 });
 
