@@ -8,6 +8,7 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "test:unit": "turbo run test",
+    "test:integration": "pnpm --filter @crm/core test:integration && pnpm --filter @crm/auth test:integration",
     "test:e2e": "pnpm --filter @crm/app test:e2e",
     "test:e2e:ui": "pnpm --filter @crm/app test:e2e:ui",
     "test:e2e:report": "pnpm --filter @crm/app test:e2e:report",

@@ -6,9 +6,10 @@ Last updated: 2026-05.
 
 | Command | Runs in GitHub CI | What it runs |
 |---------|-------------------|--------------|
-| `pnpm test` / `pnpm test:unit` | Yes | Vitest across `@crm/lib`, `@crm/core`, `@crm/auth`, `@crm/app`, `@crm/ui` |
+| `pnpm test` / `pnpm test:unit` | Yes | Vitest unit tests only (`*.integration.test.ts` skipped when `CI=true`) |
+| `pnpm test:integration` | No | MongoDB in-memory integration tests (`@crm/core`, `@crm/auth`) |
 | `pnpm test:e2e` | **No** | Playwright in `apps/crm` (browser + Next server) |
-| `pnpm test:all` | No | Unit then E2E (full local check) |
+| `pnpm test:all` | No | Unit + integration + E2E (full local check) |
 
 **Pass rate (unit):** **72 / 72 tests passing (100%)** via `pnpm test`.
 
