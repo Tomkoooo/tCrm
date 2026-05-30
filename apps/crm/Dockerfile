@@ -5,6 +5,7 @@ RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 WORKDIR /app
 
 FROM base AS deps
+ENV HUSKY=0
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/crm/package.json ./apps/crm/
 COPY packages/auth/package.json ./packages/auth/
@@ -14,9 +15,10 @@ COPY packages/eslint-config/package.json ./packages/eslint-config/
 COPY packages/lib/package.json ./packages/lib/
 COPY packages/tsconfig/package.json ./packages/tsconfig/
 COPY packages/ui/package.json ./packages/ui/
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 FROM base AS builder
+ENV HUSKY=0
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -33,6 +35,7 @@ ENV SMTP_USER=build
 ENV SMTP_PASS=build
 ENV SMTP_FROM=no-reply@build.local
 ENV SMTP_SECURE=false
+RUN pnpm install --frozen-lockfile --ignore-scripts
 RUN pnpm --filter @crm/app build
 
 FROM base AS runner
