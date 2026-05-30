@@ -1,32 +1,29 @@
-import { isPublicRegistrationEnabled } from '@crm/lib/env';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { isPublicRegistrationEnabled } from '@crm/lib/env';
+import { fetchSystemInitialized } from '@/lib/system-initialized';
 
 const authSecret = process.env.AUTH_SECRET;
+const INITIALIZED_COOKIE = 'tcrm_initialized';
 
-async function isSystemInitialized(requestUrl: string): Promise<boolean> {
-  try {
-    const url = new URL('/api/system/initialized', requestUrl);
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) return false;
-    const data = (await res.json()) as { initialized?: boolean };
-    return Boolean(data.initialized);
-  } catch {
-    return false;
-  }
+function hasInitializedCookie(request: NextRequest): boolean {
+  return request.cookies.get(INITIALIZED_COOKIE)?.value === '1';
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register');
+  const isAuthPage =
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/register') ||
+    pathname.startsWith('/reset-password');
   const isSetupPage = pathname.startsWith('/setup');
 
   if (pathname.startsWith('/register') && !isPublicRegistrationEnabled()) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  const initialized = await isSystemInitialized(request.url);
+  const initialized = hasInitializedCookie(request) || (await fetchSystemInitialized(request));
 
   if (!initialized && !isSetupPage) {
     return NextResponse.redirect(new URL('/setup', request.url));

@@ -1,18 +1,19 @@
 import { NextResponse } from 'next/server';
-import { hasAnyAdminUser } from '@crm/db';
+import { connectDB, hasAnyAdminUser } from '@crm/db';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  if (!process.env.MONGODB_URI) {
+  if (!process.env.MONGODB_URI?.trim()) {
     return NextResponse.json({ initialized: false });
   }
 
   try {
+    await connectDB();
     const initialized = await hasAnyAdminUser();
-    return NextResponse.json({ initialized });
+    return NextResponse.json({ initialized }, { headers: { 'cache-control': 'no-store' } });
   } catch {
-    // Treat DB errors as "not initialized" so middleware can redirect to /setup quickly
-    return NextResponse.json({ initialized: false });
+    return NextResponse.json({ initialized: false }, { headers: { 'cache-control': 'no-store' } });
   }
 }
