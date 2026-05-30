@@ -1,0 +1,49 @@
+# Copy to docker-compose.portainer.yml (gitignored) and adjust secrets / host port.
+# cp docker-compose.portainer.example.yml docker-compose.portainer.yml
+
+version: '3.8'
+
+services:
+  tcrm:
+    image: ghcr.io/tomkoooo/tcrm/crm:main
+    container_name: tcrm
+    restart: unless-stopped
+    env_file:
+      - apps/crm/.env.local
+    environment:
+      - NODE_ENV=production
+      - AUTH_URL=
+      - APP_URL=
+    ports:
+      - '8083:3000'
+    networks:
+      - nginxproxy_default
+    labels:
+      - 'wud.watch=true'
+      - 'wud.tag.include=^main$'
+      - 'wud.link.template=https://github.com/tomkoooo/tCrm/releases'
+
+  wud:
+    image: ghcr.io/getwud/wud:latest
+    container_name: wud
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - wud-data:/app/data
+    ports:
+      - '3001:3000'
+    networks:
+      - nginxproxy_default
+    environment:
+      - WUD_WATCHER_LOCAL_CRON=0 */5 * * * *
+      - WUD_TRIGGER_LOCAL_METHOD=label
+      - WUD_LOG_LEVEL=info
+      - WUD_SECURITY_UPDATE_ONLY=false
+      - WUD_UPDATE_STRATEGY=manual
+
+networks:
+  nginxproxy_default:
+    external: true
+
+volumes:
+  wud-data:

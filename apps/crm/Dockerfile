@@ -20,6 +20,19 @@ FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# Build-time placeholders only — no DB/SMTP at image build; runtime env from compose/Portainer.
+ENV AUTH_SECRET=build-time-dummy-auth-secret-minimum-32-chars
+ENV MONGODB_URI=mongodb://127.0.0.1:27017
+ENV MONGODB_DB_NAME=tcrm
+ENV AUTH_URL=http://localhost:3000
+ENV APP_URL=http://localhost:3000
+ENV SECRETS_ENCRYPTION_KEY=build-time-dummy-secrets-encryption-key-32
+ENV SMTP_HOST=localhost
+ENV SMTP_PORT=587
+ENV SMTP_USER=build
+ENV SMTP_PASS=build
+ENV SMTP_FROM=no-reply@build.local
+ENV SMTP_SECURE=false
 RUN pnpm --filter @crm/app build
 
 FROM base AS runner
