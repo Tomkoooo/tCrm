@@ -100,3 +100,19 @@ export type {
   HrRequestInput,
   MonthlyWorkSummaryInput,
 } from './hr';
+
+export {
+  mailTemplateUpdateSchema,
+  inviteUserSchema,
+  inviteAcceptSchema,
+  resetPasswordSchema,
+} from './mail';
+export type {
+  MailTemplateUpdateInput,
+  InviteUserInput,
+  InviteAcceptInput,
+  ResetPasswordInput,
+} from './mail';
+
+export { brandingUpdateSchema } from './branding';
+export type { BrandingUpdateInput } from './branding';

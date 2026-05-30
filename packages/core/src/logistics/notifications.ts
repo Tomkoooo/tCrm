@@ -1,9 +1,11 @@
-import { connectDB, LogisticsJob } from '@crm/db';
+import { connectDB, LogisticsJob, User, Warehouse, type ILogisticsJob } from '@crm/db';
 import type { Types } from 'mongoose';
+import { sendTemplatedEmail } from '../mail/mailer';
+import { getActorEmail } from '../mail/recipients';
 import { getPickup, normalizeJobPickups } from './job-pickups';
 import { pickupToRecipientInput, resolvePickupNotificationEmails } from './notification-recipients';
 
-/** Notification kinds — extend when mail worker is implemented. */
+/** Notification kinds — map 1:1 to MailTemplate.key */
 export type LogisticsNotificationKind =
   | 'job_scheduled'
   | 'pickup_gathered'
@@ -16,21 +18,47 @@ export type LogisticsNotificationPayload = {
   kind: LogisticsNotificationKind;
   jobId: Types.ObjectId;
   pickupId: Types.ObjectId;
-  /** Explicit recipients; falls back to pickup.contactEmails + team emails later */
+  /** Explicit recipients; falls back to pickup contacts + warehouse staff */
   recipientEmails?: string[];
   metadata?: Record<string, string>;
+  /** User who triggered the action — Reply-To and actorName in template */
+  actorUserId?: Types.ObjectId;
 };
 
 export type LogisticsNotificationResult = {
   queued: boolean;
+  sent: boolean;
   kind: LogisticsNotificationKind;
   pickupReference: string;
   pendingKinds: string[];
+  mailSkippedReason?: string;
 };
 
+async function buildNotificationVariables(
+  job: ILogisticsJob | null,
+  pickup: ReturnType<typeof getPickup>,
+  actorUserId?: Types.ObjectId
+): Promise<Record<string, string>> {
+  const wh = await Warehouse.findById(pickup.warehouseId).select({ name: 1 }).lean().exec();
+  let actorName = '';
+  let actorEmail: string | undefined;
+  if (actorUserId) {
+    const actor = await User.findById(actorUserId).select({ name: 1, email: 1 }).lean().exec();
+    actorName = actor?.name ?? '';
+    actorEmail = actor?.email;
+  }
+
+  return {
+    pickupReference: pickup.reference,
+    jobReference: job?.reference ?? '',
+    warehouseName: wh?.name ?? '',
+    actorName,
+    ...(actorEmail ? { actorEmail } : {}),
+  };
+}
+
 /**
- * Queue a logistics notification for a future email worker.
- * Today: records `pendingKinds` on the pickup; does not send mail.
+ * Queue notification on pickup and send templated email when SMTP + template are available.
  */
 export async function enqueueLogisticsNotification(
   payload: LogisticsNotificationPayload
@@ -60,15 +88,45 @@ export async function enqueueLogisticsNotification(
   job.markModified('pickups');
   await job.save();
 
+  const variables = {
+    ...(await buildNotificationVariables(job, pickup, payload.actorUserId)),
+    ...payload.metadata,
+  };
+
+  const actorEmail = payload.actorUserId ? await getActorEmail(payload.actorUserId) : undefined;
+
+  let sent = false;
+  let mailSkippedReason: string | undefined;
+
+  if (resolved.length > 0) {
+    const mailResult = await sendTemplatedEmail({
+      templateKey: payload.kind,
+      to: resolved,
+      variables,
+      actorUserId: payload.actorUserId,
+      actorEmail,
+    });
+    sent = mailResult.sent;
+    mailSkippedReason = mailResult.skipped ? mailResult.reason : undefined;
+
+    if (mailResult.sent) {
+      await markLogisticsNotificationSent(payload.jobId, payload.pickupId, payload.kind);
+    }
+  } else {
+    mailSkippedReason = 'No recipients';
+  }
+
   return {
     queued: true,
+    sent,
     kind: payload.kind,
     pickupReference: pickup.reference,
     pendingKinds: pickup.notifications.pendingKinds ?? [],
+    mailSkippedReason,
   };
 }
 
-/** Mark notification as sent (call from future mail worker). */
+/** Mark notification as sent after successful mail delivery. */
 export async function markLogisticsNotificationSent(
   jobId: Types.ObjectId,
   pickupId: Types.ObjectId,

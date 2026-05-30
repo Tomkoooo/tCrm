@@ -18,7 +18,10 @@ import {
   provisionUserWithEmployee,
   upsertEmployeeForUser,
   removeEmployeeLinkForUser,
+  createAndSendInvitation,
+  issuePasswordReset,
 } from '@crm/core';
+import { inviteUserSchema } from '@crm/lib/validation';
 import {
   createUserSchema,
   updateUserSchema,
@@ -270,6 +273,93 @@ export async function getUsersEditorData() {
       group: p.group,
     })),
   };
+}
+
+export async function inviteUserAction(
+  _prev: UserFormState,
+  formData: FormData
+): Promise<UserFormState> {
+  const actor = await requirePermission('mail:send');
+  if (!actor) return { success: false, message: 'Nincs bejelentkezve.' };
+  await connectDB();
+
+  const roleIds = formData.getAll('roleIds').map(String).filter(Boolean);
+  const directPermissionKeys = formData.getAll('directPermissionKeys').map(String).filter(Boolean);
+
+  const parsed = inviteUserSchema.safeParse({
+    name: formData.get('name'),
+    email: formData.get('email'),
+    roleIds,
+    directPermissionKeys,
+    companyId: formData.get('companyId') || undefined,
+    isEmployee: formData.get('isEmployee') === 'on' || formData.get('isEmployee') === 'true',
+    employeeNumber: formData.get('employeeNumber') || undefined,
+    department: formData.get('department') || undefined,
+    phone: formData.get('phone') || undefined,
+    hrNotes: formData.get('hrNotes') || undefined,
+    expiresInDays: formData.get('expiresInDays') || 7,
+  });
+
+  if (!parsed.success) {
+    return { success: false, fieldErrors: zodToFieldErrors(parsed.error.issues) };
+  }
+
+  const roleError = await validateRoleIds(parsed.data.roleIds);
+  if (roleError) return { success: false, message: roleError };
+
+  const companyIdRaw = parsed.data.companyId?.trim();
+  if (parsed.data.isEmployee && companyIdRaw && !mongoose.Types.ObjectId.isValid(companyIdRaw)) {
+    return { success: false, message: 'Érvénytelen cég.' };
+  }
+
+  try {
+    const roleObjectIds = parsed.data.roleIds
+      .filter((id) => mongoose.Types.ObjectId.isValid(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
+
+    await createAndSendInvitation({
+      name: parsed.data.name,
+      email: parsed.data.email,
+      roleIds: roleObjectIds,
+      directPermissionKeys: parsed.data.directPermissionKeys,
+      companyId:
+        parsed.data.isEmployee && companyIdRaw
+          ? new mongoose.Types.ObjectId(companyIdRaw)
+          : undefined,
+      isEmployee: parsed.data.isEmployee,
+      employeeNumber: parsed.data.employeeNumber,
+      department: parsed.data.department,
+      phone: parsed.data.phone,
+      hrNotes: parsed.data.hrNotes,
+      invitedBy: new mongoose.Types.ObjectId(actor.id),
+      expiresInDays: parsed.data.expiresInDays,
+    });
+
+    revalidatePath('/admin/users');
+    return { success: true, message: 'Meghívó elküldve.' };
+  } catch (e) {
+    return { success: false, message: e instanceof Error ? e.message : 'Hiba történt.' };
+  }
+}
+
+export async function sendPasswordResetAction(userId: string): Promise<UserFormState> {
+  const actor = await requirePermission('mail:send');
+  if (!actor) return { success: false, message: 'Nincs bejelentkezve.' };
+  await connectDB();
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return { success: false, message: 'Érvénytelen azonosító.' };
+  }
+
+  try {
+    await issuePasswordReset(
+      new mongoose.Types.ObjectId(userId),
+      new mongoose.Types.ObjectId(actor.id)
+    );
+    return { success: true, message: 'Jelszó-visszaállító e-mail elküldve.' };
+  } catch (e) {
+    return { success: false, message: e instanceof Error ? e.message : 'Hiba történt.' };
+  }
 }
 
 export async function getUserForEdit(userId: string) {

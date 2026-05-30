@@ -118,7 +118,22 @@ Grids: stats `lg:grid-cols-4`, cards `lg:grid-cols-3`, filters `md:grid-cols-5`.
 
 ---
 
-## 8. RBAC Enforcement
+## 8. Mail & notifications
+
+When a feature must notify users by email:
+
+1. Add or extend a `MailTemplate` in [`packages/db/src/seed-templates-data.ts`](../packages/db/src/seed-templates-data.ts) (unique `key`).
+2. Run seed (missing templates only) or set `SEED_OVERWRITE_TEMPLATES=1` to refresh copy.
+3. From `@crm/core`, call `sendTemplatedEmail({ templateKey, to, variables, actorUserId })` — never call Nodemailer from `apps/crm`.
+4. Set `Reply-To` via `actorUserId` / `actorEmail` (the user whose action triggered the mail).
+5. Optional admin overrides: `recipientRoleKeys` / `recipientUserIds` on the template (editable at `/admin/mail-templates`).
+6. Logistics pickup events: use `enqueueLogisticsNotification` — template key must match `LogisticsNotificationKind`.
+
+Permissions: `mail:manage` (templates), `mail:send` (invites, password reset).
+
+---
+
+## 9. RBAC Enforcement
 
 1. **Middleware** — session cookie / JWT validation
 2. **Layouts** — `requirePermission('key')` → `notFound()`
@@ -134,7 +149,7 @@ Grids: stats `lg:grid-cols-4`, cards `lg:grid-cols-3`, filters `md:grid-cols-5`.
 
 ---
 
-## 9. Dynamic DataTable & EntitySheet (mandatory)
+## 10. Dynamic DataTable & EntitySheet (mandatory)
 
 All **list / tabular UI** must use `@crm/ui` **`DataTable`** with `ColumnDef<T>` metadata. Panels (filters, sort, columns, create, row preview) use **`EntitySheet`**.
 
@@ -149,7 +164,7 @@ Do **not** add new raw shadcn `Table` list views. Exceptions: documented in [ARC
 
 ---
 
-## 10. Testing & Quality
+## 11. Testing & Quality
 
 - Unit tests for utils, validation schemas, permission helpers
 - Server Action schema tests (no real Mongo in CI)
@@ -158,7 +173,7 @@ Do **not** add new raw shadcn `Table` list views. Exceptions: documented in [ARC
 
 ---
 
-## 11. Anti-patterns
+## 12. Anti-patterns
 
 | Don't | Do instead |
 |-------|------------|
@@ -172,7 +187,7 @@ Do **not** add new raw shadcn `Table` list views. Exceptions: documented in [ARC
 
 ---
 
-## 12. Development Workflow
+## 13. Development Workflow
 
 1. Create feature branch from `main`
 2. Implement complete vertical slice
@@ -181,7 +196,7 @@ Do **not** add new raw shadcn `Table` list views. Exceptions: documented in [ARC
 
 ---
 
-## 13. Source of Truth Files
+## 14. Source of Truth Files
 
 | Pattern | File |
 |---------|------|
@@ -191,6 +206,8 @@ Do **not** add new raw shadcn `Table` list views. Exceptions: documented in [ARC
 | Sidebar | `apps/crm/src/components/app-sidebar.tsx` |
 | Header | `apps/crm/src/components/app-header.tsx` |
 | RBAC seed | `packages/db/src/seed.ts` |
+| Mail templates seed | `packages/db/src/seed-templates-data.ts` |
+| Mail send API | `packages/core/src/mail/mailer.ts` |
 | Auth config | `packages/auth/src/config.ts` |
 | shadcn config | `apps/crm/components.json` |
 

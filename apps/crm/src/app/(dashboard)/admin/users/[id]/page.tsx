@@ -1,12 +1,13 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { requirePermission, requireAuth } from '@crm/auth';
+import { requirePermission, requireAuth, hasPermission } from '@crm/auth';
 import { Container } from '@crm/ui';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getUserForEdit, getUsersEditorData } from '../actions';
 import { UserForm } from '../_components/user-form';
+import { SendResetEmailButton } from '../_components/send-reset-email-button';
 
 export default async function EditUserPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePermission('users:write');
@@ -14,7 +15,11 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
   if (!current) return null;
   const { id } = await params;
 
-  const [user, editorData] = await Promise.all([getUserForEdit(id), getUsersEditorData()]);
+  const [user, editorData, canSendMail] = await Promise.all([
+    getUserForEdit(id),
+    getUsersEditorData(),
+    hasPermission('mail:send'),
+  ]);
   if (!user) return notFound();
 
   return (
@@ -30,9 +35,12 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
             {user.isLastActiveAdmin && <Badge variant="outline">Utolsó aktív admin</Badge>}
           </div>
         </div>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/admin/users">Vissza a listához</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {canSendMail && <SendResetEmailButton userId={id} />}
+          <Button asChild variant="outline" size="sm">
+            <Link href="/admin/users">Vissza a listához</Link>
+          </Button>
+        </div>
       </div>
 
       <Card>

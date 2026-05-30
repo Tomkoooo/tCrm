@@ -22,7 +22,9 @@ import {
   UserIcon,
   TagsIcon,
   ImagesIcon,
+  PaletteIcon,
   KeyRoundIcon,
+  MailIcon,
   CalculatorIcon,
   CalendarDaysIcon,
   ClipboardCheckIcon,
@@ -52,6 +54,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
+import { useBranding } from '@/components/branding-provider';
 import { getInitials } from '@/lib/utils';
 import { SidebarNavGroup, type SidebarNavItem } from '@/components/sidebar-nav-group';
 
@@ -82,6 +85,7 @@ export function MenuItem({
 
 export function AppSidebar() {
   const { user, isLoading } = useAuth();
+  const branding = useBranding();
   const { setOpenMobile } = useSidebar();
 
   const linkClick = useCallback(() => {
@@ -235,6 +239,13 @@ export function AppSidebar() {
         label: 'Szerepkörök',
       });
     }
+    if (hasPermission('mail:manage')) {
+      items.push({
+        href: '/admin/mail-templates',
+        icon: <MailIcon className="h-4 w-4" />,
+        label: 'E-mail sablonok',
+      });
+    }
     if (hasPermission('warehouses:read')) {
       items.push({
         href: '/admin/warehouses',
@@ -249,15 +260,27 @@ export function AppSidebar() {
         label: 'Médiatár',
       });
     }
+    items.push({
+      href: '/admin/branding',
+      icon: <PaletteIcon className="h-4 w-4" />,
+      label: 'Arculat',
+    });
     return items;
   }, [user?.permissions]);
 
   return (
     <Sidebar className="max-w-full">
       <SidebarHeader className="flex flex-row items-center gap-2 p-4">
-        <div className="flex flex-col gap-0.5">
-          <span className="truncate font-medium leading-none">tCrm</span>
-          <span className="text-muted-foreground truncate text-xs">Belső CRM</span>
+        {branding.logoUrl ? (
+          <img
+            src={branding.logoUrl}
+            alt={branding.appName}
+            className="size-8 shrink-0 rounded-md object-contain"
+          />
+        ) : null}
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="truncate font-medium leading-none">{branding.appName}</span>
+          <span className="text-muted-foreground truncate text-xs">{branding.companyName}</span>
         </div>
       </SidebarHeader>
       <SidebarContent>

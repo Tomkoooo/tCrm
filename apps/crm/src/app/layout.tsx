@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { SessionProvider } from 'next-auth/react';
+import { getBranding } from '@crm/db';
 import './globals.css';
 import DvhVarSetter from '@/components/dvh-var-setter';
 import { ThemeProvider } from '@/components/theme-provider';
+import { BrandingProvider } from '@/components/branding-provider';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -15,16 +17,26 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-export const metadata: Metadata = {
-  title: 'tCrm — Internal CRM',
-  description: 'Internal CRM and operations platform',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const branding = await getBranding();
+  const faviconUrl = branding.faviconId ? `/api/uploads/${branding.faviconId}` : '/favicon.ico';
+  return {
+    title: {
+      default: branding.appName,
+      template: `%s — ${branding.appName}`,
+    },
+    description: branding.loginSubtitle,
+    icons: { icon: faviconUrl },
+  };
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const branding = await getBranding();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <DvhVarSetter />
@@ -37,7 +49,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <SessionProvider>{children}</SessionProvider>
+          <BrandingProvider branding={branding}>
+            <SessionProvider>{children}</SessionProvider>
+          </BrandingProvider>
         </ThemeProvider>
       </body>
     </html>

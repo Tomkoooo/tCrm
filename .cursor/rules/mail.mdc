@@ -1,0 +1,43 @@
+---
+description: Mail templates, SMTP, invitations, and notification triggers
+globs:
+  - packages/core/src/mail/**
+  - packages/db/src/models/MailTemplate.ts
+  - packages/db/src/seed-templates-data.ts
+  - apps/crm/src/app/**/mail-templates/**
+  - apps/crm/src/app/**/register/invite/**
+  - apps/crm/src/app/**/reset-password/**
+---
+
+# Mail service
+
+## Sending mail
+
+- Use `sendTemplatedEmail` from `@crm/core` only (not Nodemailer in apps).
+- `templateKey` must match a `MailTemplate.key` in MongoDB.
+- Pass `actorUserId` or `actorEmail` so **Reply-To** is the user who triggered the action.
+- Variables use `{{name}}` placeholders; list them in `MailTemplate.variables` when adding templates.
+
+## New notification types
+
+1. Add baseline row in `packages/db/src/seed-templates-data.ts`.
+2. Call `seedMailTemplates()` (or full `pnpm seed`) — default is seed-missing only.
+3. Invoke `sendTemplatedEmail` or `enqueueLogisticsNotification` from `@crm/core`.
+
+## Logistics
+
+Notification kind === template key (`pickup_ready_for_collection`, etc.). Recipients: pickup contacts + warehouse assignees + team + template role/user overrides.
+
+## Auth flows
+
+- Invite: `createAndSendInvitation` → `/register/invite?token=` → `acceptInvitation` → client `signIn`.
+- Reset: `issuePasswordReset` from admin (`mail:send`) → `/reset-password?token=`.
+
+## Permissions
+
+- `mail:manage` — edit templates at `/admin/mail-templates`
+- `mail:send` — invitations and password reset emails
+
+## Env
+
+`SMTP_*`, `APP_URL` (or `AUTH_URL`) — see `.env.example`.

@@ -21,9 +21,14 @@ export default async function NewUserPage() {
             Fiók, szerepkörök és opcionális dolgozói profil egy lépésben.
           </p>
         </div>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/admin/users">Vissza a listához</Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/admin/users/invite">Meghívó e-mail</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/admin/users">Vissza a listához</Link>
+          </Button>
+        </div>
       </div>
 
       <Card>

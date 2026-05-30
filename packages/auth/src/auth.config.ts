@@ -32,7 +32,9 @@ export const edgeAuthConfig = {
     }) {
       const isLoggedIn = !!auth?.user;
       const isAuthPage =
-        nextUrl.pathname.startsWith('/login') || nextUrl.pathname.startsWith('/register');
+        nextUrl.pathname.startsWith('/login') ||
+        nextUrl.pathname.startsWith('/register') ||
+        nextUrl.pathname.startsWith('/reset-password');
       const isSetupPage = nextUrl.pathname.startsWith('/setup');
 
       if (isAuthPage) {

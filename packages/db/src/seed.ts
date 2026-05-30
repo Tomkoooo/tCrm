@@ -1,9 +1,11 @@
 import bcrypt from 'bcryptjs';
 import { connectDB } from './connection';
+import { MailTemplate } from './models/MailTemplate';
 import { Permission } from './models/Permission';
 import { Role } from './models/Role';
 import { User } from './models/User';
 import { Warehouse } from './models/Warehouse';
+import { BASELINE_MAIL_TEMPLATES } from './seed-templates-data';
 
 const BASELINE_PERMISSIONS = [
   {
@@ -230,6 +232,20 @@ const BASELINE_PERMISSIONS = [
     description: 'View own schedule and submit requests',
     isSystem: true,
   },
+  {
+    key: 'mail:manage',
+    label: 'Manage Mail Templates',
+    group: 'admin',
+    description: 'Edit email templates and notification rules',
+    isSystem: true,
+  },
+  {
+    key: 'mail:send',
+    label: 'Send System Mail',
+    group: 'admin',
+    description: 'Trigger invitation and password reset emails',
+    isSystem: true,
+  },
 ];
 
 const BASELINE_ROLES = [
@@ -290,6 +306,7 @@ const BASELINE_ROLES = [
       'hr:scope_all',
       'users:read',
       'users:write',
+      'mail:send',
     ],
     isSystem: true,
   },
@@ -301,6 +318,48 @@ const BASELINE_ROLES = [
     isSystem: true,
   },
 ];
+
+export type SeedMailTemplatesOptions = {
+  /** When true, overwrite existing templates. Default: false (seed missing only). */
+  overwrite?: boolean;
+};
+
+/** Insert baseline mail templates; skips existing keys unless overwrite is set. */
+export async function seedMailTemplates(options: SeedMailTemplatesOptions = {}): Promise<void> {
+  await connectDB();
+  const overwrite = options.overwrite ?? process.env.SEED_OVERWRITE_TEMPLATES?.trim() === '1';
+
+  for (const tpl of BASELINE_MAIL_TEMPLATES) {
+    const existing = await MailTemplate.findOne({ key: tpl.key }).exec();
+    if (existing && !overwrite) {
+      continue;
+    }
+    if (existing && overwrite) {
+      existing.subject = tpl.subject;
+      existing.body = tpl.body;
+      existing.description = tpl.description;
+      existing.variables = tpl.variables;
+      existing.enabled = tpl.enabled;
+      existing.recipientRoleKeys = tpl.recipientRoleKeys ?? [];
+      existing.isActive = true;
+      await existing.save();
+      console.log(`  Updated mail template: ${tpl.key}`);
+    } else if (!existing) {
+      await MailTemplate.create({
+        key: tpl.key,
+        subject: tpl.subject,
+        body: tpl.body,
+        description: tpl.description,
+        variables: tpl.variables,
+        enabled: tpl.enabled,
+        recipientRoleKeys: tpl.recipientRoleKeys ?? [],
+        recipientUserIds: [],
+        isActive: true,
+      });
+      console.log(`  Created mail template: ${tpl.key}`);
+    }
+  }
+}
 
 /** Permissions + roles required for first-run /setup (no admin user). */
 export async function ensureBaselineRbac(): Promise<void> {
@@ -339,6 +398,8 @@ export async function ensureBaselineRbac(): Promise<void> {
       });
     }
   }
+
+  await seedMailTemplates();
 }
 
 export async function seedDatabase(): Promise<void> {
@@ -427,6 +488,9 @@ export async function seedDatabase(): Promise<void> {
       console.log(`  Created warehouse: ${wh.key}`);
     }
   }
+
+  console.log('Seeding mail templates...');
+  await seedMailTemplates();
 
   console.log('Seed complete.');
 }

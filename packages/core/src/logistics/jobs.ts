@@ -218,6 +218,7 @@ export async function confirmPickupGathering(
     kind: 'pickup_gathered',
     jobId: job._id,
     pickupId: pickup._id,
+    actorUserId: userId,
   });
 
   return job;
@@ -390,6 +391,7 @@ export async function confirmPickupCheckIn(
     kind: 'pickup_checkin_complete',
     jobId: job._id,
     pickupId: pickup._id,
+    actorUserId: userId,
   });
 
   return job;

@@ -237,9 +237,11 @@ stateDiagram-v2
 | `pickup.teamMemberIds[]` | Építőcsapat — kereshető többválasztó, szerepkör szerint csoportosítva |
 | `Warehouse.assignedUserIds[]` | Raktári munkatársak (admin raktár szerkesztés); új szállításnál automatikus csapat-javaslat |
 | `logistics:scope_all` | Minden raktár szállítása; nélküle csak hozzárendelt raktár(ok) |
-| `pickup.contactEmails[]` | Értesítési címek (jövőbeli mail) |
-| `pickup.notifications.pendingKinds` | Várakozó értesítések (mail worker) |
+| `pickup.contactEmails[]` | Értesítési címek |
+| `pickup.notifications.pendingKinds` | Küldésre váró / sikertelen értesítés típusok |
 | `pickup.notifications.pendingRecipientEmails` | Feloldott címzettek (raktár staff + csapat + contact) |
+| `MailTemplate.key` | Sablon kulcs = értesítés típus (`pickup_ready_for_collection`, stb.) |
+| `sendTemplatedEmail` | `@crm/core` — SMTP + sablon + `Reply-To` = műveletet indító user |
 | `pickup.documents.*` | PDF meta (csomaglista, visszáru) |
 | `buildLogisticsPickupDocument` | Sablon JSON PDF generáláshoz |
 | Összeszerelés a listán | Prebuild sor összecsukható alkatrészlista (raktár + építő UI, PDF payload) |
@@ -330,7 +332,26 @@ flowchart TD
   edit --> direct[Közvetlen jogok]
   edit --> deactivate[Inaktiválás — nem törlés]
   rolesAdmin[Szerepkörök /admin/permissions] --> collapsible[Összecsukható szerepkör kártyák]
+  brandingAdmin[Admin → Arculat /admin/branding] --> brandingForm[Alkalmazásnév logó favicon]
+  brandingForm --> mediaLib[Médiatár MediaSelector]
+  brandingForm --> dbBranding[(Branding dokumentum)]
 ```
+
+### Arculat (branding)
+
+| Mező | Hatás |
+|------|--------|
+| `appName` | Oldalsáv, böngésző cím |
+| `companyName` | Oldalsáv alcím |
+| `logoId` | Oldalsáv + bejelentkezés |
+| `faviconId` | Böngésző ikon (`/api/uploads/{id}`) |
+| `loginBackgroundId` | Bejelentkezési háttér |
+| `loginTitle` / `loginSubtitle` | Bejelentkezési kártya |
+| `footerText` | Bejelentkezés / regisztráció lábléc |
+
+| Jog | Funkció |
+|-----|---------|
+| `admin:access` | `/admin/branding` szerkesztés |
 
 | Szabály | Részlet |
 |---------|---------|
@@ -343,7 +364,9 @@ flowchart TD
 |-------|---------|
 | `users:read` | Felhasználó lista |
 | `users:write` | Létrehozás, szerkesztés, inaktiválás |
+| `mail:send` | Meghívó e-mail (`/admin/users/invite`), jelszó-visszaállító e-mail |
 | `roles:manage` | Szerepkörök és jogosultságok |
+| Meghívó | `/register/invite?token=` — jelszó + automatikus bejelentkezés |
 
 ---
 
@@ -410,7 +433,39 @@ flowchart LR
 
 ---
 
-## 6. HR — beosztás, kérelmek, kimutatás
+## 14. E-mail és meghívók
+
+```mermaid
+sequenceDiagram
+  participant Admin as Admin mail:manage
+  participant Core as @crm/core mail
+  participant SMTP as Nodemailer
+  participant User as Címzett
+
+  Admin->>Core: Sablon szerkesztés DB-ben
+  Note over Core: logistics állapotváltás
+  Core->>Core: enqueueLogisticsNotification
+  Core->>Core: sendTemplatedEmail
+  Core->>SMTP: Reply-To = actor email
+  SMTP->>User: HTML sablon
+
+  Admin->>Core: createAndSendInvitation
+  Core->>User: user_invitation sablon
+  User->>User: /register/invite token
+  User->>User: acceptInvitation + auto login
+```
+
+| Kulcs / jog | Jelentés |
+|-------------|----------|
+| `mail:manage` | Sablonok szerkesztése `/admin/mail-templates` |
+| `mail:send` | Meghívó és jelszó-visszaállító e-mail |
+| `user_invitation` | Meghívó sablon |
+| `password_reset` | Jelszó-visszaállítás sablon |
+| `pnpm seed` | Hiányzó sablonok beszúrása (`SEED_OVERWRITE_TEMPLATES=1` felülírás) |
+
+---
+
+## 15. HR — beosztás, kérelmek, kimutatás
 
 ```mermaid
 sequenceDiagram
@@ -440,4 +495,4 @@ Részletek: [`hr.md`](./hr.md).
 
 ---
 
-*Utolsó frissítés: 2026-05 — **HR modul:** cégek, dolgozók, beosztás, kérelmek, havi kimutatás XLSX.*
+*Utolsó frissítés: 2026-05 — **Arculat:** `/admin/branding` — alkalmazásnév, logó, favicon, bejelentkezési háttér és szövegek (Médiatár).*

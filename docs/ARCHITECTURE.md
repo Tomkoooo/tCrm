@@ -147,7 +147,29 @@ No code change needed for **assignment** — only for **new keys**.
 
 ---
 
-## 7. Data Layer
+## 7. Mail service
+
+Database-driven templates (`MailTemplate`) sent via Nodemailer (`@crm/core`).
+
+| Piece | Location |
+|-------|----------|
+| Models | `MailTemplate`, `UserInvitation`; `User.resetToken*` |
+| Send API | `sendTemplatedEmail({ templateKey, to, variables, actorUserId })` |
+| Logistics | `enqueueLogisticsNotification` → template key = notification kind |
+| Invites | `createAndSendInvitation` → `/register/invite?token=` |
+| Password reset | `issuePasswordReset` → `/reset-password?token=` |
+| Admin UI | `/admin/mail-templates` (`mail:manage`) |
+| Seed | `seedMailTemplates()` — missing only; `SEED_OVERWRITE_TEMPLATES=1` to overwrite |
+
+**Reply-To:** always the user who triggered the action (`actorUserId` / `actorEmail`), else `SMTP_FROM`.
+
+**Env:** `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_SECURE`, optional `APP_URL`.
+
+When adding user-visible notifications, add a baseline template in `packages/db/src/seed-templates-data.ts`, seed it, and call `sendTemplatedEmail` from `@crm/core` — do not send raw mail from apps.
+
+---
+
+## 8. Data Layer
 
 - **Connection:** Singleton in `packages/db/src/connection.ts`
 - **Models:** `packages/db/src/models/`
@@ -157,7 +179,7 @@ No code change needed for **assignment** — only for **new keys**.
 
 ---
 
-## 8. Server Actions Pattern
+## 9. Server Actions Pattern
 
 ```typescript
 'use server';
@@ -181,7 +203,7 @@ Client forms use `useActionState(action, initialState)`.
 
 ---
 
-## 9. Application shell & navigation
+## 10. Application shell & navigation
 
 The CRM uses a **collapsible sidebar** (`apps/crm/src/components/app-sidebar.tsx`) built on shadcn `Sidebar` + Radix `Collapsible` via `SidebarNavGroup`.
 
@@ -193,7 +215,7 @@ The CRM uses a **collapsible sidebar** (`apps/crm/src/components/app-sidebar.tsx
 | Értékesítés | `/offers`, `/builds` | `offers:read`, `inventory:read` |
 | Könyvelés és HR | `/accounting`, `/accounting/companies`, `/accounting/employees`, `/accounting/schedule`, `/accounting/requests`, `/accounting/reports`, `/accounting/my` | `accounting:*`, `hr:*` (see [`hr.md`](./hr.md)) |
 | Beállítások | `/account`, `/secrets` (Titoktár) | authenticated; `secrets:read` |
-| Adminisztráció | `/admin/users`, `/admin/permissions`, `/admin/warehouses` | `admin:access` + module keys |
+| Adminisztráció | `/admin/users`, `/admin/permissions`, `/admin/warehouses`, `/admin/mail-templates`, `/admin/branding` | `admin:access` + module keys; `mail:manage` |
 
 Groups expand/collapse independently; the active route’s group opens by default. Breadcrumb labels are localized in `app-header.tsx` (`translateSegment`).
 
@@ -232,13 +254,13 @@ Agents and contributors: follow [`.cursor/rules/flows-documentation.mdc`](../.cu
 
 ---
 
-## 10. Design System
+## 11. Design System
 
 See [design.md](./design.md) for tokens, typography, layout shell, and component patterns.
 
 ---
 
-## 11. Testing Strategy
+## 12. Testing Strategy
 
 | Layer | Tool | CI |
 |-------|------|-----|
@@ -250,7 +272,7 @@ See [design.md](./design.md) for tokens, typography, layout shell, and component
 
 ---
 
-## 12. CI/CD & Deployment
+## 13. CI/CD & Deployment
 
 ```mermaid
 flowchart LR
@@ -272,7 +294,7 @@ docker compose -f docker/docker-compose.yml up
 
 ---
 
-## 13. Future Plans
+## 14. Future Plans
 
 | Phase | Scope |
 |-------|-------|
@@ -282,7 +304,7 @@ docker compose -f docker/docker-compose.yml up
 
 ---
 
-## 14. Architectural Decision Records
+## 15. Architectural Decision Records
 
 ### ADR-001: Auth.js v5 over custom JWT
 

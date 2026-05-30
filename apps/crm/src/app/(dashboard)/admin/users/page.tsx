@@ -85,9 +85,14 @@ export default async function UsersPage({
           </p>
         </div>
         {canManage && (
-          <Button asChild>
-            <Link href="/admin/users/new">Új felhasználó</Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button asChild variant="outline">
+              <Link href="/admin/users/invite">Meghívó</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/admin/users/new">Új felhasználó</Link>
+            </Button>
+          </div>
         )}
       </div>
 

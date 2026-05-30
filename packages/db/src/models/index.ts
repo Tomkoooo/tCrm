@@ -55,3 +55,6 @@ export {
   type HrRequestStatus,
 } from './HrRequest';
 export { MonthlyWorkSummary, type IMonthlyWorkSummary } from './MonthlyWorkSummary';
+export { MailTemplate, type IMailTemplate } from './MailTemplate';
+export { UserInvitation, type IUserInvitation } from './UserInvitation';
+export { Branding, type IBranding } from './Branding';

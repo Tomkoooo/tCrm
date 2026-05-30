@@ -10,6 +10,8 @@ export interface IUser extends Document {
   roleIds: Types.ObjectId[];
   directPermissionKeys: string[];
   isActive: boolean;
+  resetToken?: string;
+  resetTokenExpires?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -24,6 +26,8 @@ const UserSchema = new Schema<IUser>(
     roleIds: [{ type: Schema.Types.ObjectId, ref: 'Role' }],
     directPermissionKeys: [{ type: String }],
     isActive: { type: Boolean, default: true },
+    resetToken: { type: String },
+    resetTokenExpires: { type: Date },
   },
   { timestamps: true }
 );
