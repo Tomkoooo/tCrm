@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import mongoose from 'mongoose';
-import { requirePermission, requireAnyPermission } from '@crm/auth';
+import { requireAnyPermission } from '@crm/auth';
 import { reviewHrRequest } from '@crm/core';
 import { HR_READ_PERMISSION_KEYS, HR_APPROVE_PERMISSION_KEYS } from '@crm/lib';
 import type { HrFormState } from '../_components/form-utils';

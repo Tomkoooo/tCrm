@@ -1,5 +1,5 @@
 import { requireAnyPermission } from '@crm/auth';
-import { connectDB, Employee, Company } from '@crm/db';
+import { connectDB, Employee } from '@crm/db';
 import { buildCompanyFilter } from '@crm/core';
 import { HR_READ_PERMISSION_KEYS } from '@crm/lib';
 import { Container, parseDataTableQuery, buildDataTableMongoQuery } from '@crm/ui';

@@ -21,7 +21,7 @@ export async function fetchScheduleEventsAction(params: {
   companyId?: string;
 }) {
   await requireAnyPermission([...HR_READ_PERMISSION_KEYS]);
-  const { userId, permissions, allowedCompanyIds } = await getHrSessionScope();
+  const { allowedCompanyIds } = await getHrSessionScope();
 
   const entries = await listScheduleEntries({
     start: new Date(params.start),

@@ -43,10 +43,14 @@ function toBrandingSettings(doc: {
 }
 
 export async function getBranding(): Promise<BrandingSettings> {
-  await connectDB();
-  const doc = await Branding.findOne().lean().exec();
-  if (!doc) return { ...DEFAULT_BRANDING };
-  return toBrandingSettings(doc);
+  try {
+    await connectDB();
+    const doc = await Branding.findOne().lean().exec();
+    if (!doc) return { ...DEFAULT_BRANDING };
+    return toBrandingSettings(doc);
+  } catch {
+    return { ...DEFAULT_BRANDING };
+  }
 }
 
 export type UpdateBrandingInput = Partial<

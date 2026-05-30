@@ -7,6 +7,9 @@ import DvhVarSetter from '@/components/dvh-var-setter';
 import { ThemeProvider } from '@/components/theme-provider';
 import { BrandingProvider } from '@/components/branding-provider';
 
+/** CRM pages use MongoDB — never prerender at build (CI/Docker have no database). */
+export const dynamic = 'force-dynamic';
+
 const geistSans = Geist({
   variable: '--font-geist-sans',
   subsets: ['latin'],

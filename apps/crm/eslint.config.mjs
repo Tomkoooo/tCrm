@@ -4,6 +4,6 @@ import baseConfig from '@crm/eslint-config/base';
 export default [
   ...baseConfig,
   {
-    ignores: ['.next/**', 'next-env.d.ts'],
+    ignores: ['.next/**', 'next-env.d.ts', 'e2e/**'],
   },
 ];
