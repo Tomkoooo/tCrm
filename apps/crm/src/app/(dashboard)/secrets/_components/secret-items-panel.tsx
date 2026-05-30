@@ -2,7 +2,7 @@
 
 import { useActionState, useCallback, useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { CopyIcon, EyeIcon, EyeOffIcon, Trash2Icon } from 'lucide-react';
+import { CopyIcon, EyeIcon, EyeOffIcon, PencilIcon, Trash2Icon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,7 @@ import {
   revealSecretValueAction,
   type SecretFormState,
 } from '../actions';
+import { EditSecretItemSheet } from './edit-secret-item-sheet';
 
 export type SecretItemRow = {
   id: string;
@@ -37,12 +38,16 @@ const MASK = '••••••••••••';
 function ValuePreview({ text, multiline }: { text: string; multiline: boolean }) {
   if (multiline) {
     return (
-      <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-words font-mono text-xs">
+      <pre className="max-h-32 max-w-full overflow-auto whitespace-pre-wrap break-all font-mono text-xs leading-relaxed">
         {text}
       </pre>
     );
   }
-  return <span className="font-mono text-sm">{text}</span>;
+  return (
+    <span className="wrap-anywhere block max-w-full break-all font-mono text-sm leading-relaxed">
+      {text}
+    </span>
+  );
 }
 
 export function SecretItemsPanel({
@@ -56,6 +61,7 @@ export function SecretItemsPanel({
 }) {
   const router = useRouter();
   const [addOpen, setAddOpen] = useState(false);
+  const [editItem, setEditItem] = useState<SecretItemRow | null>(null);
   const [valueFormat, setValueFormat] = useState<SecretValueFormat>('single');
   const [revealed, setRevealed] = useState<Record<string, string>>({});
   const [pendingReveal, setPendingReveal] = useState<Record<string, boolean>>({});
@@ -75,6 +81,17 @@ export function SecretItemsPanel({
       toast.error(addState.message);
     }
   }, [addState, router]);
+
+  const closeEdit = () => {
+    if (editItem) {
+      setRevealed((r) => {
+        const next = { ...r };
+        delete next[editItem.id];
+        return next;
+      });
+    }
+    setEditItem(null);
+  };
 
   const fetchValue = useCallback(
     async (itemId: string): Promise<string | null> => {
@@ -150,14 +167,14 @@ export function SecretItemsPanel({
         )}
       </div>
 
-      <Table>
+      <Table className="table-fixed">
         <TableHeader>
           <TableRow>
-            <TableHead>Kulcs</TableHead>
-            <TableHead>Típus</TableHead>
-            <TableHead>Érték</TableHead>
-            <TableHead>Leírás</TableHead>
-            <TableHead className="w-[120px]" />
+            <TableHead className="w-[18%]">Kulcs</TableHead>
+            <TableHead className="w-[10%]">Típus</TableHead>
+            <TableHead className="w-[38%]">Érték</TableHead>
+            <TableHead className="w-[22%]">Leírás</TableHead>
+            <TableHead className="w-[12%]" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -173,21 +190,23 @@ export function SecretItemsPanel({
                 item.valueFormat === 'multiline' || (revealed[item.id]?.includes('\n') ?? false);
               return (
                 <TableRow key={item.id}>
-                  <TableCell className="font-mono text-sm">{item.key}</TableCell>
-                  <TableCell className="text-muted-foreground text-xs">
+                  <TableCell className="whitespace-normal break-all align-top font-mono text-sm">
+                    {item.key}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground whitespace-normal align-top text-xs">
                     {item.valueFormat === 'multiline' ? 'Többsoros' : 'Egysoros'}
                   </TableCell>
-                  <TableCell className="max-w-md align-top">
+                  <TableCell className="min-w-0 whitespace-normal align-top">
                     {revealed[item.id] ? (
                       <ValuePreview text={revealed[item.id]} multiline={multiline} />
                     ) : (
                       <span className="font-mono text-sm">{MASK}</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
+                  <TableCell className="text-muted-foreground wrap-break-word whitespace-normal align-top text-sm">
                     {item.description ?? '—'}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="align-top">
                     <div className="flex justify-end gap-1">
                       <Button
                         type="button"
@@ -214,16 +233,28 @@ export function SecretItemsPanel({
                         <CopyIcon className="h-4 w-4" />
                       </Button>
                       {canWrite && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          title="Törlés"
-                          disabled={isPending}
-                          onClick={() => handleDelete(item.id)}
-                        >
-                          <Trash2Icon className="h-4 w-4" />
-                        </Button>
+                        <>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            title="Szerkesztés"
+                            disabled={isPending}
+                            onClick={() => setEditItem(item)}
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            title="Törlés"
+                            disabled={isPending}
+                            onClick={() => handleDelete(item.id)}
+                          >
+                            <Trash2Icon className="h-4 w-4" />
+                          </Button>
+                        </>
                       )}
                     </div>
                   </TableCell>
@@ -308,6 +339,17 @@ export function SecretItemsPanel({
             </Button>
           </form>
         </EntitySheet>
+      )}
+
+      {canWrite && editItem && (
+        <EditSecretItemSheet
+          projectId={projectId}
+          item={editItem}
+          open={Boolean(editItem)}
+          onOpenChange={(open) => {
+            if (!open) closeEdit();
+          }}
+        />
       )}
     </div>
   );

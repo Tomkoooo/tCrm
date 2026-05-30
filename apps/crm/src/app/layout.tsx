@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { SessionProvider } from 'next-auth/react';
+import { auth } from '@crm/auth';
 import { getBranding } from '@crm/db';
 import './globals.css';
 import DvhVarSetter from '@/components/dvh-var-setter';
@@ -39,6 +40,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const branding = await getBranding();
+  const session = await auth();
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -53,7 +55,7 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <BrandingProvider branding={branding}>
-            <SessionProvider>{children}</SessionProvider>
+            <SessionProvider session={session}>{children}</SessionProvider>
           </BrandingProvider>
         </ThemeProvider>
       </body>

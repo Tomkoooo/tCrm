@@ -58,6 +58,13 @@ import { useBranding } from '@/components/branding-provider';
 import { getInitials } from '@/lib/utils';
 import { SidebarNavGroup, type SidebarNavItem } from '@/components/sidebar-nav-group';
 
+type SidebarUser = {
+  id: string;
+  email: string;
+  name: string;
+  permissions: string[];
+};
+
 export function MenuItem({
   href,
   icon,
@@ -83,8 +90,10 @@ export function MenuItem({
   );
 }
 
-export function AppSidebar() {
-  const { user, isLoading } = useAuth();
+export function AppSidebar({ serverUser }: { serverUser?: SidebarUser }) {
+  const { user: clientUser, isLoading } = useAuth();
+  const user = clientUser ?? serverUser ?? null;
+  const authLoading = isLoading && !user;
   const branding = useBranding();
   const { setOpenMobile } = useSidebar();
 
@@ -341,7 +350,7 @@ export function AppSidebar() {
         )}
       </SidebarContent>
       <SidebarFooter>
-        {isLoading ? (
+        {authLoading ? (
           <div className="flex h-9 w-full flex-row items-center justify-between">
             <div className="flex h-full w-full flex-row items-center gap-2">
               <Skeleton className="aspect-square w-9 rounded-full" />

@@ -14,6 +14,7 @@ import {
 import { decryptSecret, encryptSecret } from '@crm/lib/utils';
 import {
   secretItemSchema,
+  secretItemUpdateSchema,
   secretProjectAccessSchema,
   secretProjectSchema,
 } from '@crm/lib/validation';
@@ -82,6 +83,39 @@ export async function createSecretProjectAction(
     message: 'Titok projekt létrehozva.',
     id: project._id.toString(),
   };
+}
+
+export async function updateSecretProjectAction(
+  projectId: string,
+  _prev: SecretFormState,
+  formData: FormData
+): Promise<SecretFormState> {
+  await requirePermission('secrets:write');
+  const accessUser = await loadSecretAccessUser();
+  if (!accessUser) return { success: false, message: 'Felhasználó nem található.' };
+
+  const project = await loadProjectForAccess(projectId);
+  if (!project) return { success: false, message: 'Projekt nem található.' };
+  if (!canWriteSecretProject(accessUser, project)) {
+    return { success: false, message: 'Nincs jogosultság a projekt szerkesztéséhez.' };
+  }
+
+  const parsed = secretProjectSchema.safeParse({
+    name: formData.get('name'),
+    description: formData.get('description') || undefined,
+  });
+
+  if (!parsed.success) {
+    return { success: false, fieldErrors: zodToFieldErrors(parsed.error.issues) };
+  }
+
+  project.name = parsed.data.name;
+  project.description = parsed.data.description || undefined;
+  await project.save();
+
+  revalidatePath('/secrets');
+  revalidatePath(`/secrets/${projectId}`);
+  return { success: true, message: 'Projekt frissítve.' };
 }
 
 export async function deleteSecretProjectAction(projectId: string): Promise<SecretFormState> {
@@ -153,6 +187,67 @@ export async function addSecretItemAction(
 
   revalidatePath(`/secrets/${projectId}`);
   return { success: true, message: 'Titok hozzáadva.' };
+}
+
+export async function updateSecretItemAction(
+  projectId: string,
+  itemId: string,
+  _prev: SecretFormState,
+  formData: FormData
+): Promise<SecretFormState> {
+  await requirePermission('secrets:write');
+  const accessUser = await loadSecretAccessUser();
+  if (!accessUser) return { success: false, message: 'Felhasználó nem található.' };
+
+  const project = await loadProjectForAccess(projectId);
+  if (!project) return { success: false, message: 'Projekt nem található.' };
+  if (!canWriteSecretProject(accessUser, project)) {
+    return { success: false, message: 'Nincs jogosultság a titkok szerkesztéséhez.' };
+  }
+
+  const item = project.secrets.find((s) => s._id.toString() === itemId);
+  if (!item) return { success: false, message: 'Titok nem található.' };
+
+  const parsed = secretItemUpdateSchema.safeParse({
+    key: formData.get('key'),
+    value: formData.get('value') || undefined,
+    valueFormat: formData.get('valueFormat') === 'multiline' ? 'multiline' : 'single',
+    description: formData.get('description') || undefined,
+  });
+
+  if (!parsed.success) {
+    return { success: false, fieldErrors: zodToFieldErrors(parsed.error.issues) };
+  }
+
+  const keyLower = parsed.data.key.toLowerCase();
+  const duplicate = project.secrets.some(
+    (s) => s._id.toString() !== itemId && s.key.toLowerCase() === keyLower
+  );
+  if (duplicate) {
+    return { success: false, message: 'Ez a kulcs már létezik a projektben.' };
+  }
+
+  item.key = parsed.data.key;
+  item.valueFormat = parsed.data.valueFormat;
+  item.description = parsed.data.description || undefined;
+  item.updatedBy = new mongoose.Types.ObjectId(accessUser.id);
+  item.updatedAt = new Date();
+
+  const newValue = parsed.data.value?.trim();
+  if (newValue) {
+    try {
+      item.value = encryptSecret(newValue);
+    } catch {
+      return {
+        success: false,
+        message: 'Titkosítás sikertelen. Ellenőrizze a SECRETS_ENCRYPTION_KEY beállítást.',
+      };
+    }
+  }
+
+  await project.save();
+  revalidatePath(`/secrets/${projectId}`);
+  return { success: true, message: 'Titok frissítve.' };
 }
 
 export async function deleteSecretItemAction(
@@ -253,4 +348,29 @@ export async function updateSecretProjectAccessAction(
   revalidatePath(`/secrets/${projectId}`);
   revalidatePath('/secrets');
   return { success: true, message: 'Megosztás mentve.' };
+}
+
+export async function searchUsersForSecretAccessAction(query: string) {
+  await requirePermission('secrets:read');
+  await connectDB();
+
+  const q = query.trim();
+  if (q.length < 1) return [];
+
+  const regex = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+  const users = await User.find({
+    isActive: true,
+    $or: [{ name: regex }, { email: regex }],
+  })
+    .sort({ name: 1 })
+    .limit(20)
+    .select({ name: 1, email: 1 })
+    .lean()
+    .exec();
+
+  return users.map((u) => ({
+    value: String(u._id),
+    label: u.name || u.email,
+    sublabel: u.email,
+  }));
 }

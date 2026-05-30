@@ -26,3 +26,15 @@ export const secretProjectAccessSchema = z.object({
 export type SecretProjectInput = z.infer<typeof secretProjectSchema>;
 export type SecretItemInput = z.infer<typeof secretItemSchema>;
 export type SecretProjectAccessInput = z.infer<typeof secretProjectAccessSchema>;
+
+export const secretItemUpdateSchema = secretItemSchema
+  .extend({
+    value: z
+      .string()
+      .max(16_000, 'Az érték legfeljebb 16000 karakter')
+      .optional()
+      .or(z.literal('')),
+  })
+  .refine((data) => data.key.length > 0, { message: 'A kulcs kötelező', path: ['key'] });
+
+export type SecretItemUpdateInput = z.infer<typeof secretItemUpdateSchema>;

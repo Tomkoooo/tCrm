@@ -19,7 +19,9 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/reset-password');
   const isSetupPage = pathname.startsWith('/setup');
 
-  if (pathname.startsWith('/register') && !isPublicRegistrationEnabled()) {
+  const isInviteRegisterPage = pathname.startsWith('/register/invite');
+
+  if (pathname.startsWith('/register') && !isInviteRegisterPage && !isPublicRegistrationEnabled()) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 

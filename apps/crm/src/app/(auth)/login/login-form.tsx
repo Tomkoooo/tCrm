@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { loginAction, type LoginFormState } from './actions';
 import { Button } from '@/components/ui/button';
@@ -14,15 +15,18 @@ const initialState: LoginFormState = { success: false };
 
 export function LoginForm({ showRegisterLink = false }: { showRegisterLink?: boolean }) {
   const router = useRouter();
+  const { update } = useSession();
   const branding = useBranding();
   const [state, formAction, pending] = useActionState(loginAction, initialState);
 
   useEffect(() => {
-    if (state.success) {
-      router.push('/');
+    if (!state.success) return;
+    void (async () => {
+      await update();
       router.refresh();
-    }
-  }, [state.success, router]);
+      router.replace('/');
+    })();
+  }, [state.success, update, router]);
 
   return (
     <>

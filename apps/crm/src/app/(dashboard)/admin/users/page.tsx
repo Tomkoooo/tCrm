@@ -87,7 +87,10 @@ export default async function UsersPage({
         {canManage && (
           <div className="flex gap-2">
             <Button asChild variant="outline">
-              <Link href="/admin/users/invite">Meghívó</Link>
+              <Link href="/admin/users/invitations">Meghívók</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/admin/users/invite">Meghívó küldése</Link>
             </Button>
             <Button asChild>
               <Link href="/admin/users/new">Új felhasználó</Link>

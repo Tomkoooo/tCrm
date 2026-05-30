@@ -13,11 +13,14 @@ export async function getCurrentUser() {
   };
 }
 
-export async function requireAuth() {
+export type AuthUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
+
+export async function requireAuth(): Promise<AuthUser> {
   const user = await getCurrentUser();
   if (!user) {
     const { redirect } = await import('next/navigation');
     redirect('/login');
+    throw new Error('Unauthenticated');
   }
   return user;
 }

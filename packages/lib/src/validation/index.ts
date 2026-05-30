@@ -76,7 +76,12 @@ export {
 
 export type { VehicleInput, CreatePickupInput } from './jobs';
 
-export { secretProjectSchema, secretItemSchema, secretProjectAccessSchema } from './secrets';
+export {
+  secretProjectSchema,
+  secretItemSchema,
+  secretItemUpdateSchema,
+  secretProjectAccessSchema,
+} from './secrets';
 export type { SecretProjectInput, SecretItemInput, SecretProjectAccessInput } from './secrets';
 
 export {

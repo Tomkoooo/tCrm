@@ -11,7 +11,10 @@ export {
   findValidInvitationByToken,
   markInvitationUsed,
   createAndSendInvitation,
+  buildInviteLink,
+  getInvitationStatus,
   type CreateInvitationInput,
+  type InvitationStatus,
 } from './invitations';
 export { issuePasswordReset, findUserByResetToken, completePasswordReset } from './password-reset';
 export { acceptInvitation } from './accept-invitation';

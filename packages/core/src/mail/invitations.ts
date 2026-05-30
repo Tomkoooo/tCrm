@@ -24,6 +24,18 @@ function generateToken(): string {
   return crypto.randomBytes(32).toString('hex');
 }
 
+export function buildInviteLink(token: string): string {
+  return `${getAppUrl()}/register/invite?token=${token}`;
+}
+
+export type InvitationStatus = 'pending' | 'used' | 'expired';
+
+export function getInvitationStatus(inv: { isUsed: boolean; expiresAt: Date }): InvitationStatus {
+  if (inv.isUsed) return 'used';
+  if (inv.expiresAt < new Date()) return 'expired';
+  return 'pending';
+}
+
 export async function createUserInvitation(
   input: CreateInvitationInput
 ): Promise<{ invitation: IUserInvitation; inviteLink: string }> {
@@ -66,7 +78,7 @@ export async function createUserInvitation(
     invitedBy: input.invitedBy,
   });
 
-  const inviteLink = `${getAppUrl()}/register/invite?token=${token}`;
+  const inviteLink = buildInviteLink(token);
   return { invitation, inviteLink };
 }
 

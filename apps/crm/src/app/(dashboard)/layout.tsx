@@ -7,11 +7,18 @@ import { ensureBaselineRbacOnce } from '@crm/db';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   await ensureBaselineRbacOnce();
-  await requireAuth();
+  const sessionUser = await requireAuth();
 
   return (
     <SidebarProvider className="w-full max-w-full">
-      <AppSidebar />
+      <AppSidebar
+        serverUser={{
+          id: sessionUser.id,
+          email: sessionUser.email,
+          name: sessionUser.name,
+          permissions: sessionUser.permissions,
+        }}
+      />
       <SidebarInset className="flex min-h-0 flex-col">
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           <AppHeader />

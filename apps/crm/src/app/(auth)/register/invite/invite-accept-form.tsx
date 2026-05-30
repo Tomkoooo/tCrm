@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useEffect } from 'react';
-import { signIn } from 'next-auth/react';
+import { signIn, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { acceptInviteAction, type InviteAcceptFormState } from './actions';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ export function InviteAcceptForm({
   email: string;
 }) {
   const router = useRouter();
+  const { update } = useSession();
   const branding = useBranding();
   const [state, formAction, pending] = useActionState(acceptInviteAction, initialState);
 
@@ -39,13 +40,14 @@ export function InviteAcceptForm({
         redirect: false,
       });
       if (result?.ok) {
-        router.push('/');
+        await update();
         router.refresh();
+        router.replace('/');
       } else {
         router.push('/login');
       }
     })();
-  }, [state, router]);
+  }, [state, router, update]);
 
   return (
     <>
