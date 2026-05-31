@@ -20,13 +20,13 @@ describe('resolveRowWarehouseKeys', () => {
     const row = {
       crmWarehouseSlugs: ['kispest'],
       warehouses: { 'warehouse 2.': 3 },
-    } as ParsedInventoryRow;
+    } as unknown as ParsedInventoryRow;
 
     expect(resolveRowWarehouseKeys(row)).toEqual(['erzsebet']);
   });
 
   it('returns empty when no stock columns', () => {
-    const row = { crmWarehouseSlugs: ['kispest'], warehouses: {} } as ParsedInventoryRow;
+    const row = { crmWarehouseSlugs: ['kispest'], warehouses: {} } as unknown as ParsedInventoryRow;
     expect(resolveRowWarehouseKeys(row)).toEqual([]);
   });
 });

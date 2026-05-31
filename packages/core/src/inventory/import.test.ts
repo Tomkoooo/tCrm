@@ -78,7 +78,7 @@ describe('resolveRowWarehouseKeys', () => {
     const row = {
       crmWarehouseSlugs: undefined,
       warehouses: { 'warehouse 1.': 5, 'warehouse 3.': 2 },
-    } as Parameters<typeof resolveRowWarehouseKeys>[0];
+    } as unknown as Parameters<typeof resolveRowWarehouseKeys>[0];
     expect(resolveRowWarehouseKeys(row)).toEqual(['kispest', 'recsei']);
   });
 });
