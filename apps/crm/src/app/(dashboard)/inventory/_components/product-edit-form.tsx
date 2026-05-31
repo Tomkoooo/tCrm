@@ -4,15 +4,16 @@ import { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { MediaSelector } from '@/components/media/media-selector';
 import type { SelectedMedia } from '@/lib/media-types';
 import type { ProductTableRow } from '@/lib/inventory/product-table-columns';
 import type { InventoryFormState, ProductEditContext } from '../actions';
 import { updateProductAction } from '../actions';
 import { ComponentLinesEditor } from './component-lines-editor';
+import { ProductEditSection } from './product-edit-section';
 import { ProductFormExcelSections } from './product-form-excel';
 import { ProductStockEditor } from './product-stock-editor';
+import { useProductEditSections, PRODUCT_EDIT_SECTION_DEFAULTS } from './use-product-edit-sections';
 
 function mediaFromIds(ids: string[], labelPrefix: string): SelectedMedia[] {
   return ids.map((id, index) => ({
@@ -73,6 +74,7 @@ export function ProductEditForm({
   onSuccess?: () => void;
 }) {
   const router = useRouter();
+  const { sections, setOpen, ready } = useProductEditSections();
   const [images, setImages] = useState<SelectedMedia[]>(() =>
     mediaFromIds(editContext.imageIds, 'Kép')
   );
@@ -95,6 +97,11 @@ export function ProductEditForm({
     }
   }, [state, onSuccess, router]);
 
+  const accordion = {
+    sections: ready ? sections : PRODUCT_EDIT_SECTION_DEFAULTS,
+    setOpen,
+  };
+
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <input type="hidden" name="sku" value={row.sku} />
@@ -109,80 +116,92 @@ export function ProductEditForm({
         </ul>
       )}
 
-      <ProductFormExcelSections mode="edit" compact defaults={rowToFormDefaults(row)} />
+      <ProductFormExcelSections
+        mode="edit"
+        compact
+        defaults={rowToFormDefaults(row)}
+        accordion={accordion}
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Készlet raktáronként</CardTitle>
-          <CardDescription>Abszolút készletszint beállítása raktáranként.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ProductStockEditor initialLevels={editContext.stockLevels} />
-        </CardContent>
-      </Card>
+      <ProductEditSection
+        sectionId="stock"
+        title="Készlet raktáronként"
+        description="Abszolút készletszint beállítása raktáranként."
+        open={accordion.sections.stock}
+        onOpenChange={(open) => setOpen('stock', open)}
+        compact
+      >
+        <ProductStockEditor
+          initialLevels={editContext.stockLevels}
+          isGlobalScope={editContext.isGlobalScope}
+          systemWarehouseCount={editContext.systemWarehouseCount}
+        />
+      </ProductEditSection>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Alkatrészlista (BOM)</CardTitle>
-          <CardDescription>
-            Összeszerelés alkatrészei — üres lista esetén egyszerű termék.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ComponentLinesEditor initial={editContext.components} />
-        </CardContent>
-      </Card>
+      <ProductEditSection
+        sectionId="bom"
+        title="Alkatrészlista (BOM)"
+        description="Összeszerelés alkatrészei — üres lista esetén egyszerű termék."
+        open={accordion.sections.bom}
+        onOpenChange={(open) => setOpen('bom', open)}
+        compact
+      >
+        <ComponentLinesEditor initial={editContext.components} />
+      </ProductEditSection>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Összeszerelési útmutató</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <textarea
-            id="assemblyGuide"
-            name="assemblyGuide"
-            rows={6}
-            className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
-            placeholder="Lépések, megjegyzések, link a dokumentációhoz…"
-            value={assemblyGuide}
-            onChange={(e) => setAssemblyGuide(e.target.value)}
-          />
-        </CardContent>
-      </Card>
+      <ProductEditSection
+        sectionId="guide"
+        title="Összeszerelési útmutató"
+        open={accordion.sections.guide}
+        onOpenChange={(open) => setOpen('guide', open)}
+        compact
+      >
+        <textarea
+          id="assemblyGuide"
+          name="assemblyGuide"
+          rows={6}
+          className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
+          placeholder="Lépések, megjegyzések, link a dokumentációhoz…"
+          value={assemblyGuide}
+          onChange={(e) => setAssemblyGuide(e.target.value)}
+        />
+      </ProductEditSection>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Termékképek</CardTitle>
-          <CardDescription>Médiatárból — több kép is csatolható.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <MediaSelector
-            value={images}
-            onChange={setImages}
-            multiple
-            maxCount={5}
-            name="imageId"
-            description="Excel import bild URL-ek a médiatárban linkként is kezelhetők."
-          />
-        </CardContent>
-      </Card>
+      <ProductEditSection
+        sectionId="images"
+        title="Termékképek"
+        description="Médiatárból — több kép is csatolható."
+        open={accordion.sections.images}
+        onOpenChange={(open) => setOpen('images', open)}
+        compact
+      >
+        <MediaSelector
+          value={images}
+          onChange={setImages}
+          multiple
+          maxCount={5}
+          name="imageId"
+          description="Excel import bild URL-ek a médiatárban linkként is kezelhetők."
+        />
+      </ProductEditSection>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Útmutató fájlok</CardTitle>
-          <CardDescription>PDF vagy kép — összeszerelési dokumentáció.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <MediaSelector
-            label="Útmutató fájlok"
-            value={guideMedia}
-            onChange={setGuideMedia}
-            multiple
-            maxCount={5}
-            name="guideMediaId"
-          />
-        </CardContent>
-      </Card>
+      <ProductEditSection
+        sectionId="guideFiles"
+        title="Útmutató fájlok"
+        description="PDF vagy kép — összeszerelési dokumentáció."
+        open={accordion.sections.guideFiles}
+        onOpenChange={(open) => setOpen('guideFiles', open)}
+        compact
+      >
+        <MediaSelector
+          label="Útmutató fájlok"
+          value={guideMedia}
+          onChange={setGuideMedia}
+          multiple
+          maxCount={5}
+          name="guideMediaId"
+        />
+      </ProductEditSection>
 
       <div className="flex gap-2 border-t pt-4">
         <Button type="submit" disabled={pending}>

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,17 +12,47 @@ export type ProductStockLevelRow = {
   onHand: number;
 };
 
-export function ProductStockEditor({ initialLevels }: { initialLevels: ProductStockLevelRow[] }) {
+export function ProductStockEditor({
+  initialLevels,
+  isGlobalScope,
+  systemWarehouseCount,
+}: {
+  initialLevels: ProductStockLevelRow[];
+  isGlobalScope: boolean;
+  systemWarehouseCount: number;
+}) {
   const [quantities, setQuantities] = useState<Record<string, number>>(() =>
     Object.fromEntries(initialLevels.map((l) => [l.warehouseId, l.onHand]))
   );
 
+  if (systemWarehouseCount === 0) {
+    return (
+      <>
+        <input type="hidden" name="stockLevelsJson" value="[]" />
+        <p className="text-muted-foreground text-sm">
+          Nincs aktív raktár a rendszerben — hozzon létre raktárat a Raktárak menüpontban, majd
+          állítson be készletet raktáranként.
+        </p>
+      </>
+    );
+  }
+
   if (!initialLevels.length) {
     return (
-      <p className="text-muted-foreground text-sm">
-        Nincs hozzárendelt raktár — csak globális jogosultságú felhasználók módosíthatnak készletet
-        raktár nélkül.
-      </p>
+      <>
+        <input type="hidden" name="stockLevelsJson" value="[]" />
+        <p className="text-muted-foreground text-sm">
+          {isGlobalScope
+            ? 'Nincs elérhető raktár a készletszerkesztéshez.'
+            : 'Nincs jogosultsága raktárhoz. Kérje az adminisztrátort, hogy rendeljen hozzá raktárt, vagy '}
+          {!isGlobalScope && (
+            <Link href="/admin/permissions" className="text-primary underline">
+              szinkronizálja a jogosultságokat
+            </Link>
+          )}
+          {!isGlobalScope && ' az Admin → Szerepkörök oldalon.'}
+        </p>
+      </>
     );
   }
 
@@ -33,7 +64,7 @@ export function ProductStockEditor({ initialLevels }: { initialLevels: ProductSt
   return (
     <div className="flex flex-col gap-3">
       <p className="text-muted-foreground text-sm">
-        A termék raktár jelenléte a készletszintből származik. Üres készlet = nincs az adott
+        Állítsa be a készletszintet minden raktárban külön. Üres (0) érték = nincs készlet az adott
         raktárban.
       </p>
       <input type="hidden" name="stockLevelsJson" value={JSON.stringify(payload)} />

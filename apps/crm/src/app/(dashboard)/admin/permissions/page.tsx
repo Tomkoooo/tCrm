@@ -10,9 +10,9 @@ export default async function PermissionsPage() {
   return (
     <Container className="flex max-w-6xl flex-col gap-4 md:gap-6">
       <div>
-        <h1 className="text-2xl font-bold">Roles & Permissions</h1>
+        <h1 className="text-2xl font-bold">Szerepkörök és jogosultságok</h1>
         <p className="text-muted-foreground text-sm">
-          Dynamically assign page and action permissions to roles — no code changes required.
+          Oldal- és műveleti jogok dinamikus hozzárendelése szerepkörökhöz — kódmódosítás nélkül.
         </p>
       </div>
       <PermissionsManager permissions={data.permissions} roles={data.roles} />

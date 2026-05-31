@@ -374,7 +374,7 @@ Termék és összeszerelés űrlap: **Médiatár** gomb → többes kiválasztá
 - **Kép előnézet** oszlop: opcionális (alapból rejtett) — első Media (`imageIds`) vagy legacy `bild1` URL.
 - **Képek (db)** oszlop: `imageIds` vagy `externalImageHints` száma.
 - Fejléc **ⓘ** tooltip: Radix; táblázat ikonok egységesen `size-2.5`.
-- **Termék szerkesztés (EntitySheet):** sor kiválasztása → **Szerkesztés** — egy űrlapon: Excel alapadatok, **készlet raktáronként** (abszolút mennyiség), **BOM** (`components`), **összeszerelési útmutató** (szöveg + `assemblyGuideMediaIds` fájlok), **termékképek** (`imageIds`). Jog: `inventory:write`.
+- **Termék szerkesztés (EntitySheet):** sor kiválasztása → **Szerkesztés** — egy űrlapon: Excel alapadatok, **készlet raktáronként** (abszolút mennyiség, minden aktív raktár globális scope-nál), **BOM** (`components`), **összeszerelési útmutató** (szöveg + `assemblyGuideMediaIds` fájlok), **termékképek** (`imageIds`). Szekciók **accordion**; nyitott/zárt állapot **localStorage**-ban (`tcrm.inventory.productEditSections`, alap: csak Azonosítók + Készlet). Jog: `inventory:write`.
 
 ---
 
@@ -435,7 +435,7 @@ flowchart TD
 | `users:read` | Felhasználó lista |
 | `users:write` | Létrehozás, szerkesztés, inaktiválás |
 | `mail:send` | Meghívó e-mail (`/admin/users/invite`), jelszó-visszaállító e-mail |
-| `roles:manage` | Szerepkörök és jogosultságok |
+| `roles:manage` | Szerepkörök és jogosultságok; **Baseline szinkron** gomb frissíti a rendszer jogokat és szerepköröket |
 | Meghívó | `/register/invite?token=` — jelszó + automatikus bejelentkezés |
 
 ---
@@ -565,4 +565,4 @@ Részletek: [`hr.md`](./hr.md).
 
 ---
 
-*Utolsó frissítés: 2026-05 — **EntitySheet termék szerkesztő** (készlet, BOM, képek, útmutató fájlok); korábban: SM SKU import mód, kategória slug normalizálás, készlet-alapú raktár jelenlét.*
+*Utolsó frissítés: 2026-05 — **Készlet scope javítás** (minden raktár globális adminnak), **RBAC baseline szinkron** gomb, **accordion szerkesztő** localStorage-szal; korábban: EntitySheet termék szerkesztő, SM SKU import.*

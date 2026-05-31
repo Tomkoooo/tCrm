@@ -1,12 +1,14 @@
 'use client';
 
 import { useActionState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { ChevronDownIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   toggleRolePermissionAction,
   createRoleAction,
   deleteRoleAction,
+  syncBaselinePermissionsAction,
   type PermissionsFormState,
 } from './actions';
 import { Button } from '@/components/ui/button';
@@ -163,7 +165,9 @@ export function PermissionsManager({
   permissions: Permission[];
   roles: Role[];
 }) {
+  const router = useRouter();
   const [createState, createAction, createPending] = useActionState(createRoleAction, initialState);
+  const [syncPending, startSync] = useTransition();
 
   const groupedPermissions = permissions.reduce<Record<string, Permission[]>>((acc, perm) => {
     acc[perm.group] = acc[perm.group] ?? [];
@@ -173,6 +177,36 @@ export function PermissionsManager({
 
   return (
     <div className="flex flex-col gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Baseline jogosultságok szinkronizálása</CardTitle>
+          <CardDescription>
+            Frissíti az összes rendszer jogkulcsot és a rendszer szerepkörök (admin, manager, …)
+            jogait a legújabb verzió szerint. Egyedi szerepkörök érintetlenek maradnak.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={syncPending}
+            onClick={() => {
+              startSync(async () => {
+                const result = await syncBaselinePermissionsAction();
+                if (result.success) {
+                  toast.success(result.message);
+                  router.refresh();
+                } else {
+                  toast.error(result.message);
+                }
+              });
+            }}
+          >
+            {syncPending ? 'Szinkronizálás…' : 'Baseline jogosultságok szinkronizálása'}
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Új szerepkör</CardTitle>

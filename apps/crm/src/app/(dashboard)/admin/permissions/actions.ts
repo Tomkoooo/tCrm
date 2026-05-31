@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { connectDB, Permission, Role } from '@crm/db';
+import { connectDB, ensureBaselineRbac, Permission, Role } from '@crm/db';
 import { requirePermission } from '@crm/auth';
 
 export type PermissionsFormState =
@@ -100,7 +100,26 @@ export async function deleteRoleAction(
   await role.deleteOne();
   revalidatePath('/admin/permissions');
 
-  return { success: true, message: 'Role deleted.' };
+  return { success: true, message: 'Szerepkör törölve.' };
+}
+
+export async function syncBaselinePermissionsAction(): Promise<PermissionsFormState> {
+  await requirePermission('roles:manage');
+
+  try {
+    await ensureBaselineRbac();
+    revalidatePath('/admin/permissions');
+    return {
+      success: true,
+      message:
+        'Szinkron kész. Frissítse az oldalt; a jogosultságok azonnal érvényesülnek (új bejelentkezés nem szükséges).',
+    };
+  } catch (e) {
+    return {
+      success: false,
+      message: e instanceof Error ? e.message : 'A szinkron sikertelen.',
+    };
+  }
 }
 
 export async function getPermissionsData() {

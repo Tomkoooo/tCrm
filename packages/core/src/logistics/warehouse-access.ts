@@ -3,7 +3,11 @@ import type { Types } from 'mongoose';
 
 /** Managers / logistics leads see every site. */
 export function hasGlobalLogisticsScope(permissions: string[]): boolean {
-  return permissions.includes('logistics:scope_all') || permissions.includes('admin:access');
+  return (
+    permissions.includes('logistics:scope_all') ||
+    permissions.includes('admin:access') ||
+    permissions.includes('roles:manage')
+  );
 }
 
 export async function getWarehouseIdsForUser(userId: Types.ObjectId): Promise<Types.ObjectId[]> {

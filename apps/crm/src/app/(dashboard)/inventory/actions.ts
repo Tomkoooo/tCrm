@@ -32,6 +32,7 @@ import { INVENTORY_PRODUCT_COLUMNS } from '@/lib/inventory/product-table-columns
 import {
   canAccessProductWarehouses,
   buildScopedProductFilter,
+  getEditableWarehousesForInventory,
   getInventoryWarehouseScope,
 } from '@/lib/inventory/warehouse-scope';
 
@@ -53,6 +54,8 @@ export type ProductEditContext = {
     onHand: number;
   }>;
   warehouses: Array<{ id: string; name: string; key: string }>;
+  isGlobalScope: boolean;
+  systemWarehouseCount: number;
 };
 
 export async function getProductEditContext(sku: string): Promise<ProductEditContext | null> {
@@ -82,6 +85,8 @@ export async function getProductEditContext(sku: string): Promise<ProductEditCon
   if (!allowed) return null;
 
   const scope = await getInventoryWarehouseScope();
+  const editableWarehouses = await getEditableWarehousesForInventory();
+  const systemWarehouseCount = await Warehouse.countDocuments({ isActive: true }).exec();
   const stockDocs = await StockLevel.find({ productId: product._id }).lean().exec();
   const stockByWarehouse = new Map(stockDocs.map((s) => [String(s.warehouseId), s.onHand ?? 0]));
 
@@ -119,13 +124,15 @@ export async function getProductEditContext(sku: string): Promise<ProductEditCon
         quantity: line.quantity,
       };
     }),
-    stockLevels: scope.warehouses.map((w) => ({
+    stockLevels: editableWarehouses.map((w) => ({
       warehouseId: w.id,
       warehouseName: w.name,
       warehouseKey: w.key,
       onHand: stockByWarehouse.get(w.id) ?? 0,
     })),
-    warehouses: scope.warehouses,
+    warehouses: editableWarehouses,
+    isGlobalScope: scope.isGlobal,
+    systemWarehouseCount,
   };
 }
 

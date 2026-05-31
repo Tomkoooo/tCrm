@@ -1,7 +1,7 @@
 'use server';
 
 import mongoose from 'mongoose';
-import { getCurrentUser } from '@crm/auth';
+import { getCurrentUser, hasPermission } from '@crm/auth';
 import {
   getWarehouseIdsForUser,
   hasGlobalProductWarehouseScope,
@@ -75,6 +75,24 @@ export async function canAccessProductWarehouses(
 ): Promise<boolean> {
   const scope = await getInventoryWarehouseScope();
   if (scope.isGlobal) return true;
-  if (!productWarehouseIds?.length) return false;
+  if (!productWarehouseIds?.length) {
+    return hasPermission('inventory:write');
+  }
   return productWarehouseIds.some((id) => scope.warehouseIds.includes(id));
+}
+
+export async function getEditableWarehousesForInventory(): Promise<
+  Array<{ id: string; name: string; key: string }>
+> {
+  await connectDB();
+  const scope = await getInventoryWarehouseScope();
+  if (scope.isGlobal) {
+    const warehouses = await Warehouse.find({ isActive: true }).sort({ name: 1 }).lean().exec();
+    return warehouses.map((w) => ({
+      id: String(w._id),
+      name: w.name,
+      key: w.key,
+    }));
+  }
+  return scope.warehouses;
 }
