@@ -60,6 +60,8 @@ export {
 
 export { syncProductWarehouseIds, reconcileAllProductWarehouseIds } from './sync-warehouse-ids';
 
+export { setProductStockLevel, type SetProductStockLevelOptions } from './set-product-stock';
+
 export {
   readImportWorkbook,
   readImportSheetRows,

@@ -267,23 +267,23 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
       <Card>
         <CardHeader>
-          <CardTitle>Physical & package</CardTitle>
+          <CardTitle>Méretek és csomag</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-4">
           <div>
-            <p className="text-muted-foreground text-xs">Length</p>
+            <p className="text-muted-foreground text-xs">Hossz</p>
             <p className="text-sm">{product.dimensionsMm?.length ?? '—'}</p>
           </div>
           <div>
-            <p className="text-muted-foreground text-xs">Width</p>
+            <p className="text-muted-foreground text-xs">Szélesség</p>
             <p className="text-sm">{product.dimensionsMm?.width ?? '—'}</p>
           </div>
           <div>
-            <p className="text-muted-foreground text-xs">Height</p>
+            <p className="text-muted-foreground text-xs">Magasság</p>
             <p className="text-sm">{product.dimensionsMm?.height ?? '—'}</p>
           </div>
           <div>
-            <p className="text-muted-foreground text-xs">Weight</p>
+            <p className="text-muted-foreground text-xs">Súly</p>
             <p className="text-sm">{product.weightKg ?? '—'}</p>
           </div>
         </CardContent>
@@ -291,15 +291,15 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
       <Card>
         <CardHeader>
-          <CardTitle>Pricing</CardTitle>
+          <CardTitle>Árazás</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <p className="text-muted-foreground text-xs">Street price (HUF)</p>
+            <p className="text-muted-foreground text-xs">Utcaár (HUF)</p>
             <p className="text-sm">{product.pricing?.streetPriceHuf ?? '—'}</p>
           </div>
           <div>
-            <p className="text-muted-foreground text-xs">Merchant price (HUF)</p>
+            <p className="text-muted-foreground text-xs">Viszonteladói ár (HUF)</p>
             <p className="text-sm">{product.pricing?.merchantPriceHuf ?? '—'}</p>
           </div>
         </CardContent>
@@ -406,19 +406,19 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
       <Card>
         <CardHeader>
-          <CardTitle>Rental</CardTitle>
+          <CardTitle>Bérlés</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div>
-            <p className="text-muted-foreground text-xs">Day</p>
+            <p className="text-muted-foreground text-xs">Nap</p>
             <p className="text-sm">{product.rental?.rentFeeDay ?? '—'}</p>
           </div>
           <div>
-            <p className="text-muted-foreground text-xs">Weekend</p>
+            <p className="text-muted-foreground text-xs">Hétvége</p>
             <p className="text-sm">{product.rental?.rentFeeWeekend ?? '—'}</p>
           </div>
           <div>
-            <p className="text-muted-foreground text-xs">Week</p>
+            <p className="text-muted-foreground text-xs">Hét</p>
             <p className="text-sm">{product.rental?.rentFeeWeek ?? '—'}</p>
           </div>
         </CardContent>
@@ -426,20 +426,20 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
       <Card>
         <CardHeader>
-          <CardTitle>Recent stock adjustments</CardTitle>
+          <CardTitle>Utolsó készletmódosítások</CardTitle>
         </CardHeader>
         <CardContent>
           {adjustments.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No adjustments yet.</p>
+            <p className="text-muted-foreground text-sm">Még nincs módosítás.</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>At</TableHead>
-                  <TableHead>Warehouse</TableHead>
-                  <TableHead className="text-right">Delta</TableHead>
-                  <TableHead>Reason</TableHead>
-                  <TableHead>Note</TableHead>
+                  <TableHead>Időpont</TableHead>
+                  <TableHead>Raktár</TableHead>
+                  <TableHead className="text-right">Változás</TableHead>
+                  <TableHead>Ok</TableHead>
+                  <TableHead>Megjegyzés</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

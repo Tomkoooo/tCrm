@@ -215,8 +215,31 @@ export const stockAdjustmentSchema = z.object({
 
 export const buildComponentSchema = z.object({
   productId: z.string().min(1),
-  quantity: z.coerce.number().min(0.000001, 'Quantity must be > 0'),
+  quantity: z.coerce.number().min(0.000001, 'A mennyiségnek nagyobbnak kell lennie nullánál.'),
 });
+
+export const productComponentsSchema = z
+  .array(buildComponentSchema)
+  .superRefine((components, ctx) => {
+    const seen = new Set<string>();
+    for (const [index, line] of components.entries()) {
+      if (seen.has(line.productId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Duplikált alkatrész.',
+          path: [index, 'productId'],
+        });
+      }
+      seen.add(line.productId);
+    }
+  });
+
+export const productStockLevelInputSchema = z.object({
+  warehouseId: z.string().min(1),
+  quantity: z.coerce.number().min(0, 'A készlet nem lehet negatív.'),
+});
+
+export const productStockLevelsSchema = z.array(productStockLevelInputSchema);
 
 export const buildKitSchema = z
   .object({

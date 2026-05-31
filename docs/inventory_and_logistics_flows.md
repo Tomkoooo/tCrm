@@ -374,6 +374,7 @@ Termék és összeszerelés űrlap: **Médiatár** gomb → többes kiválasztá
 - **Kép előnézet** oszlop: opcionális (alapból rejtett) — első Media (`imageIds`) vagy legacy `bild1` URL.
 - **Képek (db)** oszlop: `imageIds` vagy `externalImageHints` száma.
 - Fejléc **ⓘ** tooltip: Radix; táblázat ikonok egységesen `size-2.5`.
+- **Termék szerkesztés (EntitySheet):** sor kiválasztása → **Szerkesztés** — egy űrlapon: Excel alapadatok, **készlet raktáronként** (abszolút mennyiség), **BOM** (`components`), **összeszerelési útmutató** (szöveg + `assemblyGuideMediaIds` fájlok), **termékképek** (`imageIds`). Jog: `inventory:write`.
 
 ---
 
@@ -564,4 +565,4 @@ Részletek: [`hr.md`](./hr.md).
 
 ---
 
-*Utolsó frissítés: 2026-05 — **SM SKU import mód** (beszállítói SKU kinyerés); kategória slug normalizálás (kis-/nagybetű); import modal görgetés; korábban: készlet-alapú raktár jelenlét, import varázsló.*
+*Utolsó frissítés: 2026-05 — **EntitySheet termék szerkesztő** (készlet, BOM, képek, útmutató fájlok); korábban: SM SKU import mód, kategória slug normalizálás, készlet-alapú raktár jelenlét.*

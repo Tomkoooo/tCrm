@@ -1,17 +1,51 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { EntitySheet } from '@crm/ui';
 import { Button } from '@/components/ui/button';
 import type { ProductTableRow } from '@/lib/inventory/product-table-columns';
-import { deleteProductAction } from '../actions';
-import { EditProductSheetForm } from './edit-product-sheet-form';
+import { deleteProductAction, getProductEditContext, type ProductEditContext } from '../actions';
+import { ProductEditForm } from './product-edit-form';
 
 const SKU_HINT =
   'CRM SKU = kategória előtag + beszállítói cikkszám. SM import módban a product_id_SM a forrás.';
+
+function EditSheetBody({ row, onSuccess }: { row: ProductTableRow; onSuccess: () => void }) {
+  const [editContext, setEditContext] = useState<ProductEditContext | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setEditContext(null);
+    setLoadError(null);
+
+    getProductEditContext(row.sku).then((ctx) => {
+      if (cancelled) return;
+      if (!ctx) {
+        setLoadError('A termék szerkesztési adatai nem tölthetők be.');
+        return;
+      }
+      setEditContext(ctx);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [row.sku]);
+
+  if (loadError) {
+    return <p className="text-destructive text-sm">{loadError}</p>;
+  }
+
+  if (!editContext) {
+    return <p className="text-muted-foreground text-sm">Betöltés…</p>;
+  }
+
+  return <ProductEditForm row={row} editContext={editContext} onSuccess={onSuccess} />;
+}
 
 export function ProductSheetDetail({
   row,
@@ -111,7 +145,7 @@ export function ProductSheetDetail({
           size="xl"
           mode="edit"
         >
-          <EditProductSheetForm row={row} onSuccess={() => setEditOpen(false)} />
+          {editOpen ? <EditSheetBody row={row} onSuccess={() => setEditOpen(false)} /> : null}
         </EntitySheet>
       )}
     </>

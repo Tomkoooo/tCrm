@@ -14,12 +14,19 @@ import {
 import { requirePermission, requireAuth } from '@crm/auth';
 import {
   applyBulkProductOperation,
+  setProductStockLevel,
   syncProductWarehouseIds,
   type BulkProductOperation,
   syncMediaUsage,
   linkUrlsFromMediaIds,
 } from '@crm/core';
-import { parseWarehouseIdsJson, productSchema, stockAdjustmentSchema } from '@crm/lib/validation';
+import {
+  parseWarehouseIdsJson,
+  productComponentsSchema,
+  productSchema,
+  productStockLevelsSchema,
+  stockAdjustmentSchema,
+} from '@crm/lib/validation';
 import { buildDataTableMongoQuery, parseDataTableQuery } from '@crm/ui';
 import { INVENTORY_PRODUCT_COLUMNS } from '@/lib/inventory/product-table-columns';
 import {
@@ -27,6 +34,122 @@ import {
   buildScopedProductFilter,
   getInventoryWarehouseScope,
 } from '@/lib/inventory/warehouse-scope';
+
+export type ProductEditContext = {
+  productId: string;
+  imageIds: string[];
+  assemblyGuide?: string;
+  assemblyGuideMediaIds: string[];
+  components: Array<{
+    productId: string;
+    productSku: string;
+    label: string;
+    quantity: number;
+  }>;
+  stockLevels: Array<{
+    warehouseId: string;
+    warehouseName: string;
+    warehouseKey: string;
+    onHand: number;
+  }>;
+  warehouses: Array<{ id: string; name: string; key: string }>;
+};
+
+export async function getProductEditContext(sku: string): Promise<ProductEditContext | null> {
+  await requirePermission('inventory:read');
+  await connectDB();
+
+  const normalizedSku = sku.trim();
+  if (!normalizedSku) return null;
+
+  const product = await Product.findOne({ sku: normalizedSku })
+    .select({
+      _id: 1,
+      imageIds: 1,
+      assemblyGuide: 1,
+      assemblyGuideMediaIds: 1,
+      components: 1,
+      warehouseIds: 1,
+    })
+    .lean()
+    .exec();
+
+  if (!product) return null;
+
+  const allowed = await canAccessProductWarehouses(
+    (product.warehouseIds ?? []).map((id) => String(id))
+  );
+  if (!allowed) return null;
+
+  const scope = await getInventoryWarehouseScope();
+  const stockDocs = await StockLevel.find({ productId: product._id }).lean().exec();
+  const stockByWarehouse = new Map(stockDocs.map((s) => [String(s.warehouseId), s.onHand ?? 0]));
+
+  const componentIds = (product.components ?? []).map((c) => c.productId);
+  const componentProducts = componentIds.length
+    ? await Product.find({ _id: { $in: componentIds } })
+        .select({ sku: 1, names: 1 })
+        .lean()
+        .exec()
+    : [];
+
+  const componentById = new Map(
+    componentProducts.map((p) => [
+      String(p._id),
+      {
+        sku: p.sku,
+        name: p.names?.hu ?? p.names?.en ?? p.names?.de ?? p.sku,
+      },
+    ])
+  );
+
+  return {
+    productId: String(product._id),
+    imageIds: (product.imageIds ?? []).map((id) => String(id)),
+    assemblyGuide: product.assemblyGuide ?? undefined,
+    assemblyGuideMediaIds: (product.assemblyGuideMediaIds ?? []).map((id) => String(id)),
+    components: (product.components ?? []).map((line) => {
+      const comp = componentById.get(String(line.productId));
+      const productSku = comp?.sku ?? '—';
+      const name = comp?.name ?? productSku;
+      return {
+        productId: String(line.productId),
+        productSku,
+        label: name === productSku ? productSku : `${productSku} · ${name}`,
+        quantity: line.quantity,
+      };
+    }),
+    stockLevels: scope.warehouses.map((w) => ({
+      warehouseId: w.id,
+      warehouseName: w.name,
+      warehouseKey: w.key,
+      onHand: stockByWarehouse.get(w.id) ?? 0,
+    })),
+    warehouses: scope.warehouses,
+  };
+}
+
+function parseComponentsJson(formData: FormData) {
+  try {
+    return JSON.parse(String(formData.get('componentsJson') ?? '[]')) as Array<{
+      productId: string;
+      quantity: number;
+    }>;
+  } catch {
+    return null;
+  }
+}
+
+function parseStockLevelsJson(formData: FormData) {
+  try {
+    return JSON.parse(String(formData.get('stockLevelsJson') ?? '[]')) as Array<{
+      warehouseId: string;
+      quantity: number;
+    }>;
+  } catch {
+    return null;
+  }
+}
 
 export type InventoryFormState =
   | { success: false; fieldErrors?: Record<string, string[]>; message?: string }
@@ -248,11 +371,13 @@ export async function updateProductAction(
   formData: FormData
 ): Promise<InventoryFormState> {
   await requirePermission('inventory:write');
+  const user = await requireAuth();
+  if (!user?.id) return { success: false, message: 'Nincs bejelentkezve.' };
   await connectDB();
 
   const sku = String(formData.get('sku') ?? '').trim();
   const existing = await Product.findOne({ sku });
-  if (!existing) return { success: false, message: 'Product not found.' };
+  if (!existing) return { success: false, message: 'A termék nem található.' };
 
   const allowed = await canAccessProductWarehouses(
     (existing.warehouseIds ?? []).map((id) => String(id))
@@ -323,7 +448,54 @@ export async function updateProductAction(
     return {
       success: false,
       fieldErrors: zodToFieldErrors(parsed.error.issues),
-      message: 'Fix validation errors.',
+      message: 'Ellenőrizd a mezőket.',
+    };
+  }
+
+  const rawComponents = parseComponentsJson(formData);
+  if (rawComponents === null) {
+    return { success: false, message: 'Érvénytelen alkatrész lista.' };
+  }
+
+  const componentsParsed = productComponentsSchema.safeParse(rawComponents);
+  if (!componentsParsed.success) {
+    return {
+      success: false,
+      fieldErrors: zodToFieldErrors(componentsParsed.error.issues),
+      message: 'Ellenőrizd az alkatrészlistát.',
+    };
+  }
+
+  const productIdStr = existing._id.toString();
+  if (componentsParsed.data.some((c) => c.productId === productIdStr)) {
+    return { success: false, message: 'A termék nem lehet saját alkatrésze.' };
+  }
+
+  if (componentsParsed.data.length > 0) {
+    const componentDocs = await Product.find({
+      _id: { $in: componentsParsed.data.map((c) => c.productId) },
+      isActive: true,
+    })
+      .select('_id')
+      .lean()
+      .exec();
+
+    if (componentDocs.length !== componentsParsed.data.length) {
+      return { success: false, message: 'Egy vagy több alkatrész nem található vagy inaktív.' };
+    }
+  }
+
+  const rawStockLevels = parseStockLevelsJson(formData);
+  if (rawStockLevels === null) {
+    return { success: false, message: 'Érvénytelen készlet adat.' };
+  }
+
+  const stockParsed = productStockLevelsSchema.safeParse(rawStockLevels);
+  if (!stockParsed.success) {
+    return {
+      success: false,
+      fieldErrors: zodToFieldErrors(stockParsed.error.issues),
+      message: 'Ellenőrizd a készlet mezőket.',
     };
   }
 
@@ -331,50 +503,104 @@ export async function updateProductAction(
     .getAll('imageId')
     .map((v) => String(v))
     .filter(Boolean);
+  const guideMediaIds = formData
+    .getAll('guideMediaId')
+    .map((v) => String(v))
+    .filter(Boolean);
   const previousMediaIds = (existing.imageIds ?? []).map((id) => id.toString());
+  const previousGuideMediaIds = (existing.assemblyGuideMediaIds ?? []).map((id) => id.toString());
   const linkHints = await linkUrlsFromMediaIds(imageIds);
   const bildHints = parseBildHints(formData);
   const externalImageHints = [...new Set([...bildHints, ...linkHints])];
 
-  existing.set({
-    supplierSku: parsed.data.supplierSku,
-    supplierNo: parsed.data.supplierNo,
-    brand: parsed.data.brand,
-    ean: parsed.data.ean,
-    names: parsed.data.names,
-    descriptions: parsed.data.descriptions,
-    colors: parsed.data.colors,
-    dimensionsMm: parsed.data.dimensionsMm,
-    weightKg: parsed.data.weightKg,
-    packageWeightKg: parsed.data.packageWeightKg,
-    packageVolumeM3: parsed.data.packageVolumeM3,
-    pricing: parsed.data.pricing,
-    youtubeVideo: parsed.data.youtubeVideo,
-    youtubeId: parsed.data.youtubeId,
-    freightLevel: parsed.data.freightLevel,
-    stockLevelHint: parsed.data.stockLevelHint,
-    availabilityWeeks: parsed.data.availabilityWeeks,
-    inCategories: parsed.data.inCategories,
-    isDiscontinued: parsed.data.isDiscontinued ?? false,
-    isActive: parsed.data.isActive ?? true,
-    owner: parsed.data.owner,
-    rental: parsed.data.rental,
-    discounts: parsed.data.discounts,
-    externalImageHints,
-    imageIds: imageIds.map((id) => new mongoose.Types.ObjectId(id)),
-  });
+  const assemblyGuideRaw = String(formData.get('assemblyGuide') ?? '').trim();
+  const assemblyGuide = assemblyGuideRaw || undefined;
 
-  await existing.save();
+  const scope = await getInventoryWarehouseScope();
+  const bulkScope = {
+    isGlobal: scope.isGlobal,
+    allowedWarehouseIds: scope.warehouseIds.map((id) => new mongoose.Types.ObjectId(id)),
+  };
+
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      existing.set({
+        supplierSku: parsed.data.supplierSku,
+        supplierNo: parsed.data.supplierNo,
+        brand: parsed.data.brand,
+        ean: parsed.data.ean,
+        names: parsed.data.names,
+        descriptions: parsed.data.descriptions,
+        colors: parsed.data.colors,
+        dimensionsMm: parsed.data.dimensionsMm,
+        weightKg: parsed.data.weightKg,
+        packageWeightKg: parsed.data.packageWeightKg,
+        packageVolumeM3: parsed.data.packageVolumeM3,
+        pricing: parsed.data.pricing,
+        youtubeVideo: parsed.data.youtubeVideo,
+        youtubeId: parsed.data.youtubeId,
+        freightLevel: parsed.data.freightLevel,
+        stockLevelHint: parsed.data.stockLevelHint,
+        availabilityWeeks: parsed.data.availabilityWeeks,
+        inCategories: parsed.data.inCategories,
+        isDiscontinued: parsed.data.isDiscontinued ?? false,
+        isActive: parsed.data.isActive ?? true,
+        owner: parsed.data.owner,
+        rental: parsed.data.rental,
+        discounts: parsed.data.discounts,
+        externalImageHints,
+        imageIds: imageIds.map((id) => new mongoose.Types.ObjectId(id)),
+        assemblyGuideMediaIds: guideMediaIds.map((id) => new mongoose.Types.ObjectId(id)),
+        assemblyGuide,
+        components: componentsParsed.data.map((c) => ({
+          productId: new mongoose.Types.ObjectId(c.productId),
+          quantity: c.quantity,
+        })),
+      });
+
+      await existing.save({ session });
+
+      for (const level of stockParsed.data) {
+        await setProductStockLevel(
+          existing._id,
+          new mongoose.Types.ObjectId(level.warehouseId),
+          level.quantity,
+          user.id,
+          bulkScope,
+          { session }
+        );
+      }
+    });
+  } catch (e) {
+    return {
+      success: false,
+      message: e instanceof Error ? e.message : 'A mentés sikertelen.',
+    };
+  } finally {
+    session.endSession();
+  }
 
   await syncMediaUsage({
     entityType: 'product',
     entityId: existing._id,
+    fieldName: 'imageIds',
     previousMediaIds,
     nextMediaIds: imageIds,
   });
 
+  await syncMediaUsage({
+    entityType: 'product',
+    entityId: existing._id,
+    fieldName: 'assemblyGuide',
+    previousMediaIds: previousGuideMediaIds,
+    nextMediaIds: guideMediaIds,
+  });
+
+  revalidatePath('/inventory');
   revalidatePath(`/inventory/${sku}`);
-  return { success: true, message: 'Product updated.', sku };
+  revalidatePath('/inventory/builds');
+  return { success: true, message: 'Termék mentve.', sku };
 }
 
 export type ToggleProductActiveState = { success: boolean; message: string };
@@ -573,12 +799,12 @@ export async function deleteProductAction(
 
   const sku = String(formData.get('sku') ?? '').trim();
   const existing = await Product.findOne({ sku });
-  if (!existing) return { success: false, message: 'Product not found.' };
+  if (!existing) return { success: false, message: 'A termék nem található.' };
 
   existing.isActive = false;
   await existing.save();
   revalidatePath('/inventory');
-  return { success: true, message: 'Product deactivated.', sku };
+  return { success: true, message: 'Termék inaktiválva.', sku };
 }
 
 export type StockAdjustState = { success: boolean; message: string };
@@ -589,7 +815,7 @@ export async function adjustStockAction(
 ): Promise<StockAdjustState> {
   await requirePermission('inventory:write');
   const user = await requireAuth();
-  if (!user) return { success: false, message: 'Not authenticated.' };
+  if (!user) return { success: false, message: 'Nincs bejelentkezve.' };
   await connectDB();
 
   const parsed = stockAdjustmentSchema.safeParse({
@@ -601,7 +827,7 @@ export async function adjustStockAction(
   });
 
   if (!parsed.success) {
-    return { success: false, message: 'Invalid adjustment input.' };
+    return { success: false, message: 'Érvénytelen készlet módosítás.' };
   }
 
   const session = await mongoose.startSession();
@@ -638,17 +864,17 @@ export async function adjustStockAction(
 
       // ensure onHand isn't negative in Phase 1
       if (stock.onHand < 0) {
-        throw new Error('Stock cannot be negative.');
+        throw new Error('A készlet nem lehet negatív.');
       }
 
       await syncProductWarehouseIds(productId, session);
     });
   } catch (e: any) {
-    return { success: false, message: e?.message ?? 'Adjustment failed.' };
+    return { success: false, message: e?.message ?? 'A készlet módosítása sikertelen.' };
   } finally {
     session.endSession();
   }
 
   revalidatePath('/inventory');
-  return { success: true, message: 'Stock adjusted.' };
+  return { success: true, message: 'Készlet módosítva.' };
 }

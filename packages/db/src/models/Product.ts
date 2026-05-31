@@ -72,6 +72,9 @@ export interface IProduct extends Document {
   /** Összeszerelési útmutató (BOM / build kit) */
   assemblyGuide?: string;
 
+  /** Összeszerelési útmutató fájlok (PDF/kép) — GridFS / link médiatár */
+  assemblyGuideMediaIds: Types.ObjectId[];
+
   inCategories?: string;
   isDiscontinued: boolean;
   /** Consumables are not expected back from events; no loss is logged on return check-in. */
@@ -168,6 +171,7 @@ const ProductSchema = new Schema<IProduct>(
     components: { type: [ProductComponentSchema], default: [] },
 
     assemblyGuide: { type: String },
+    assemblyGuideMediaIds: [{ type: Schema.Types.ObjectId }],
 
     inCategories: { type: String },
     isDiscontinued: { type: Boolean, default: false, index: true },

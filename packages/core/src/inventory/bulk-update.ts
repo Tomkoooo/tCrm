@@ -1,14 +1,6 @@
-import mongoose, { type Types } from 'mongoose';
-import {
-  connectDB,
-  Category,
-  Product,
-  StockAdjustment,
-  StockLevel,
-  Supplier,
-  Warehouse,
-} from '@crm/db';
-import { syncProductWarehouseIds } from './sync-warehouse-ids';
+import { type Types } from 'mongoose';
+import { connectDB, Category, Product, StockLevel, Supplier, Warehouse } from '@crm/db';
+import { setProductStockLevel } from './set-product-stock';
 
 export type BulkStockMode = 'set' | 'add';
 
@@ -60,8 +52,6 @@ export async function applyBulkProductOperation(
   if (matched === 0) {
     return { matched: 0, updated: 0, stockLevelsTouched: 0 };
   }
-
-  const userOid = new mongoose.Types.ObjectId(userId);
 
   switch (operation.type) {
     case 'assignSupplier': {
@@ -115,36 +105,11 @@ export async function applyBulkProductOperation(
         const previous = existing?.onHand ?? 0;
         const target =
           operation.mode === 'set' ? operation.quantity : previous + operation.quantity;
-        if (target < 0) {
-          throw new Error('A készlet nem lehet negatív.');
-        }
-        const delta = target - previous;
 
-        await StockLevel.findOneAndUpdate(
-          { productId, warehouseId },
-          {
-            $set: {
-              onHand: target,
-              lastChangedAt: new Date(),
-              lastChangedBy: userOid,
-            },
-          },
-          { upsert: true, new: true }
-        ).exec();
-
-        if (delta !== 0) {
-          await StockAdjustment.create({
-            productId,
-            warehouseId,
-            delta,
-            reason: operation.mode === 'set' ? 'physical_count' : 'correction',
-            note: 'Tömeges módosítás',
-            byUserId: userOid,
-            at: new Date(),
-          });
-        }
-
-        await syncProductWarehouseIds(productId);
+        await setProductStockLevel(productId, warehouseId, target, userId, scope, {
+          note: 'Tömeges módosítás',
+          reason: operation.mode === 'set' ? 'physical_count' : 'correction',
+        });
 
         stockLevelsTouched++;
         updated++;
