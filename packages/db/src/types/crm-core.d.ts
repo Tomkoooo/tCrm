@@ -6,7 +6,16 @@ declare module '@crm/core' {
     warnings: ParseIssue[];
   };
 
-  export function parseInventoryXlsx(buffer: ArrayBuffer): ParseResult;
+  export type ImportParseConfig = {
+    sheetName?: string;
+    columnMap?: Record<string, string | null>;
+    allowMissingSupplier?: boolean;
+  };
+
+  export function parseInventoryXlsx(
+    buffer: ArrayBuffer,
+    options?: ImportParseConfig
+  ): Promise<ParseResult>;
   export function commitInventoryImport(
     parsed: ParseResult,
     userId: string

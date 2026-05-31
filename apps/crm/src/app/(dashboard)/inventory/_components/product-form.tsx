@@ -53,7 +53,11 @@ export function ProductForm({
       )}
 
       <ProductFormExcelSections mode={mode} />
-      <ProductWarehouseFields warehouses={warehouses} initialSelected={initialWarehouseIds} />
+      <ProductWarehouseFields
+        warehouses={warehouses}
+        initialSelected={initialWarehouseIds}
+        stockDriven
+      />
 
       <Card>
         <CardHeader>

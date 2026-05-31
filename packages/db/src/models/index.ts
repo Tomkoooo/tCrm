@@ -34,6 +34,11 @@ export {
 } from './SecretProject';
 export { Vehicle, type IVehicle } from './Vehicle';
 export {
+  VehicleIncident,
+  type IVehicleIncident,
+  type VehicleIncidentStatus,
+} from './VehicleIncident';
+export {
   LogisticsJob,
   type ILogisticsJob,
   type IJobLine,

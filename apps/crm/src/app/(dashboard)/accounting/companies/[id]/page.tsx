@@ -6,6 +6,7 @@ import { Container } from '@crm/ui';
 import { getHrSessionScope } from '@/lib/hr/session-scope';
 import { assertCompanyInScope } from '@crm/core';
 import { EditCompanyForm } from '../_components/company-form';
+import { companyDataToEntries } from '@crm/lib/validation';
 
 export default async function CompanyDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePermission('hr:write');
@@ -43,6 +44,7 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
           slug: company.slug,
           parentCompanyId: company.parentCompanyId ? String(company.parentCompanyId) : undefined,
           isActive: company.isActive,
+          companyDataEntries: companyDataToEntries(company.companyData),
         }}
         parentCompanies={parentOptions}
       />

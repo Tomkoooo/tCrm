@@ -5,9 +5,33 @@ import mongoose from 'mongoose';
 import { requirePermission } from '@crm/auth';
 import { createCompany, updateCompany } from '@crm/core';
 import { connectDB, Company } from '@crm/db';
-import { companySchema } from '@crm/lib/validation';
+import { companySchema, parseCompanyDataJson } from '@crm/lib/validation';
 import { getHrSessionScope } from '@/lib/hr/session-scope';
 import { zodToFieldErrors, type HrFormState } from '../_components/form-utils';
+
+function parseCompanyForm(formData: FormData) {
+  const companyDataJson = String(formData.get('companyDataJson') ?? '');
+  let companyData: Record<string, string> = {};
+  try {
+    companyData = parseCompanyDataJson(companyDataJson);
+  } catch {
+    return { error: 'Érvénytelen cég adat JSON.' as const };
+  }
+
+  const parsed = companySchema.safeParse({
+    name: formData.get('name'),
+    slug: formData.get('slug'),
+    parentCompanyId: formData.get('parentCompanyId') || undefined,
+    isActive: formData.get('isActive') === 'on' || formData.get('isActive') === 'true',
+    companyDataJson,
+  });
+
+  if (!parsed.success) {
+    return { error: 'validation' as const, fieldErrors: zodToFieldErrors(parsed.error.issues) };
+  }
+
+  return { parsed: parsed.data, companyData };
+}
 
 export async function createCompanyAction(
   _prev: HrFormState,
@@ -16,31 +40,32 @@ export async function createCompanyAction(
   await requirePermission('hr:write');
   await connectDB();
 
-  const parsed = companySchema.safeParse({
-    name: formData.get('name'),
-    slug: formData.get('slug'),
-    parentCompanyId: formData.get('parentCompanyId') || undefined,
-    isActive: formData.get('isActive') === 'on' || formData.get('isActive') === 'true',
-  });
-  if (!parsed.success) {
-    return { success: false, fieldErrors: zodToFieldErrors(parsed.error.issues) };
+  const result = parseCompanyForm(formData);
+  if ('error' in result) {
+    if (result.error === 'validation') {
+      return { success: false, fieldErrors: result.fieldErrors };
+    }
+    return { success: false, message: result.error };
   }
 
-  const existing = await Company.findOne({ slug: parsed.data.slug }).exec();
+  const { parsed, companyData } = result;
+
+  const existing = await Company.findOne({ slug: parsed.slug }).exec();
   if (existing) {
     return { success: false, message: 'Ez a slug már létezik.' };
   }
 
   const parentCompanyId =
-    parsed.data.parentCompanyId && mongoose.Types.ObjectId.isValid(parsed.data.parentCompanyId)
-      ? new mongoose.Types.ObjectId(parsed.data.parentCompanyId)
+    parsed.parentCompanyId && mongoose.Types.ObjectId.isValid(parsed.parentCompanyId)
+      ? new mongoose.Types.ObjectId(parsed.parentCompanyId)
       : undefined;
 
   const company = await createCompany({
-    name: parsed.data.name,
-    slug: parsed.data.slug,
+    name: parsed.name,
+    slug: parsed.slug,
     parentCompanyId,
-    isActive: parsed.data.isActive,
+    companyData,
+    isActive: parsed.isActive,
   });
 
   revalidatePath('/accounting/companies');
@@ -55,15 +80,15 @@ export async function updateCompanyAction(
   await requirePermission('hr:write');
   const { userId, permissions } = await getHrSessionScope();
 
-  const parsed = companySchema.safeParse({
-    name: formData.get('name'),
-    slug: formData.get('slug'),
-    parentCompanyId: formData.get('parentCompanyId') || undefined,
-    isActive: formData.get('isActive') === 'on' || formData.get('isActive') === 'true',
-  });
-  if (!parsed.success) {
-    return { success: false, fieldErrors: zodToFieldErrors(parsed.error.issues) };
+  const result = parseCompanyForm(formData);
+  if ('error' in result) {
+    if (result.error === 'validation') {
+      return { success: false, fieldErrors: result.fieldErrors };
+    }
+    return { success: false, message: result.error };
   }
+
+  const { parsed, companyData } = result;
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return { success: false, message: 'Érvénytelen azonosító.' };
@@ -71,17 +96,18 @@ export async function updateCompanyAction(
 
   try {
     const parentCompanyId =
-      parsed.data.parentCompanyId && mongoose.Types.ObjectId.isValid(parsed.data.parentCompanyId)
-        ? new mongoose.Types.ObjectId(parsed.data.parentCompanyId)
+      parsed.parentCompanyId && mongoose.Types.ObjectId.isValid(parsed.parentCompanyId)
+        ? new mongoose.Types.ObjectId(parsed.parentCompanyId)
         : null;
 
     await updateCompany(
       new mongoose.Types.ObjectId(id),
       {
-        name: parsed.data.name,
-        slug: parsed.data.slug,
+        name: parsed.name,
+        slug: parsed.slug,
         parentCompanyId,
-        isActive: parsed.data.isActive,
+        companyData,
+        isActive: parsed.isActive,
       },
       userId,
       permissions

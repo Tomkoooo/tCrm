@@ -40,6 +40,7 @@ export function VehiclesTable({
         query={query}
         total={total}
         basePath="/logistics/vehicles"
+        rowHref={(row) => `/logistics/vehicles/${row._id}`}
         toolbarExtra={
           canWrite ? (
             <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>

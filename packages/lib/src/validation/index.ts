@@ -33,6 +33,11 @@ export {
   stockAdjustmentSchema,
   inventoryImportRowSchema,
   buildKitSchema,
+  importMatchKeySchema,
+  importMergeFieldSchema,
+  parseImportMergeFieldsJson,
+  importParseConfigSchema,
+  parseImportConfigJson,
 } from './inventory';
 
 export type {
@@ -61,7 +66,10 @@ export {
   createPickupInputSchema,
   jobLineInputSchema,
   vehicleSchema,
+  vehicleIncidentSchema,
   suggestVehiclesSchema,
+  parseMediaIdsFromForm,
+  parseCheckboxIdsFromForm,
   gatherJobLinesSchema,
   installJobLinesSchema,
   returnJobLinesSchema,
@@ -74,7 +82,7 @@ export {
   parseCheckInLinesJson,
 } from './jobs';
 
-export type { VehicleInput, CreatePickupInput } from './jobs';
+export type { VehicleInput, VehicleIncidentInput, CreatePickupInput } from './jobs';
 
 export {
   secretProjectSchema,
@@ -86,6 +94,9 @@ export type { SecretProjectInput, SecretItemInput, SecretProjectAccessInput } fr
 
 export {
   companySchema,
+  companyDataEntrySchema,
+  parseCompanyDataJson,
+  companyDataToEntries,
   employeeSchema,
   inviteEmployeeSchema,
   scheduleEntrySchema,

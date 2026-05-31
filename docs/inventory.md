@@ -10,11 +10,11 @@ This document describes the Phase 1 inventory system: schema, import/export form
   - **names**: `de/en/hu`
   - **descriptions**: `de/en/hu`
   - **colors**: `de/en/hu`
-  - **pricing**: EUR/HUF fields matching Alutent columns
+  - **pricing**: EUR/HUF fields matching Excel template columns
   - **isConsumable**: consumable parts are not expected back from event sites (no loss tracking on return check-in); default `false`
   - **components**: BOM (embedded list) of `{ productId, quantity }`
   - **categoryIds**: references `Category`
-  - **warehouseIds**: catalog warehouses (`Warehouse` refs) — scopes product list, builds, and import
+  - **warehouseIds**: cached catalog scope — auto-synced from `StockLevel` rows via `syncProductWarehouseIds`
   - **imageIds**: GridFS ids
 - **Warehouse**: baseline keys `kispest`, `erzsebet`, `recsei`; `assignedUserIds` for staff scope
 - **StockLevel**: unique compound index `(productId, warehouseId)`
@@ -40,26 +40,90 @@ Seeded permissions (group `inventory`):
 - `suppliers:read`
 - `suppliers:manage`
 
-## Excel import (Alutent.xlsx)
+## Excel import
 
-- **Input sheet**: `Munka1`
-- **Column map**: `@crm/core` `ALUTENT_COLUMNS`
-- **Parsing**: `@crm/core` `parseInventoryXlsx`
+- **Input sheet**: választható a varázslóban (első lap alapértelmezetten)
+- **Column map**: `@crm/core` `INVENTORY_COLUMNS` + UI mapping (`import-config.ts`)
+- **Parsing**: `@crm/core` `parseInventoryXlsx(buffer, options?)`
+  - **Preprocess**: `preprocessImportRows` — oszlop remap (auto-match azonos névnél)
   - **Commit**: `@crm/core` `commitInventoryImport`
-  - Upserts products by **CRM SKU** (`product_id_SM` → `Product.sku`)
-  - **Supplier SKU**: `product_id` → `Product.supplierSku`
-  - **CRM category**: each row must include `crm_category_slug` matching an existing `Category.slug`
-  - **Supplier**: `crm_supplier_slug` per row (`Supplier.key`), or optional default supplier in the import modal for rows without that column (mixed-supplier workbooks)
-  - **Warehouse catalog**: `crm_warehouse_slug` per row (`Warehouse.key`, comma-separated for multiple), or default warehouse in the import modal — sets `Product.warehouseIds`
+  - Upserts products by **CRM SKU** (alap: kategória `skuPrefix` + `product_id`; SM mód: `product_id_SM` + derived `supplierSku`)
+  - **Supplier SKU**: `product_id` → `Product.supplierSku` (alap módban kötelező; SM módban kinyerve)
+  - **CRM category**: `crm_category_slug` matching `Category.slug` (case-insensitive; `brand` column mappable)
+  - **SKU modes** (`skuMode` in import config): `from_supplier_sku` (default) or `from_sm` with optional prefix strip / digit count
+  - **Supplier**: optional at import (`allowMissingSupplier`); assign later via bulk update
+  - **Warehouse presence**: stock-only — `warehouse 1./2./3.` create `StockLevel`; empty cell = not in that warehouse; `Product.warehouseIds` synced from stock
+  - **`crm_warehouse_slug`**: ignored for catalog (warning if present without stock columns)
   - **Shipper categories**: `cat*Name_*` → `shipperCategoryPath` only (not CRM categories)
-  - Stock quantities: `warehouse 1./2./3.` columns (also adds warehouse to `warehouseIds` on commit)
-  - Links BOM components in a **second pass** (to allow forward references)
+  - Stock quantities: `warehouse 1./2./3.` → Kispest (`kispest`), Erzsébet (`erzsebet`), Récsei (`recsei`) per-row on-hand
+  - Links BOM components in a **second pass** (forward references + DB lookup)
   - Creates `StockLevel` and logs `StockAdjustment` entries with reason `initial_load`
+- **Template**: `GET /inventory/template` — Excel with example row + Útmutató sheet (required columns, stock columns)
+
+### Excel import glossary
+
+Business meanings for standard import columns:
+
+| Column | Meaning (HU) | Business note |
+|--------|--------------|---------------|
+| `product_id_SM` | CRM SKU (SM mód) | SM import módban kötelező forrás; alap módban opcionális ellenőrzés |
+| `product_id` | beszállítói azonosító | Alap módban kötelező — ebből generálódik a CRM SKU |
+| `supplierNo` | Beszállító száma | Supplier number field |
+| `brand` | márkanév | Product brand |
+| `name_de` / `name_en` / `name_hu` | német / angol / magyar megnevezés | Localized product names |
+| `ean` | eladási vonalkód | Retail barcode (EAN) |
+| `length` / `width` / `height` | hosszúság / szélesség / magasság | Dimensions |
+| `weight` | súly | Product weight |
+| `Color_de` / `Color_en` / `Color_hu` | szín (de/en/hu) | Color labels |
+| `packageweight` / `packagevolume` | csomagsúly / csomag térfogata | Package weight and volume |
+| `long_description_*` | hosszú leírás (de/en/hu) | Long descriptions |
+| `recommendet_retail_price_with_german_tax` | ajánlott fogyasztói ár német áfával | Recommended retail EUR |
+| `recommendet_retail_price_with_tax_HUF` | ajánlott fogyasztói ár magyar áfával | Recommended retail HUF |
+| `streetprice_with_german_tax` | fogyasztói ár áfa nélkül | Street price EUR |
+| `streetprice_without_HUN_tax_HUF` | fogyasztói ár forint | Street price HUF |
+| `merchant_price` / `merchant_price_HUF` | bekerülési ár | Merchant/cost price EUR/HUF |
+| `youtubevideo` / `youtubeid` | videó | YouTube link / id |
+| `bild1` … `bild5` | kép 1 … 5 | Image hints (filename or URL) |
+| `cat1Name` / `cat2Name` / `Cat3Name` | fő / kategória / alkategória (német) | → `Product.shipperCategoryPath` |
+| `discontinued` | CEO label: „kedvezmény” | Parser uses as `isDiscontinued` — not the same as `Discont 1.` / `Discont 2.` |
+| `Relatedproduct_1` … `4` | kapcsolódó termék 1–4 | BOM component CRM SKU references |
+| `Relatedproduct_pc_1` … `4` | kapcs. termék darabszám | Quantity per parent kit |
+| `Owner` | tulajdonos | Product owner field |
+| `warehouse 1.` | Kispest raktár darab | On-hand qty → warehouse key `kispest` |
+| `warehouse 2.` | Erzsébet raktár | → `erzsebet` |
+| `warehouse 3.` | Récsei Raktár | → `recsei` |
+| `RentFeeDay` / `RentFeeWeekend` / `RentFeeWeek` | napi / hétvégi / heti bérleti díj | Rental pricing HUF |
+| `Discont 1.` | kedvezmény max | Max discount → `discounts.discount1Max` |
+| `Discont 2.` | tulajdonosi kedvezmény | Owner discount → `discounts.discount2Owner` |
+| `Rent` | bérlehetőség | **1** = rentable, **2** = not standalone rentable → `rental.rentFlag` |
+
+**CRM-only columns** (tCrm import template):
+
+| Column | Meaning |
+|--------|---------|
+| `crm_category_slug` | CRM category (`Category.slug`) — SKU prefix source |
+| `crm_supplier_slug` | CRM supplier (`Supplier.key`) — optional at first import |
+| `crm_warehouse_slug` | Ignored — use stock columns for warehouse presence |
+| `is_consumable` | Consumable flag (tCrm extension) |
+
+### Bulk product update
+
+- UI: **Tömeges módosítás** on `/inventory` (requires `inventory:write`)
+- Scope: current table filter from URL + optional narrow filters (`missingSupplierOnly`, brand, category slug)
+- Operations (`applyBulkProductOperation` in `@crm/core`):
+  - **Beszállító** — assign supplier
+  - **Készlet** — set or add on-hand qty for one warehouse (`StockLevel` + sync `warehouseIds`)
+  - **Aktív / inaktív**, **CRM kategória**, **márka**
 
 ## Excel export
 
-- `GET /inventory/export` streams an `.xlsx` file.
-- Export uses `@crm/core` `exportInventoryXlsx` and preserves the Alutent column order.
+- UI: **Export** opens a dialog (not a blind full dump).
+- `GET /inventory/export` query params:
+  - `productScope`: `filtered` (current list query) | `selection` (`skus` comma-separated) | `all` (full permission scope)
+  - `availability`: `active` | `all` (inactive included; logistics managers)
+  - `stockScope`: `all_scoped` (warehouse 1–3 for Kispest/Erzsébet/Récsei) | `current` (only list `warehouseId` filter) | `none`
+- Table row checkboxes select SKUs for **selection** export.
+- Export includes `crm_category_slug`, `crm_supplier_slug`, BOM SKUs, and per-warehouse on-hand when stock scope is set.
 
 ## BOM / Composites (logistics-ready)
 

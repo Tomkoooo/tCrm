@@ -42,6 +42,7 @@ export type ProductTableRow = {
   discount1Max?: number;
   discount2Owner?: number;
   rentFlag?: number;
+  stockSummary?: string;
   warehouseKeys?: string;
   isDiscontinued: boolean;
   isActive: boolean;
@@ -128,6 +129,19 @@ const numCol = (
   ...opts,
 });
 
+export function warehouseDisplayLabel(name: string): string {
+  return name.split(/\s+/)[0] ?? name;
+}
+
+export function formatProductStockSummary(
+  entries: Array<{ warehouseName: string; onHand: number }>
+): string | undefined {
+  const parts = entries
+    .filter((e) => e.onHand > 0)
+    .map((e) => `${warehouseDisplayLabel(e.warehouseName)}/${e.onHand}`);
+  return parts.length ? parts.join(', ') : undefined;
+}
+
 export const INVENTORY_PRODUCT_COLUMNS: Array<ColumnDef<ProductTableRow>> = [
   {
     key: 'thumbnailUrl',
@@ -167,16 +181,19 @@ export const INVENTORY_PRODUCT_COLUMNS: Array<ColumnDef<ProductTableRow>> = [
   strCol('internalSku', 'Belső SKU'),
   strCol('supplierNo', 'Beszállítói szám'),
   {
-    key: 'warehouseKeys',
-    label: 'Raktár',
-    mongoKey: 'warehouseIds',
+    key: 'stockSummary',
+    label: 'Raktár / készlet',
     type: 'string',
     sortable: false,
     filterable: false,
     searchable: false,
     defaultVisible: true,
-    headerHint: 'crm_warehouse_slug — termékhez rendelt raktár(ok)',
+    headerHint: 'Raktár neve / készlet — csak pozitív készlet jelenik meg (pl. Récsei/20)',
   },
+  strCol('warehouseKeys', 'Raktár kulcsok', {
+    defaultVisible: false,
+    headerHint: 'Belső warehouse key lista (StockLevel alapján)',
+  }),
   {
     key: 'brand',
     label: 'Márka',
@@ -310,10 +327,12 @@ export const INVENTORY_PRODUCT_SELECT = {
 export function mapProductToTableRow(
   p: ProductLean,
   thumbnailUrl?: string,
-  warehouseKeys?: string[]
+  warehouseKeys?: string[],
+  stockSummary?: string
 ): ProductTableRow {
   return {
     sku: p.sku,
+    stockSummary,
     warehouseKeys: warehouseKeys?.length ? warehouseKeys.join(', ') : undefined,
     internalSku: p.internalSku,
     supplierSku: p.supplierSku,

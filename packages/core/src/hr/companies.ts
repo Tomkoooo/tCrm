@@ -6,6 +6,7 @@ export async function createCompany(data: {
   name: string;
   slug: string;
   parentCompanyId?: Types.ObjectId;
+  companyData?: Record<string, string>;
   isActive: boolean;
 }): Promise<ICompany> {
   await connectDB();
@@ -18,6 +19,7 @@ export async function updateCompany(
     name: string;
     slug: string;
     parentCompanyId?: Types.ObjectId | null;
+    companyData?: Record<string, string>;
     isActive: boolean;
   }>,
   actorUserId: Types.ObjectId,
@@ -33,6 +35,9 @@ export async function updateCompany(
   if (data.name !== undefined) company.name = data.name;
   if (data.slug !== undefined) company.slug = data.slug;
   if (data.isActive !== undefined) company.isActive = data.isActive;
+  if (data.companyData !== undefined) {
+    company.companyData = new Map(Object.entries(data.companyData));
+  }
   await company.save();
   return company;
 }

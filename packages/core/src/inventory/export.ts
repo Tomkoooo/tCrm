@@ -1,12 +1,27 @@
 import * as XLSX from 'xlsx';
 import type { IProduct } from '@crm/db';
-import { ALUTENT_COLUMNS } from './excel-columns';
+import { INVENTORY_COLUMNS } from './excel-columns';
+import { excelColumnFromWarehouseKey } from './warehouse-columns';
+
+export type InventoryExportEnrichment = {
+  warehouseSlugByProductId?: Map<string, string>;
+  categorySlugByProductId?: Map<string, string>;
+  supplierKeyByProductId?: Map<string, string>;
+  /** productId → warehouseKey → onHand */
+  stockByProductId?: Map<string, Map<string, number>>;
+  /** Stock columns to populate (warehouse keys, e.g. kispest, erzsebet, recsei). */
+  stockWarehouseKeys?: string[];
+  componentLinesByProductId?: Map<string, Array<{ sku: string; quantity: number }>>;
+};
 
 export function exportInventoryXlsx(
   products: Array<Partial<IProduct>>,
-  options?: { warehouseSlugByProductId?: Map<string, string> }
+  enrichment?: InventoryExportEnrichment
 ): ArrayBuffer {
+  const stockKeys = enrichment?.stockWarehouseKeys ?? [];
+
   const rows: Record<string, unknown>[] = products.map((p) => {
+    const productId = p._id ? String(p._id) : '';
     const row: Record<string, unknown> = {};
 
     row.product_id_SM = p.sku ?? '';
@@ -49,33 +64,46 @@ export function exportInventoryXlsx(
     row.stocklevel = p.stockLevelHint ?? '';
     row.availability_in_weeks = p.availabilityWeeks ?? '';
 
-    // Categories and warehouses are exported by the export endpoint that joins category/stock.
-    // Leave these blank here; caller can override by mutating returned row before writing.
     row.categoriy2_id = '';
-    row.cat1Name = '';
-    row.cat2Name = '';
-    row.Cat3Name = '';
+    row.cat1Name = p.shipperCategoryPath?.cat1?.de ?? '';
+    row.cat2Name = p.shipperCategoryPath?.cat2?.de ?? '';
+    row.Cat3Name = p.shipperCategoryPath?.cat3?.de ?? '';
     row.inCategories = p.inCategories ?? '';
-    row.crm_warehouse_slug = (p._id && options?.warehouseSlugByProductId?.get(String(p._id))) ?? '';
+    row.crm_category_slug =
+      (productId && enrichment?.categorySlugByProductId?.get(productId)) ?? '';
+    row.crm_supplier_slug = (productId && enrichment?.supplierKeyByProductId?.get(productId)) ?? '';
+    row.crm_warehouse_slug =
+      (productId && enrichment?.warehouseSlugByProductId?.get(productId)) ?? '';
     row.is_consumable = p.isConsumable ? 1 : '';
     row.discontinued = p.isDiscontinued ? 1 : 0;
-    row.cat1Name_en = '';
-    row.cat2Name_en = '';
-    row.cat3Name_en = '';
-    row.cat1Name_hu = '';
-    row.cat2Name_hu = '';
-    row.cat3Name_hu = '';
+    row.cat1Name_en = p.shipperCategoryPath?.cat1?.en ?? '';
+    row.cat2Name_en = p.shipperCategoryPath?.cat2?.en ?? '';
+    row.cat3Name_en = p.shipperCategoryPath?.cat3?.en ?? '';
+    row.cat1Name_hu = p.shipperCategoryPath?.cat1?.hu ?? '';
+    row.cat2Name_hu = p.shipperCategoryPath?.cat2?.hu ?? '';
+    row.cat3Name_hu = p.shipperCategoryPath?.cat3?.hu ?? '';
 
+    const components = enrichment?.componentLinesByProductId?.get(productId) ?? [];
     for (let i = 0; i < 4; i++) {
-      row[`Relatedproduct_${i + 1}`] = '';
-      row[`Relatedproduct_pc_${i + 1}`] = '';
+      const c = components[i];
+      row[`Relatedproduct_${i + 1}`] = c?.sku ?? '';
+      row[`Relatedproduct_pc_${i + 1}`] = c?.quantity ?? '';
     }
-    // Caller can fill BOM with SKU via lookup. We keep placeholders.
 
     row.Owner = p.owner ?? '';
     row['warehouse 1.'] = '';
     row['warehouse 2.'] = '';
     row['warehouse 3.'] = '';
+
+    const stockForProduct = enrichment?.stockByProductId?.get(productId);
+    if (stockForProduct && stockKeys.length) {
+      for (const whKey of stockKeys) {
+        const col = excelColumnFromWarehouseKey(whKey);
+        if (!col) continue;
+        const qty = stockForProduct.get(whKey);
+        if (qty !== undefined) row[col] = qty;
+      }
+    }
 
     row.RentFeeDay = p.rental?.rentFeeDay ?? '';
     row.RentFeeWeekend = p.rental?.rentFeeWeekend ?? '';
@@ -84,28 +112,15 @@ export function exportInventoryXlsx(
     row['Discont 2.'] = p.discounts?.discount2Owner ?? '';
     row.Rent = p.rental?.rentFlag ?? '';
 
-    // Ensure column order matches Alutent
     const ordered: Record<string, unknown> = {};
-    for (const col of ALUTENT_COLUMNS) {
+    for (const col of INVENTORY_COLUMNS) {
       ordered[col] = row[col] ?? '';
     }
     return ordered;
   });
 
-  const ws = XLSX.utils.json_to_sheet(rows, { header: [...ALUTENT_COLUMNS] });
+  const ws = XLSX.utils.json_to_sheet(rows, { header: [...INVENTORY_COLUMNS] });
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Munka1');
-  const out = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
-  return out;
-}
-
-export function getImportTemplateXlsx(munka2Rows: string[][]): ArrayBuffer {
-  const wb = XLSX.utils.book_new();
-  const ws1 = XLSX.utils.aoa_to_sheet([[...ALUTENT_COLUMNS]]);
-  XLSX.utils.book_append_sheet(wb, ws1, 'Munka1');
-
-  const ws2 = XLSX.utils.aoa_to_sheet(munka2Rows);
-  XLSX.utils.book_append_sheet(wb, ws2, 'Munka2');
-
+  XLSX.utils.book_append_sheet(wb, ws, 'Export');
   return XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
 }

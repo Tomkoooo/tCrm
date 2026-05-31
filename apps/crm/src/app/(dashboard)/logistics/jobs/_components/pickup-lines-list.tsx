@@ -10,6 +10,8 @@ export type PickupBomComponentView = {
   name: string;
   quantityPerKit: number;
   totalQuantity: number;
+  depth?: number;
+  isAssembly?: boolean;
 };
 
 export type PickupLineListItem = {
@@ -36,8 +38,17 @@ function BomBreakdown({
   return (
     <ul className={cn('text-muted-foreground space-y-1 pl-1 text-xs', className)}>
       {components.map((c) => (
-        <li key={c.productId} className="flex justify-between gap-2">
+        <li
+          key={`${c.productId}-${c.depth ?? 0}-${c.sku}`}
+          className="flex justify-between gap-2"
+          style={{ paddingLeft: `${(c.depth ?? 0) * 12}px` }}
+        >
           <span>
+            {c.isAssembly ? (
+              <span className="bg-primary/10 text-primary mr-1 rounded px-1 py-0.5 text-[10px] font-medium uppercase">
+                összeállítás
+              </span>
+            ) : null}
             <span className="text-foreground font-mono">{c.sku}</span>
             <span className="ml-1">{c.name}</span>
           </span>

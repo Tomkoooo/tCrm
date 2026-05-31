@@ -1,10 +1,10 @@
 'use server';
 
 import bcrypt from 'bcryptjs';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { connectDB, ensureBaselineRbac, hasAnyAdminUser, Role, User } from '@crm/db';
 import { registerSchema } from '@crm/lib/validation';
+import { setInitializedCookie } from '@/lib/initialized-cookie';
 
 export type SetupState =
   | { success: false; fieldErrors?: Record<string, string[]>; message?: string }
@@ -30,7 +30,7 @@ export async function setupAdminAction(_prev: SetupState, formData: FormData): P
 
   await connectDB();
   if (await hasAnyAdminUser()) {
-    redirect('/login');
+    redirect('/setup/complete');
   }
 
   await ensureBaselineRbac();
@@ -59,14 +59,6 @@ export async function setupAdminAction(_prev: SetupState, formData: FormData): P
     isActive: true,
   });
 
-  const cookieStore = await cookies();
-  const secure = (process.env.AUTH_URL ?? process.env.APP_URL ?? '').startsWith('https');
-  cookieStore.set('tcrm_initialized', '1', {
-    httpOnly: true,
-    sameSite: 'lax',
-    path: '/',
-    secure,
-  });
-
+  await setInitializedCookie();
   redirect('/login');
 }

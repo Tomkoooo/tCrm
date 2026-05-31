@@ -8,11 +8,19 @@ seedDatabase()
     await connectDB();
 
     if (process.env.SEED_INVENTORY === '1') {
-      const { parseInventoryXlsx, commitInventoryImport } = await import('@crm/core');
-      const filePath = 'docs/excel/Alutent.xlsx';
+      const { parseInventoryXlsx, commitInventoryImport, readImportWorkbook, buildAutoColumnMap } =
+        await import('@crm/core');
+      const filePath = process.env.SEED_INVENTORY_FILE ?? 'docs/excel/import-sample.xlsx';
       const buf = fs.readFileSync(filePath);
       const arrayBuf = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-      const parsed = parseInventoryXlsx(arrayBuf);
+      const inspect = readImportWorkbook(arrayBuf);
+      const sheetName = inspect.sheetNames[0]!;
+      const headers = inspect.headersBySheet[sheetName] ?? [];
+      const parsed = await parseInventoryXlsx(arrayBuf, {
+        sheetName,
+        columnMap: buildAutoColumnMap(headers),
+        allowMissingSupplier: true,
+      });
       if (parsed.errors.length > 0) {
         console.error('Inventory seed aborted due to parse errors:', parsed.errors.slice(0, 5));
       } else {
@@ -21,7 +29,7 @@ seedDatabase()
         const admin = await User.findOne({ email: adminEmail });
         const userId = admin?._id?.toString() ?? '000000000000000000000000';
         await commitInventoryImport(parsed, userId);
-        console.log('Seeded inventory from Alutent.xlsx');
+        console.log(`Seeded inventory from ${filePath}`);
       }
     }
 
@@ -63,7 +71,14 @@ seedDatabase()
           continue;
         }
 
-        const totalLength = 16; // default: prefix + 15 digits
+        const totalLength = (() => {
+          const note = parts.find((p) => p.includes('+')) ?? '';
+          const m = note.match(/([0-9]+)\s*\+\s*([0-9]+)/i);
+          if (m) {
+            return Number(m[1]) + Number(m[2]);
+          }
+          return 16;
+        })();
 
         await Category.findOneAndUpdate(
           { slug, level: 1 },

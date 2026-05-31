@@ -12,10 +12,19 @@ import {
   Warehouse,
 } from '@crm/db';
 import { requirePermission, requireAuth } from '@crm/auth';
-import { syncMediaUsage, linkUrlsFromMediaIds } from '@crm/core';
+import {
+  applyBulkProductOperation,
+  syncProductWarehouseIds,
+  type BulkProductOperation,
+  syncMediaUsage,
+  linkUrlsFromMediaIds,
+} from '@crm/core';
 import { parseWarehouseIdsJson, productSchema, stockAdjustmentSchema } from '@crm/lib/validation';
+import { buildDataTableMongoQuery, parseDataTableQuery } from '@crm/ui';
+import { INVENTORY_PRODUCT_COLUMNS } from '@/lib/inventory/product-table-columns';
 import {
   canAccessProductWarehouses,
+  buildScopedProductFilter,
   getInventoryWarehouseScope,
 } from '@/lib/inventory/warehouse-scope';
 
@@ -137,9 +146,6 @@ async function parseWarehouseIdsFromForm(
   }
 
   const scope = await getInventoryWarehouseScope();
-  if (!scope.isGlobal && ids.length === 0) {
-    return { error: 'Legalább egy raktár kötelező.' };
-  }
   if (!scope.isGlobal) {
     const invalid = ids.find((id) => !scope.warehouseIds.includes(id));
     if (invalid) return { error: 'Nincs jogosultság a kiválasztott raktárhoz.' };
@@ -371,6 +377,193 @@ export async function updateProductAction(
   return { success: true, message: 'Product updated.', sku };
 }
 
+export type ToggleProductActiveState = { success: boolean; message: string };
+
+export async function toggleProductActiveAction(
+  sku: string,
+  isActive: boolean
+): Promise<ToggleProductActiveState> {
+  await requirePermission('inventory:write');
+  await connectDB();
+
+  const normalizedSku = sku.trim();
+  if (!normalizedSku) {
+    return { success: false, message: 'Hiányzó SKU.' };
+  }
+
+  const existing = await Product.findOne({ sku: normalizedSku }).exec();
+  if (!existing) {
+    return { success: false, message: 'Termék nem található.' };
+  }
+
+  const allowed = await canAccessProductWarehouses(
+    (existing.warehouseIds ?? []).map((id) => String(id))
+  );
+  if (!allowed) {
+    return { success: false, message: 'Nincs jogosultság ehhez a termékhez.' };
+  }
+
+  existing.isActive = isActive;
+  await existing.save();
+  revalidatePath('/inventory');
+  revalidatePath(`/inventory/${normalizedSku}`);
+  return {
+    success: true,
+    message: isActive ? 'Termék aktiválva.' : 'Termék inaktívvá téve.',
+  };
+}
+
+export type BulkUpdateProductsState = {
+  success: boolean;
+  message: string;
+  matched?: number;
+  updated?: number;
+};
+
+export async function bulkUpdateProductsAction(
+  formData: FormData
+): Promise<BulkUpdateProductsState> {
+  await requirePermission('inventory:write');
+  const user = await requireAuth();
+  if (!user?.id) return { success: false, message: 'Nincs bejelentkezve.' };
+
+  await connectDB();
+
+  const operationType = String(formData.get('operationType') ?? '').trim();
+  const missingSupplierOnly = formData.get('missingSupplierOnly') === 'true';
+  const brandFilter = String(formData.get('brandFilter') ?? '').trim() || undefined;
+  const categorySlug =
+    String(formData.get('categorySlug') ?? '')
+      .trim()
+      .toLowerCase() || undefined;
+
+  let rawParams: Record<string, string | string[] | undefined> = {};
+  const searchParamsJson = String(formData.get('searchParamsJson') ?? '').trim();
+  if (searchParamsJson) {
+    rawParams = JSON.parse(searchParamsJson) as Record<string, string | string[] | undefined>;
+  }
+
+  const scope = await getInventoryWarehouseScope();
+  const showAllProducts =
+    scope.isGlobal && typeof rawParams.showAll === 'string' && rawParams.showAll === 'true';
+  const warehouseIdParam =
+    typeof rawParams.warehouseId === 'string' ? rawParams.warehouseId : undefined;
+
+  const query = parseDataTableQuery(rawParams);
+  const { filter } = buildDataTableMongoQuery(query, INVENTORY_PRODUCT_COLUMNS);
+  const activeFilter = showAllProducts ? {} : { isActive: true };
+  let listFilter = await buildScopedProductFilter({ ...filter, ...activeFilter }, warehouseIdParam);
+
+  const andClauses: Record<string, unknown>[] = [listFilter];
+
+  if (missingSupplierOnly) {
+    andClauses.push({
+      $or: [{ supplierId: { $exists: false } }, { supplierId: null }],
+    });
+  }
+
+  if (brandFilter) {
+    andClauses.push({ brand: brandFilter });
+  }
+
+  if (categorySlug) {
+    const cat = await Category.findOne({ slug: categorySlug }).select('_id').lean().exec();
+    if (!cat) {
+      return { success: false, message: `Ismeretlen kategória: ${categorySlug}` };
+    }
+    andClauses.push({ categoryIds: cat._id });
+  }
+
+  listFilter = andClauses.length === 1 ? andClauses[0]! : { $and: andClauses };
+
+  let operation: BulkProductOperation;
+  try {
+    operation = buildBulkOperationFromForm(operationType, formData);
+  } catch (e) {
+    return { success: false, message: e instanceof Error ? e.message : 'Érvénytelen művelet.' };
+  }
+
+  try {
+    const result = await applyBulkProductOperation(listFilter, operation, user.id, {
+      isGlobal: scope.isGlobal,
+      allowedWarehouseIds: scope.warehouseIds.map((id) => new mongoose.Types.ObjectId(id)),
+    });
+
+    revalidatePath('/inventory');
+    return {
+      success: true,
+      message: formatBulkUpdateMessage(operation, result),
+      matched: result.matched,
+      updated: result.updated,
+    };
+  } catch (e) {
+    return { success: false, message: e instanceof Error ? e.message : 'A művelet sikertelen.' };
+  }
+}
+
+function buildBulkOperationFromForm(
+  operationType: string,
+  formData: FormData
+): BulkProductOperation {
+  switch (operationType) {
+    case 'assignSupplier': {
+      const supplierKey = String(formData.get('supplierKey') ?? '')
+        .trim()
+        .toLowerCase();
+      if (!supplierKey) throw new Error('Válasszon beszállítót.');
+      return { type: 'assignSupplier', supplierKey };
+    }
+    case 'setStock': {
+      const warehouseKey = String(formData.get('stockWarehouseKey') ?? '')
+        .trim()
+        .toLowerCase();
+      const quantity = Number(formData.get('stockQuantity'));
+      const mode = String(formData.get('stockMode') ?? 'set') as 'set' | 'add';
+      if (!warehouseKey) throw new Error('Válasszon raktárat a készlethez.');
+      if (!Number.isFinite(quantity)) throw new Error('Érvénytelen mennyiség.');
+      if (!['set', 'add'].includes(mode)) throw new Error('Érvénytelen készlet mód.');
+      return { type: 'setStock', warehouseKey, quantity, mode };
+    }
+    case 'setActive': {
+      const isActive = formData.get('isActive') === 'true';
+      return { type: 'setActive', isActive };
+    }
+    case 'assignCategory': {
+      const slug = String(formData.get('targetCategorySlug') ?? '')
+        .trim()
+        .toLowerCase();
+      if (!slug) throw new Error('Adja meg a kategória slugot.');
+      return { type: 'assignCategory', categorySlug: slug };
+    }
+    case 'setBrand': {
+      const brand = String(formData.get('brand') ?? '').trim();
+      return { type: 'setBrand', brand };
+    }
+    default:
+      throw new Error('Ismeretlen művelet.');
+  }
+}
+
+function formatBulkUpdateMessage(
+  operation: BulkProductOperation,
+  result: { matched: number; updated: number; stockLevelsTouched?: number }
+): string {
+  switch (operation.type) {
+    case 'assignSupplier':
+      return `${result.updated} / ${result.matched} termék — beszállító: ${operation.supplierKey}.`;
+    case 'setStock':
+      return `${result.stockLevelsTouched ?? result.updated} / ${result.matched} készletsor — ${operation.warehouseKey}: ${operation.mode === 'set' ? '=' : '+'}${operation.quantity}.`;
+    case 'setActive':
+      return `${result.updated} / ${result.matched} termék — ${operation.isActive ? 'aktív' : 'inaktív'}.`;
+    case 'assignCategory':
+      return `${result.updated} / ${result.matched} termék — kategória: ${operation.categorySlug}.`;
+    case 'setBrand':
+      return `${result.updated} / ${result.matched} termék — márka: ${operation.brand || '(törölve)'}.`;
+    default:
+      return `${result.updated} / ${result.matched} frissítve.`;
+  }
+}
+
 export async function deleteProductAction(
   _prev: InventoryFormState,
   formData: FormData
@@ -447,6 +640,8 @@ export async function adjustStockAction(
       if (stock.onHand < 0) {
         throw new Error('Stock cannot be negative.');
       }
+
+      await syncProductWarehouseIds(productId, session);
     });
   } catch (e: any) {
     return { success: false, message: e?.message ?? 'Adjustment failed.' };

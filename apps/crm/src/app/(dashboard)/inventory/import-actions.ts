@@ -2,10 +2,38 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireAuth, requirePermission } from '@crm/auth';
-import { commitInventoryImport, parseInventoryXlsx, prepareImportRows } from '@crm/core';
-import { connectDB, Supplier, Warehouse } from '@crm/db';
+import {
+  buildAutoColumnMap,
+  commitInventoryImport,
+  detectImportGaps,
+  parseInventoryXlsx,
+  prepareImportRows,
+  readImportWorkbook,
+  type ImportColumnMap,
+  type ImportCommitOptions,
+  type ImportMatchKey,
+  type ImportMergeField,
+  type ImportParseConfig,
+} from '@crm/core';
+import { connectDB, Supplier } from '@crm/db';
+import {
+  importMatchKeySchema,
+  parseImportConfigJson,
+  parseImportMergeFieldsJson,
+} from '@crm/lib/validation';
 
 export type ImportIssue = { row: number; field?: string; message: string };
+
+export type ImportInspectResult =
+  | { success: false; message: string }
+  | {
+      success: true;
+      sheetNames: string[];
+      headers: string[];
+      gaps: string[];
+      suggestedSheet?: string;
+      suggestedColumnMap?: ImportColumnMap;
+    };
 
 export type ImportState =
   | { success: false; message: string }
@@ -31,20 +59,73 @@ export type ImportState =
       supplierKey?: string;
     };
 
+function parseImportOptions(formData: FormData): ImportCommitOptions {
+  const defaultSupplierKey =
+    String(formData.get('supplierKey') ?? '')
+      .trim()
+      .toLowerCase() || undefined;
+
+  const matchKeyRaw = String(formData.get('matchKey') ?? 'sku').trim();
+  const matchKeyParsed = importMatchKeySchema.safeParse(matchKeyRaw);
+  const matchKey: ImportMatchKey = matchKeyParsed.success ? matchKeyParsed.data : 'sku';
+
+  const isMerge = formData.get('isMerge') === 'true';
+  const mergeFields = parseImportMergeFieldsJson(String(formData.get('mergeFieldsJson') ?? ''));
+  const importConfig = parseImportConfigJson(
+    String(formData.get('importConfigJson') ?? '')
+  ) as ImportParseConfig;
+
+  return {
+    defaultSupplierKey,
+    matchKey,
+    isMerge,
+    mergeFields: mergeFields.length ? (mergeFields as ImportMergeField[]) : undefined,
+    ...importConfig,
+  };
+}
+
+export async function inspectImportFileAction(formData: FormData): Promise<ImportInspectResult> {
+  await requirePermission('inventory:import');
+
+  const file = formData.get('file');
+  if (!(file instanceof File)) {
+    return { success: false, message: 'Hiányzik a fájl.' };
+  }
+
+  const buf = await file.arrayBuffer();
+  const workbook = readImportWorkbook(buf);
+  const preferredSheet = workbook.sheetNames[0];
+  const headers = preferredSheet ? (workbook.headersBySheet[preferredSheet] ?? []) : [];
+  const suggestedColumnMap = buildAutoColumnMap(headers);
+  const gaps = detectImportGaps(headers, suggestedColumnMap);
+
+  return {
+    success: true,
+    sheetNames: workbook.sheetNames,
+    headers,
+    gaps,
+    suggestedSheet: preferredSheet,
+    suggestedColumnMap,
+  };
+}
+
+async function validateImportDefaults(options: ImportCommitOptions) {
+  if (options.defaultSupplierKey) {
+    const supplier = await Supplier.findOne({ key: options.defaultSupplierKey }).lean().exec();
+    if (!supplier) {
+      return `Beszállító nem található: ${options.defaultSupplierKey}`;
+    }
+  }
+  return null;
+}
+
 export async function previewImportAction(
   _prev: ImportState,
   formData: FormData
 ): Promise<ImportState> {
   await requirePermission('inventory:import');
 
-  const defaultSupplierKey =
-    String(formData.get('supplierKey') ?? '')
-      .trim()
-      .toLowerCase() || undefined;
-  const defaultWarehouseKey =
-    String(formData.get('warehouseKey') ?? '')
-      .trim()
-      .toLowerCase() || undefined;
+  const options = parseImportOptions(formData);
 
   const file = formData.get('file');
   if (!(file instanceof File)) {
@@ -52,22 +133,12 @@ export async function previewImportAction(
   }
 
   await connectDB();
-  if (defaultSupplierKey) {
-    const supplier = await Supplier.findOne({ key: defaultSupplierKey }).lean().exec();
-    if (!supplier) {
-      return { success: false, message: `Beszállító nem található: ${defaultSupplierKey}` };
-    }
-  }
-  if (defaultWarehouseKey) {
-    const warehouse = await Warehouse.findOne({ key: defaultWarehouseKey }).lean().exec();
-    if (!warehouse) {
-      return { success: false, message: `Raktár nem található: ${defaultWarehouseKey}` };
-    }
-  }
+  const validationError = await validateImportDefaults(options);
+  if (validationError) return { success: false, message: validationError };
 
   const buf = await file.arrayBuffer();
-  const parsed = parseInventoryXlsx(buf);
-  const prepared = await prepareImportRows(parsed, defaultSupplierKey, defaultWarehouseKey);
+  const parsed = await parseInventoryXlsx(buf, options);
+  const prepared = await prepareImportRows(parsed, options.defaultSupplierKey, options);
 
   const importable = prepared.ready.length;
   const skipped = prepared.skipped.length;
@@ -83,7 +154,7 @@ export async function previewImportAction(
         skippedIssues: prepared.skipped,
         warningSamples: prepared.warnings.slice(0, 20),
       },
-      supplierKey: defaultSupplierKey,
+      supplierKey: options.defaultSupplierKey,
     };
   }
 
@@ -100,7 +171,7 @@ export async function previewImportAction(
       skippedIssues: prepared.skipped,
       warningSamples: prepared.warnings.slice(0, 20),
     },
-    supplierKey: defaultSupplierKey,
+    supplierKey: options.defaultSupplierKey,
   };
 }
 
@@ -112,14 +183,7 @@ export async function commitImportAction(
   const user = await requireAuth();
   if (!user?.id) return { success: false, message: 'Nincs bejelentkezve.' };
 
-  const defaultSupplierKey =
-    String(formData.get('supplierKey') ?? '')
-      .trim()
-      .toLowerCase() || undefined;
-  const defaultWarehouseKey =
-    String(formData.get('warehouseKey') ?? '')
-      .trim()
-      .toLowerCase() || undefined;
+  const options = parseImportOptions(formData);
 
   const file = formData.get('file');
   if (!(file instanceof File)) {
@@ -127,22 +191,12 @@ export async function commitImportAction(
   }
 
   await connectDB();
-  if (defaultSupplierKey) {
-    const supplier = await Supplier.findOne({ key: defaultSupplierKey }).lean().exec();
-    if (!supplier) {
-      return { success: false, message: `Beszállító nem található: ${defaultSupplierKey}` };
-    }
-  }
-  if (defaultWarehouseKey) {
-    const warehouse = await Warehouse.findOne({ key: defaultWarehouseKey }).lean().exec();
-    if (!warehouse) {
-      return { success: false, message: `Raktár nem található: ${defaultWarehouseKey}` };
-    }
-  }
+  const validationError = await validateImportDefaults(options);
+  if (validationError) return { success: false, message: validationError };
 
   const buf = await file.arrayBuffer();
-  const parsed = parseInventoryXlsx(buf);
-  const prepared = await prepareImportRows(parsed, defaultSupplierKey, defaultWarehouseKey);
+  const parsed = await parseInventoryXlsx(buf, options);
+  const prepared = await prepareImportRows(parsed, options.defaultSupplierKey, options);
 
   if (prepared.ready.length === 0) {
     return {
@@ -154,7 +208,7 @@ export async function commitImportAction(
   const report = await commitInventoryImport(
     { rows: prepared.ready, errors: [], warnings: prepared.warnings },
     user.id,
-    { defaultSupplierKey, defaultWarehouseKey }
+    options
   );
 
   revalidatePath('/inventory');
@@ -176,6 +230,6 @@ export async function commitImportAction(
       skipped: skippedCount,
       skippedIssues: prepared.skipped,
     },
-    supplierKey: defaultSupplierKey,
+    supplierKey: options.defaultSupplierKey,
   };
 }

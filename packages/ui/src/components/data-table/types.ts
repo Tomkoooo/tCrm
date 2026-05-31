@@ -54,7 +54,13 @@ export interface DataTableProps<T extends Record<string, unknown>> {
   total: number;
   basePath: string;
   tableId: string;
+  toolbarLeading?: React.ReactNode;
   toolbarExtra?: React.ReactNode;
+  /** Enable row checkboxes; use with selectedRowKeys + onSelectedRowKeysChange */
+  selectable?: boolean;
+  getRowKey?: (row: T) => string;
+  selectedRowKeys?: string[];
+  onSelectedRowKeysChange?: (keys: string[]) => void;
   rowHref?: (row: T) => string;
   rowDetail?: DataTableRowDetail<T>;
   rowOpen?: DataTableRowOpen;

@@ -5,7 +5,7 @@ import { SetupForm } from './setup-form';
 export default async function SetupPage() {
   await connectDB();
   if (await hasAnyAdminUser()) {
-    redirect('/login');
+    redirect('/setup/complete');
   }
 
   return <SetupForm />;

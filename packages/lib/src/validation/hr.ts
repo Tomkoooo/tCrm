@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+export const companyDataEntrySchema = z.object({
+  key: z.string().min(1, 'A kulcs kötelező').max(100),
+  value: z.string().max(2000),
+});
+
 export const companySchema = z.object({
   name: z.string().min(1, 'A név kötelező'),
   slug: z
@@ -8,7 +13,28 @@ export const companySchema = z.object({
     .regex(/^[a-z0-9-]+$/, 'Csak kisbetű, szám és kötőjel'),
   parentCompanyId: z.string().optional().or(z.literal('')),
   isActive: z.boolean().default(true),
+  companyDataJson: z.string().optional().or(z.literal('')),
 });
+
+export function parseCompanyDataJson(json: string | undefined | null): Record<string, string> {
+  if (!json?.trim()) return {};
+  const parsed = z.array(companyDataEntrySchema).parse(JSON.parse(json));
+  const result: Record<string, string> = {};
+  for (const entry of parsed) {
+    const key = entry.key.trim();
+    if (!key) continue;
+    result[key] = entry.value;
+  }
+  return result;
+}
+
+export function companyDataToEntries(
+  data: Record<string, string> | Map<string, string> | undefined
+): Array<{ key: string; value: string }> {
+  if (!data) return [];
+  const entries = data instanceof Map ? [...data.entries()] : Object.entries(data);
+  return entries.map(([key, value]) => ({ key, value: String(value ?? '') }));
+}
 
 export const employeeSchema = z.object({
   companyId: z.string().min(1, 'A cég kötelező'),

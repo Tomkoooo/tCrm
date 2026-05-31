@@ -33,6 +33,19 @@ export {
 } from './vehicles';
 
 export {
+  getVehicleComplianceWarnings,
+  canUserReportVehicleIncident,
+  syncVehicleMedia,
+  syncVehicleIncidentPhotos,
+  listVehicleIncidents,
+  createVehicleIncident,
+  markVehicleIncidentFixed,
+  countOpenVehicleIncidents,
+  type VehicleComplianceWarning,
+  type VehicleIncidentListItem,
+} from './vehicle-management';
+
+export {
   createLogisticsJob,
   scheduleLogisticsJob,
   confirmPickupGathering,

@@ -99,54 +99,93 @@ flowchart TB
 
 | Excel oszlop | MongoDB mező | Jelentés |
 |--------------|--------------|----------|
-| `product_id` | `Product.supplierSku` | Beszállítói / gyártói cikkszám (Excel kötelező) |
-| *(generált)* | `Product.sku` | **CRM SKU** = kategória `skuPrefix` + `product_id` számjegyei |
-| `product_id_SM` | *(opcionális)* | Ellenőrzés: ha eltér a generált CRM SKU-tól → figyelmeztetés |
-| `crm_category_slug` | `Product.categoryIds[]` | Létező CRM kategória (`Category.slug`) |
-| `crm_supplier_slug` | `Product.supplierId` | Beszállító (`Supplier.key`) — soronként; vegyes fájlhoz |
-| `crm_warehouse_slug` | `Product.warehouseIds[]` | Raktár (`Warehouse.key`) — vesszővel több; modal alapértelmezett |
-| `is_consumable` | `Product.isConsumable` | Üres = tartós (visszavárható); 1/igen = fogyó (nincs hiánykövetés) |
+| `product_id` | `Product.supplierSku` | Beszállítói / gyártói cikkszám (alap módban kötelező) |
+| `product_id_SM` | `Product.sku` (SM mód) | SM import módban kötelező CRM SKU; alap módban opcionális ellenőrzés |
+| *(generált vagy SM)* | `Product.sku` | **Alap:** kategória `skuPrefix` + `product_id` · **SM mód:** `product_id_SM` mentve, beszállítói SKU kinyerve |
+| `crm_category_slug` | `Product.categoryIds[]` | Létező CRM kategória (`Category.slug`) — Excel nagybetű OK, normalizálás kisbetűre |
+| `crm_supplier_slug` | `Product.supplierId` | Beszállító (`Supplier.key`) — **opcionális** első importnál |
+| `crm_warehouse_slug` | — | Figyelmen kívül hagyva — raktár jelenlét csak készlet oszlopokból |
+| `is_consumable` | `Product.isConsumable` | Üres = tartós; 1/igen = fogyó |
 | `cat*Name_*` | `Product.shipperCategoryPath` | Beszállító eredeti kategóriái (nem CRM fa) |
-| `warehouse 1.` … | `StockLevel` | Kezdeti készlet |
+| `warehouse 1.` … `3.` | `StockLevel` + `Product.warehouseIds` | Kispest / Erzsébet / Récsei — üres cella = nincs az adott raktárban |
+| `Rent` | `Product.rental.rentFlag` | 1 = bérlehető, 2 = nem bérlehető önállóan |
+| `Discont 1.` / `Discont 2.` | `Product.discounts` | Kedvezmény max / tulajdonosi kedvezmény |
+
+Részletes oszlopmagyarázat: [`inventory.md`](./inventory.md) § Excel import glossary.
 
 ```mermaid
 flowchart TD
-  start[Készlet → Importálás] --> template[Sablon opcionális]
-  start --> defaultSup[Alapértelmezett beszállító opcionális]
-  start --> upload[Excel feltöltés]
-  upload --> parse[parseInventoryXlsx]
-  parse --> valCat[validateImportCategorySlugs]
-  parse --> valSup[validateImportSupplierSlugs]
-  valCat --> preview[Előnézet]
-  valSup --> preview
+  start[Készlet → Importálás] --> upload[Excel feltöltés]
+  upload --> inspect[inspectImportFileAction — lapok + fejlécek]
+  inspect --> sheet[Lap kiválasztás]
+  sheet --> map[Oszlop párosítás]
+  map --> skuMode[SKU mód: beszállítói vagy SM]
+  skuMode --> defaults[Opcionális beszállító]
+  defaults --> preprocess[preprocessImportRows]
+  preprocess --> parse[parseInventoryRows]
+  parse --> preview[Előnézet]
   preview -->|hiba| fix[Javítás]
   preview -->|OK| commit[commitInventoryImport]
-  commit --> rowSup[Soronkénti supplier + category]
-  commit --> shipper[shipperCategoryPath mentés]
-  commit --> stock[Raktár készlet]
-  commit --> bom[BOM 2. pass]
+  commit --> stock[StockLevel + syncProductWarehouseIds]
+  commit --> match[Egyeztetés sku / supplierSku / ean]
+  commit --> merge[Összefűzés kiválasztott mezők]
+  commit --> products[Termékek supplierId nélkül is]
+  products --> bulk[Tömeges módosítás — beszállító hozzárendelés]
 ```
+
+### Import varázsló — oszlop mapping
+
+| Lépés | Leírás |
+|-------|--------|
+| Lap | Több munkalapos fájlnál kiválasztható |
+| Oszlop párosítás | Excel fejléc → kanonikus mező; auto-match azonos névnél (kis-/nagybetű mindegy) |
+| SKU mód | Alap: `product_id` → CRM SKU · SM: `product_id_SM` mentése, beszállítói SKU kategória szabály szerint |
+| Beszállító | Opcionális — később tömegesen hozzárendelhető |
+| Raktár jelenlét | `warehouse 1./2./3.` készlet oszlopok — nincs kötelező alapértelmezett raktár |
+
+### Tömeges termék módosítás
+
+| Elem | Leírás |
+|------|--------|
+| Útvonal | Készlet lista → **Tömeges módosítás** (`inventory:write`) |
+| Scope | Jelenlegi lista szűrő (DataTable URL + raktár + aktív/inaktív) |
+| Szűkítés | Csak beszállító nélküli; opcionális márka / kategória slug |
+| Művelet | Beszállító, készlet (egy raktár), aktív/inaktív, kategória, márka |
+
+### Összefűzés (merge) frissítés
+
+| Beállítás | Jelentés |
+|-----------|----------|
+| Egyeztetés kulcs | `sku` (CRM SKU), `supplierSku` (`product_id`), vagy `ean` |
+| Összefűzés mód | Meglévő termék frissítése az Excelből (új termék továbbra is teljes létrehozás) |
+| Mezők | Név/leírás/szín nyelvenként (üres cella nem írja felül); opcionálisan ár, méret, kép, kategória, BOM, készlet |
+| `Relatedproduct_*` | 2. pass: CRM SKU alapján; ha nincs a batchben, adatbázisból keresi |
+
+### Terméklista — aktív státusz
+
+| Szerep | Láthatóság |
+|--------|------------|
+| Raktáros / nem globális | Csak `isActive: true` termékek |
+| Logisztikai vezető (`logistics:scope_all`) | `?showAll=true` → inaktív termékek is |
+| Szerkesztés | **Aktív** oszlop checkbox a listában (`inventory:write`) |
 
 ### Szabályok
 
 | Elem | Kötelező | Megjegyzés |
 |------|----------|------------|
-| `product_id_SM` | Igen | CRM SKU — egyedi a tCrm-ben |
-| `product_id` | Ajánlott | Beszállítói SKU |
-| `crm_category_slug` | Igen | Előbb hozza létre: Termékkategóriák |
-| `crm_supplier_slug` | Soronként* | `Supplier.key` — vegyes beszállítós fájlhoz |
-| Alapértelmezett beszállító | Modal* | Ha a sorban nincs `crm_supplier_slug` |
-| `crm_warehouse_slug` | Soronként** | `Warehouse.key` — több: `kispest,erzsebet` |
-| Alapértelmezett raktár | Modal** | Ha a sorban nincs `crm_warehouse_slug` |
+| `product_id` | Alap módban igen | Beszállítói SKU — ebből generálódik a CRM SKU |
+| `product_id_SM` | SM módban igen | CRM SKU forrás; beszállítói SKU kinyerése (előtag levágás vagy fix számjegyszám) |
+| `crm_category_slug` | Igen | Előbb hozza létre: Termékkategóriák — `brand` oszlop is párosítható; nagybetű normalizálódik |
+| `crm_supplier_slug` | Opcionális | `Supplier.key` — soronként; vegyes fájlhoz |
+| Alapértelmezett beszállító | Modal, opcionális | Ha nincs sorban és modalban sem → import supplierId nélkül |
+| `warehouse 1./2./3.` | Opcionális | Üres/missing = nincs készlet az adott raktárban; explicit 0 = van StockLevel, 0 db |
 | Beszállító kategóriák | Opcionális | `cat*Name_*` → `shipperCategoryPath` |
 
-\* Legalább az egyik: sor `crm_supplier_slug` **vagy** modal alapértelmezett minden olyan sorra, ahol üres az oszlop.
+\* Legalább az egyik: sor `crm_supplier_slug` **vagy** modal alapértelmezett — mindkettő hiányában is importálható (`allowMissingSupplier`), később tömeges beszállító-hozzárendeléssel.
 
-\** Ugyanígy a raktárhoz: sor `crm_warehouse_slug` **vagy** modal alapértelmezett raktár.
+**Raktár szűrés (UI):** `Product.warehouseIds` szinkronban a `StockLevel` sorokkal — raktáros csak olyan terméket lát, amelynek van készletsora a hozzárendelt raktár(ak)ban.
 
-**Raktár szűrés (UI):** Termékek, összeszerelések, termékmenedzsment — `?warehouseId=` + `logistics:scope_all` / `admin:access` = minden raktár; egyébként csak `Warehouse.assignedUserIds`.
-
-Sablon: `GET /api/inventory/template` · Partnerek: `/inventory/suppliers`
+Sablon: `GET /inventory/template` (letöltés) · Partnerek: `/inventory/suppliers`
 
 ---
 
@@ -245,10 +284,38 @@ stateDiagram-v2
 | `pickup.documents.*` | PDF meta (csomaglista, visszáru) |
 | `buildLogisticsPickupDocument` | Sablon JSON PDF generáláshoz |
 | Összeszerelés a listán | Prebuild sor összecsukható alkatrészlista (raktár + építő UI, PDF payload) |
-| `Vehicle` | Flotta — mm, max súly/térfogat; `suggestVehiclesForCargo` |
+| `Vehicle` | Flotta — mm, max súly/térfogat; `suggestVehiclesForCargo`; cég párosítás, dokumentumok, incidensek |
+| `Vehicle.companyId` | Könyvelés cég (`/accounting/companies`) — tulajdonos |
+| `Company.companyData` | Kulcs–érték mezők (adószám, székhely, …) |
+| `Vehicle.registrationDueDate` / `insuranceDueDate` | Forgalmi / biztosítás lejárat — figyelmeztetés 30 napon belül a `/logistics` dashboardon |
+| `Vehicle.allowedUserIds` / `allowedRoleIds` | Jogosult vezetők/karbantartók — incidens bejelentés |
+| `VehicleIncident` | Bejelentés leírással + fotókkal; logisztika `logistics:write` lezárja |
 | `Product.isConsumable` | Fogyó: nincs `lostQuantity` |
-| Útvonalak | `/logistics/jobs`, `/logistics/vehicles`, KPI: `/logistics` |
+| Útvonalak | `/logistics/jobs`, `/logistics/vehicles`, `/logistics/vehicles/[id]`, KPI: `/logistics` |
 | Termék KPI | `/inventory/dashboard` — érték, alacsony készlet, BOM |
+
+### Járműflotta — dokumentumok és incidensek
+
+```mermaid
+flowchart TD
+  hrWrite[HR hr:write] --> company[Cég + companyData kulcs-érték]
+  logWrite[Logisztika logistics:write] --> vehicle[Jármű szerkesztés]
+  company --> vehicle
+  vehicle --> media[Médiatár: képek, jogosítvány, forgalmi, biztosítás]
+  vehicle --> dueDates[Lejárat dátumok]
+  dueDates --> dashWarn[Logisztika dashboard figyelmeztetés 30 nap]
+  vehicle --> staff[Jogosult user/role párosítás]
+  staff --> report[Incidens bejelentés + fotó]
+  report --> logisticsFix[Logisztika lezárja]
+```
+
+| Lépés | Leírás |
+|-------|--------|
+| Cég adatok | `/accounting/companies/[id]` — egyedi kulcs–érték mezők |
+| Jármű részletek | `/logistics/vehicles/[id]` — áttekintés, dokumentumok, incidensek, szerkesztés |
+| Dokumentumok | GridFS/Media: jármű képek, jogosítvány, forgalmi, biztosítás |
+| Lejárat figyelmeztetés | 30 napon belül (vagy lejárt) — `/logistics` dashboard kártya |
+| Incidens | Jogosult user/role → leírás + fotó → logisztika lezárás |
 
 ---
 
@@ -257,6 +324,8 @@ stateDiagram-v2
 Összeszerelés = termék `components` listával. UI: **Készletkezelés → Összeszerelések** (`/inventory/builds`).
 
 `calculateBomAvailability` → **canBuild** = hány db építhető/ajánlható a szabad alkatrészkészletből.
+
+**Logisztikai papírok:** `enrichPickupLinesDisplay` rekurzívan felbontja a beágyazott BOM-ot (alkit → alalkitrészek). A csomaglista / átvételi jegy minden szinten listázza a szükséges darabszámot a fő tétel mennyiségéhez viszonyítva.
 
 ---
 
@@ -495,4 +564,4 @@ Részletek: [`hr.md`](./hr.md).
 
 ---
 
-*Utolsó frissítés: 2026-05 — **Arculat:** `/admin/branding` — alkalmazásnév, logó, favicon, bejelentkezési háttér és szövegek (Médiatár).*
+*Utolsó frissítés: 2026-05 — **SM SKU import mód** (beszállítói SKU kinyerés); kategória slug normalizálás (kis-/nagybetű); import modal görgetés; korábban: készlet-alapú raktár jelenlét, import varázsló.*

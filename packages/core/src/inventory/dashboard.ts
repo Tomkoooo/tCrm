@@ -57,7 +57,7 @@ export async function getInventoryDashboardSummary(
     ? { warehouseId: { $in: options.warehouseIds } }
     : {};
 
-  const [productCount, levels, suppliers, warehouses] = await Promise.all([
+  const [productCountRaw, levels, suppliers, warehouses] = await Promise.all([
     Product.countDocuments(productFilter).exec(),
     StockLevel.find(levelFilter).lean().exec(),
     Supplier.find().select({ name: 1, key: 1 }).lean().exec(),
@@ -68,6 +68,15 @@ export async function getInventoryDashboardSummary(
           .exec()
       : Warehouse.find({ isActive: true }).select({ name: 1 }).lean().exec(),
   ]);
+
+  let productCount = productCountRaw;
+  if (options?.warehouseIds?.length) {
+    const stockedProductIds = await StockLevel.distinct('productId', levelFilter).exec();
+    productCount = await Product.countDocuments({
+      ...productFilter,
+      _id: { $in: stockedProductIds },
+    }).exec();
+  }
 
   const productIds = [...new Set(levels.map((l) => String(l.productId)))];
   const products = await Product.find({ _id: { $in: productIds } })

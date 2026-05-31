@@ -16,6 +16,8 @@ export type LogisticsPickupDocumentBomLine = {
   name: string;
   quantityPerKit: number;
   totalQuantity: number;
+  depth?: number;
+  isAssembly?: boolean;
 };
 
 /** Structured payload for PDF templates / email HTML (no rendering here). */
@@ -119,6 +121,8 @@ export async function buildLogisticsPickupDocument(
           name: c.name,
           quantityPerKit: c.quantityPerKit,
           totalQuantity: c.totalQuantity,
+          depth: c.depth,
+          isAssembly: c.isAssembly,
         })) ?? [],
     };
   });

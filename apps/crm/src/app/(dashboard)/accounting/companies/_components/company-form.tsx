@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { createCompanyAction, updateCompanyAction } from '../actions';
 import type { HrFormState } from '../../_components/form-utils';
+import { CompanyKeyValueEditor } from './company-key-value-editor';
 
 type CompanyOption = { _id: string; name: string };
 
@@ -54,6 +55,7 @@ export function EditCompanyForm({
     slug: string;
     parentCompanyId?: string;
     isActive: boolean;
+    companyDataEntries?: Array<{ key: string; value: string }>;
   };
   parentCompanies: CompanyOption[];
 }) {
@@ -96,6 +98,7 @@ function CompanyFormFields({
     slug: string;
     parentCompanyId?: string;
     isActive: boolean;
+    companyDataEntries?: Array<{ key: string; value: string }>;
   };
   fieldErrors?: Record<string, string[]>;
 }) {
@@ -127,6 +130,7 @@ function CompanyFormFields({
           ))}
         </select>
       </div>
+      <CompanyKeyValueEditor initialEntries={defaultValues?.companyDataEntries} />
       <div className="flex items-center gap-2">
         <Checkbox
           id="isActive"

@@ -57,7 +57,12 @@ export function DataTableRoot<T extends Record<string, unknown>>({
   total: serverTotal,
   basePath,
   tableId,
+  toolbarLeading,
   toolbarExtra,
+  selectable = false,
+  getRowKey,
+  selectedRowKeys: selectedRowKeysProp,
+  onSelectedRowKeysChange,
   rowHref,
   rowDetail,
   rowOpen = 'navigate',
@@ -81,6 +86,21 @@ export function DataTableRoot<T extends Record<string, unknown>>({
 
   const [panel, setPanel] = useState<Panel>(null);
   const [detailRow, setDetailRow] = useState<T | null>(null);
+  const [internalSelectedKeys, setInternalSelectedKeys] = useState<string[]>([]);
+  const selectedRowKeys = selectedRowKeysProp ?? internalSelectedKeys;
+  const setSelectedRowKeys = onSelectedRowKeysChange ?? setInternalSelectedKeys;
+
+  const resolveRowKey = useCallback(
+    (row: T, index: number) => {
+      if (getRowKey) return getRowKey(row);
+      const id = (row as Record<string, unknown>)['_id'];
+      if (id != null) return String(id);
+      const sku = (row as Record<string, unknown>)['sku'];
+      if (sku != null) return String(sku);
+      return String(index);
+    },
+    [getRowKey]
+  );
   const columnKeySignature = columns.map((c) => c.key).join('\0');
 
   const [visibleKeys, setVisibleKeys] = useState<string[]>(() =>
@@ -159,6 +179,33 @@ export function DataTableRoot<T extends Record<string, unknown>>({
   const filterable = columns.filter((c) => c.filterable);
   const sortable = columns.filter((c) => c.sortable);
 
+  const pageRowKeys = useMemo(
+    () => rows.map((row, idx) => resolveRowKey(row, idx)),
+    [rows, resolveRowKey]
+  );
+  const allPageSelected =
+    selectable && pageRowKeys.length > 0 && pageRowKeys.every((k) => selectedRowKeys.includes(k));
+  const somePageSelected =
+    selectable && pageRowKeys.some((k) => selectedRowKeys.includes(k)) && !allPageSelected;
+
+  const togglePageSelection = () => {
+    if (allPageSelected) {
+      setSelectedRowKeys(selectedRowKeys.filter((k) => !pageRowKeys.includes(k)));
+    } else {
+      setSelectedRowKeys([...new Set([...selectedRowKeys, ...pageRowKeys])]);
+    }
+  };
+
+  const toggleRowSelection = (key: string) => {
+    if (selectedRowKeys.includes(key)) {
+      setSelectedRowKeys(selectedRowKeys.filter((k) => k !== key));
+    } else {
+      setSelectedRowKeys([...selectedRowKeys, key]);
+    }
+  };
+
+  const selectionColSpan = (selectable ? 1 : 0) + (rowOpen === 'both' && rowHref ? 1 : 0);
+
   const activeChips = useMemo(() => {
     const chips: Array<{ key: string; label: string; clear: () => void }> = [];
     if (effectiveQuery.search) {
@@ -200,9 +247,12 @@ export function DataTableRoot<T extends Record<string, unknown>>({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+      <div className="flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center">
+        {toolbarLeading ? (
+          <div className="flex flex-wrap items-center gap-2 lg:shrink-0">{toolbarLeading}</div>
+        ) : null}
         <form
-          className="flex min-w-0 flex-1 gap-2"
+          className="flex min-w-0 flex-1 gap-2 lg:min-w-[12rem]"
           onSubmit={(e) => {
             e.preventDefault();
             const fd = new FormData(e.currentTarget);
@@ -285,6 +335,20 @@ export function DataTableRoot<T extends Record<string, unknown>>({
         <table className="w-full">
           <thead className="border-b">
             <tr>
+              {selectable && (
+                <th className={cn(cellPad, 'w-10')}>
+                  <input
+                    type="checkbox"
+                    className="size-4 rounded border"
+                    checked={allPageSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = somePageSelected;
+                    }}
+                    onChange={togglePageSelection}
+                    aria-label="Összes kijelölése az oldalon"
+                  />
+                </th>
+              )}
               {displayColumns.map((col) => (
                 <th
                   key={col.key}
@@ -320,7 +384,7 @@ export function DataTableRoot<T extends Record<string, unknown>>({
             {rows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={displayColumns.length + (rowOpen === 'both' ? 1 : 0)}
+                  colSpan={displayColumns.length + selectionColSpan}
                   className="px-3 py-6 text-center text-sm"
                 >
                   {emptyMessage}
@@ -329,16 +393,30 @@ export function DataTableRoot<T extends Record<string, unknown>>({
             ) : (
               rows.map((row, idx) => {
                 const href = rowHref?.(row);
+                const rowKey = resolveRowKey(row, idx);
                 const clickable = (rowOpen === 'sheet' || rowOpen === 'both') && !!rowDetail;
+                const isSelected = selectable && selectedRowKeys.includes(rowKey);
                 return (
                   <tr
-                    key={href ?? idx}
+                    key={rowKey}
                     className={cn(
                       'border-b last:border-b-0',
-                      clickable && 'hover:bg-muted/40 cursor-pointer'
+                      clickable && 'hover:bg-muted/40 cursor-pointer',
+                      isSelected && 'bg-muted/30'
                     )}
                     onClick={() => clickable && handleRowClick(row)}
                   >
+                    {selectable && (
+                      <td className={cellPad} onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          className="size-4 rounded border"
+                          checked={isSelected}
+                          onChange={() => toggleRowSelection(rowKey)}
+                          aria-label={`Kijelölés: ${rowKey}`}
+                        />
+                      </td>
+                    )}
                     {displayColumns.map((col) => {
                       const content = renderCell(row, col);
                       return (

@@ -84,7 +84,39 @@ export const vehicleSchema = z.object({
   maxWeightKg: z.coerce.number().min(0.001),
   maxVolumeM3: z.coerce.number().min(0.000001),
   isActive: z.coerce.boolean().optional().default(true),
+  companyId: z.string().optional().or(z.literal('')),
+  registrationDueDate: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .transform((v) => (v?.trim() ? new Date(v) : undefined)),
+  insuranceDueDate: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .transform((v) => (v?.trim() ? new Date(v) : undefined)),
+  licenseFileId: z.string().optional().or(z.literal('')),
+  registrationFileId: z.string().optional().or(z.literal('')),
+  insuranceFileId: z.string().optional().or(z.literal('')),
 });
+
+export const vehicleIncidentSchema = z.object({
+  description: z.string().min(1, 'A leírás kötelező').max(5000),
+});
+
+export function parseMediaIdsFromForm(formData: FormData, fieldName = 'imageId'): string[] {
+  return formData
+    .getAll(fieldName)
+    .map((v) => String(v).trim())
+    .filter(Boolean);
+}
+
+export function parseCheckboxIdsFromForm(formData: FormData, fieldName: string): string[] {
+  return formData
+    .getAll(fieldName)
+    .map((v) => String(v).trim())
+    .filter(Boolean);
+}
 
 export const suggestVehiclesSchema = z.object({
   linesJson: z.string().min(1),
@@ -115,4 +147,5 @@ export function parseCheckInLinesJson(json: string): z.infer<typeof checkInLineS
 }
 
 export type VehicleInput = z.infer<typeof vehicleSchema>;
+export type VehicleIncidentInput = z.infer<typeof vehicleIncidentSchema>;
 export type CreatePickupInput = z.infer<typeof createPickupInputSchema>;

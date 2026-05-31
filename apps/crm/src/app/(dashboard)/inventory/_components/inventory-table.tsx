@@ -1,70 +1,136 @@
 'use client';
 
-import type React from 'react';
-import Link from 'next/link';
+import { useMemo, useState, useTransition } from 'react';
+import { toast } from 'sonner';
 import { DataTable } from '@crm/ui';
 import type { ColumnDef, DataTableQuery } from '@crm/ui';
+import { Checkbox } from '@/components/ui/checkbox';
 import type { ProductTableRow } from '@/lib/inventory/product-table-columns';
+import { toggleProductActiveAction } from '../actions';
+import { InventoryTableToolbar } from './inventory-toolbar';
+import { ProductSheetDetail } from './product-sheet-detail';
 
 export type InventoryTableRow = ProductTableRow;
 
-const SKU_HINT =
-  'CRM SKU = kategória előtag + beszállítói cikkszám (importkor automatikusan generálódik a product_id és crm_category_slug alapján).';
+function ActiveStatusCell({ row, canEdit }: { row: InventoryTableRow; canEdit: boolean }) {
+  const [checked, setChecked] = useState(row.isActive);
+  const [pending, startTransition] = useTransition();
+
+  if (!canEdit) {
+    return <span>{checked ? 'Igen' : 'Nem'}</span>;
+  }
+
+  return (
+    <div
+      className="flex justify-center"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+    >
+      <Checkbox
+        checked={checked}
+        disabled={pending}
+        aria-label={checked ? 'Aktív termék' : 'Inaktív termék'}
+        onCheckedChange={(value) => {
+          const next = value === true;
+          setChecked(next);
+          startTransition(async () => {
+            const result = await toggleProductActiveAction(row.sku, next);
+            if (!result.success) {
+              setChecked(!next);
+              toast.error(result.message);
+              return;
+            }
+            toast.success(result.message);
+          });
+        }}
+      />
+    </div>
+  );
+}
 
 export function InventoryTable({
   data,
   columns,
   query,
   total,
-  toolbarExtra,
+  canEditActive = false,
+  canWrite = false,
+  canDelete = false,
+  warehouses,
+  warehouseId,
+  canImport,
+  canViewAllProducts,
+  showAllProducts,
+  canBulkUpdate,
 }: {
   data: InventoryTableRow[];
   columns: Array<ColumnDef<InventoryTableRow>>;
   query: DataTableQuery;
   total: number;
-  toolbarExtra?: React.ReactNode;
+  canEditActive?: boolean;
+  canWrite?: boolean;
+  canDelete?: boolean;
+  warehouses: Array<{ id: string; name: string; key: string }>;
+  warehouseId?: string;
+  canImport: boolean;
+  canViewAllProducts?: boolean;
+  showAllProducts?: boolean;
+  canBulkUpdate?: boolean;
 }) {
+  const [selectedSkus, setSelectedSkus] = useState<string[]>([]);
+
+  const tableColumns = useMemo(
+    () =>
+      columns.map((column) =>
+        column.key === 'isActive'
+          ? {
+              ...column,
+              sortable: false,
+              filterable: false,
+              render: (_value: unknown, row: InventoryTableRow) => (
+                <ActiveStatusCell row={row} canEdit={canEditActive} />
+              ),
+            }
+          : column
+      ),
+    [columns, canEditActive]
+  );
+
   return (
     <DataTable<InventoryTableRow>
       mode="server"
       tableId="inventory-products"
       data={data}
-      columns={columns}
+      columns={tableColumns}
       query={query}
       total={total}
       basePath="/inventory"
-      rowHref={(r) => `/inventory/${r.sku}`}
+      selectable
+      getRowKey={(r) => r.sku}
+      selectedRowKeys={selectedSkus}
+      onSelectedRowKeysChange={setSelectedSkus}
       rowOpen="sheet"
-      toolbarExtra={toolbarExtra}
-      emptyMessage="Nincs termék."
+      toolbarLeading={
+        <InventoryTableToolbar
+          warehouses={warehouses}
+          warehouseId={warehouseId}
+          canImport={canImport}
+          canViewAllProducts={canViewAllProducts}
+          showAllProducts={showAllProducts}
+          canBulkUpdate={canBulkUpdate}
+          selectedSkus={selectedSkus}
+          filteredTotal={total}
+        />
+      }
+      emptyMessage={
+        canImport
+          ? 'Nincs termék. Importáljon Excelből (Import gomb), vagy hozzon létre újat.'
+          : 'Nincs termék a jelenlegi szűrők mellett.'
+      }
       rowDetail={{
-        title: (r) => r.sku,
-        description: (r) => r.name_hu ?? r.name_en ?? '',
-        render: (r) => (
-          <div className="flex flex-col gap-4 text-sm">
-            {r.thumbnailUrl ? (
-              <img
-                src={r.thumbnailUrl}
-                alt={r.name_hu ?? r.sku}
-                className="h-32 w-32 rounded-md border object-cover"
-              />
-            ) : null}
-            <dl className="grid grid-cols-2 gap-2">
-              <dt className="text-muted-foreground">CRM SKU</dt>
-              <dd className="font-mono">{r.sku}</dd>
-              <dt className="text-muted-foreground">Beszállítói SKU</dt>
-              <dd className="font-mono">{r.supplierSku ?? '—'}</dd>
-              <dt className="text-muted-foreground">Márka</dt>
-              <dd>{r.brand ?? '—'}</dd>
-              <dt className="text-muted-foreground">Aktív</dt>
-              <dd>{r.isActive ? 'Igen' : 'Nem'}</dd>
-            </dl>
-            <p className="text-muted-foreground text-xs">{SKU_HINT}</p>
-            <Link href={`/inventory/${r.sku}`} className="text-primary font-medium underline">
-              Teljes termékoldal →
-            </Link>
-          </div>
-        ),
+        title: (r) => r.name_hu ?? r.name_en ?? r.sku,
+        description: (r) => r.sku,
+        render: (r) => <ProductSheetDetail row={r} canWrite={canWrite} canDelete={canDelete} />,
       }}
     />
   );

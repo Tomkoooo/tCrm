@@ -1,5 +1,6 @@
 import { StockAdjustment, StockLevel, type StockAdjustmentReason, type IStockLevel } from '@crm/db';
 import type { ClientSession, Types } from 'mongoose';
+import { syncProductWarehouseIds } from '../inventory/sync-warehouse-ids';
 
 export function availableQty(level: Pick<IStockLevel, 'onHand' | 'reserved'>): number {
   return Math.max(0, level.onHand - level.reserved);
@@ -77,6 +78,8 @@ export async function applyStockDelta(params: {
       { session }
     );
   }
+
+  await syncProductWarehouseIds(productId, session);
 
   return level;
 }

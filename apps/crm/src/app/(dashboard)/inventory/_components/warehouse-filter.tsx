@@ -5,16 +5,18 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
 const selectClassName = cn(
-  'border-input bg-background ring-offset-background flex h-9 min-w-[180px] rounded-md border px-3 py-1 text-sm shadow-xs',
+  'border-input bg-background ring-offset-background flex h-9 rounded-md border px-3 py-1 text-sm shadow-xs',
   'focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none'
 );
 
 export function WarehouseFilter({
   warehouses,
   selectedId,
+  compact = false,
 }: {
   warehouses: Array<{ id: string; name: string; key: string }>;
   selectedId?: string;
+  compact?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -31,24 +33,42 @@ export function WarehouseFilter({
     router.push(qs ? `${pathname}?${qs}` : pathname);
   };
 
+  const select = (
+    <select
+      id="warehouse-filter"
+      className={cn(selectClassName, compact ? 'min-w-[10rem]' : 'w-full min-w-[180px]')}
+      value={selectedId ?? ''}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      <option value="">Összes raktár</option>
+      {warehouses.map((w) => (
+        <option key={w.id} value={w.id}>
+          {w.name}
+        </option>
+      ))}
+    </select>
+  );
+
+  if (compact) {
+    return (
+      <div className="flex items-center gap-2">
+        <Label
+          htmlFor="warehouse-filter"
+          className="text-muted-foreground shrink-0 text-sm font-normal"
+        >
+          Raktár
+        </Label>
+        {select}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-1">
       <Label htmlFor="warehouse-filter" className="text-xs">
         Raktár
       </Label>
-      <select
-        id="warehouse-filter"
-        className={selectClassName}
-        value={selectedId ?? ''}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        <option value="">Összes (jogosultság szerint)</option>
-        {warehouses.map((w) => (
-          <option key={w.id} value={w.id}>
-            {w.name} ({w.key})
-          </option>
-        ))}
-      </select>
+      {select}
     </div>
   );
 }

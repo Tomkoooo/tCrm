@@ -1,4 +1,4 @@
-export const ALUTENT_COLUMNS = [
+export const INVENTORY_COLUMNS = [
   'product_id_SM',
   'product_id',
   'supplierNo',
@@ -71,4 +71,4 @@ export const ALUTENT_COLUMNS = [
   'Rent',
 ] as const;
 
-export type AlutentColumn = (typeof ALUTENT_COLUMNS)[number];
+export type InventoryColumn = (typeof INVENTORY_COLUMNS)[number];

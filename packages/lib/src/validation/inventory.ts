@@ -237,6 +237,47 @@ export const inventoryImportRowSchema = z.object({
   warehouses: z.record(z.string().min(1), z.coerce.number()).default({}),
 });
 
+export const importMatchKeySchema = z.enum(['sku', 'supplierSku', 'ean']);
+
+export const importMergeFieldSchema = z.enum([
+  'names',
+  'descriptions',
+  'colors',
+  'pricing',
+  'dimensions',
+  'images',
+  'categories',
+  'warehouses',
+  'components',
+  'stock',
+]);
+
+export function parseImportMergeFieldsJson(json: string | null | undefined) {
+  if (!json?.trim()) return [] as z.infer<typeof importMergeFieldSchema>[];
+  const parsed = JSON.parse(json) as unknown;
+  return z.array(importMergeFieldSchema).parse(parsed);
+}
+
+export const importParseConfigSchema = z.object({
+  sheetName: z.string().min(1).optional(),
+  columnMap: z.record(z.string(), z.string().nullable()).optional(),
+  allowMissingSupplier: z.boolean().optional(),
+  skuMode: z.enum(['from_supplier_sku', 'from_sm']).optional(),
+  supplierSkuCut: z
+    .object({
+      supplierSkuLength: z.number().int().positive().optional(),
+      digitCount: z.number().int().positive().optional(),
+      stripCategoryPrefix: z.boolean().optional(),
+    })
+    .optional(),
+});
+
+export function parseImportConfigJson(json: string | null | undefined) {
+  if (!json?.trim()) return {};
+  const parsed = JSON.parse(json) as unknown;
+  return importParseConfigSchema.parse(parsed);
+}
+
 export type ProductInput = z.infer<typeof productSchema>;
 export type WarehouseInput = z.infer<typeof warehouseSchema>;
 export type CategoryInput = z.infer<typeof categorySchema>;

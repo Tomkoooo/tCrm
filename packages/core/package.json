@@ -4,7 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./inventory/excel-columns": "./src/inventory/excel-columns.ts",
+    "./inventory/import-config": "./src/inventory/import-config.ts",
+    "./inventory/import-template": "./src/inventory/import-template.ts"
   },
   "scripts": {
     "lint": "eslint src/",

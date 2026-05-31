@@ -17,9 +17,15 @@ import {
 import { EnDeReadonlyDetails } from '@/components/en-de-readonly-details';
 import { resolveProductImageUrls } from '@/lib/product-thumbnail';
 import {
+  buildStockSummariesForProducts,
+  toRelationCard,
+  type ProductRelationsData,
+} from '@/lib/inventory/product-relations';
+import {
   canAccessProductWarehouses,
   getInventoryWarehouseScope,
 } from '@/lib/inventory/warehouse-scope';
+import { ProductRelationsMap } from '../_components/product-relations-map';
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ sku: string }> }) {
   await requirePermission('inventory:read');
@@ -41,6 +47,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       : { _id: { $in: scope.warehouseIds }, isActive: true };
 
   const warehouses = await Warehouse.find(warehouseQuery).lean().exec();
+  const warehouseNameById = new Map(warehouses.map((w) => [String(w._id), w.name]));
+  const scopeWarehouseIds =
+    scope.isGlobal || !scope.warehouseIds.length ? undefined : scope.warehouseIds;
+
   const stock = await StockLevel.find({ productId: product._id }).lean().exec();
   const adjustments = await StockAdjustment.find({ productId: product._id })
     .sort({ at: -1 })
@@ -60,19 +70,61 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const imageUrls = resolveProductImageUrls(product);
 
   const componentIds = product.components?.map((c) => c.productId) ?? [];
-  const componentProducts = await Product.find({ _id: { $in: componentIds } })
-    .select('sku names')
+  const parentProducts = await Product.find({ 'components.productId': product._id })
+    .select({ sku: 1, names: 1, imageIds: 1, externalImageHints: 1, components: 1 })
     .lean()
     .exec();
+  const componentProducts = await Product.find({ _id: { $in: componentIds } })
+    .select({ sku: 1, names: 1, imageIds: 1, externalImageHints: 1 })
+    .lean()
+    .exec();
+
+  const relationProductIds = [product._id, ...componentIds, ...parentProducts.map((p) => p._id)];
+  const stockSummaries = await buildStockSummariesForProducts(
+    relationProductIds,
+    warehouseNameById,
+    scopeWarehouseIds
+  );
+
   const componentById = new Map(
     componentProducts.map((p) => [
       String(p._id),
-      { sku: p.sku, name: p.names?.hu ?? p.names?.en ?? p.sku },
+      { sku: p.sku, name: p.names?.hu ?? p.names?.en ?? p.sku, product: p },
     ])
   );
 
   const bomAvail =
     (product.components?.length ?? 0) > 0 ? await calculateBomAvailability(product._id) : null;
+
+  const availabilityByComponentId = new Map(
+    (bomAvail?.limitingComponents ?? []).map((line) => [String(line.productId), line.available])
+  );
+
+  const relationsData: ProductRelationsData = {
+    center: toRelationCard(product, stockSummaries),
+    parents: parentProducts.map((parent) => {
+      const line = parent.components?.find((c) => String(c.productId) === String(product._id));
+      return {
+        ...toRelationCard(parent, stockSummaries),
+        quantity: line?.quantity ?? 1,
+      };
+    }),
+    components: (product.components ?? []).map((line) => {
+      const comp = componentById.get(String(line.productId));
+      const compProduct = comp?.product;
+      return {
+        sku: comp?.sku ?? '—',
+        name: comp?.name ?? '—',
+        thumbnailUrl: compProduct
+          ? toRelationCard(compProduct, stockSummaries).thumbnailUrl
+          : undefined,
+        stockSummary: compProduct ? stockSummaries.get(String(compProduct._id)) : undefined,
+        quantity: line.quantity,
+        available: availabilityByComponentId.get(String(line.productId)),
+      };
+    }),
+    canBuild: bomAvail?.canBuild,
+  };
 
   return (
     <Container className="flex max-w-6xl flex-col gap-4 pb-12 md:gap-6">
@@ -121,6 +173,19 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             <p className="text-muted-foreground text-xs">EAN</p>
             <p className="text-sm">{product.ean ?? '—'}</p>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Termék kapcsolatok</CardTitle>
+          <CardDescription>
+            A jelenlegi termék felül; lefelé az alkatrészek (ebből épül fel), alatta az
+            összeszerelések (amelyekbe beépül). A szám = hány db kell belőle egy összeszereléshez.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ProductRelationsMap data={relationsData} />
         </CardContent>
       </Card>
 
@@ -305,7 +370,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                   return (
                     <TableRow key={idx}>
                       <TableCell className="font-mono text-xs">
-                        {comp ? (
+                        {comp?.sku ? (
                           <Link
                             href={`/inventory/${encodeURIComponent(comp.sku)}`}
                             className="text-primary hover:underline"

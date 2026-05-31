@@ -1,18 +1,6 @@
 import type { NextAuthConfig } from 'next-auth';
 
-async function fetchSystemInitialized(requestUrl: string): Promise<boolean> {
-  try {
-    const url = new URL('/api/system/initialized', requestUrl);
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) return false;
-    const data = (await res.json()) as { initialized?: boolean };
-    return Boolean(data.initialized);
-  } catch {
-    return false;
-  }
-}
-
-/** Edge-safe config — no Node/MongoDB imports. Used by middleware only. */
+/** Edge-safe config — no Node/MongoDB imports. Route gating is handled by apps/crm middleware. */
 export const edgeAuthConfig = {
   providers: [],
   session: {
@@ -35,7 +23,6 @@ export const edgeAuthConfig = {
         nextUrl.pathname.startsWith('/login') ||
         nextUrl.pathname.startsWith('/register') ||
         nextUrl.pathname.startsWith('/reset-password');
-      const isSetupPage = nextUrl.pathname.startsWith('/setup');
 
       if (isAuthPage) {
         if (isLoggedIn) {
@@ -44,25 +31,11 @@ export const edgeAuthConfig = {
         return true;
       }
 
-      return (async () => {
-        const initialized = await fetchSystemInitialized(nextUrl.toString());
-        if (!initialized && !isSetupPage) {
-          return Response.redirect(new URL('/setup', nextUrl));
-        }
+      if (!isLoggedIn) {
+        return Response.redirect(new URL('/login', nextUrl));
+      }
 
-        if (isSetupPage) {
-          if (initialized) {
-            return Response.redirect(new URL('/login', nextUrl));
-          }
-          return true;
-        }
-
-        if (!isLoggedIn) {
-          return Response.redirect(new URL('/login', nextUrl));
-        }
-
-        return true;
-      })();
+      return true;
     },
   },
 } satisfies NextAuthConfig;

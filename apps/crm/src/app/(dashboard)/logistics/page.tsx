@@ -1,7 +1,9 @@
 import Link from 'next/link';
+import { format } from 'date-fns';
+import { hu } from 'date-fns/locale';
 import { requirePermission } from '@crm/auth';
 import { connectDB, Reservation, StockMovement, User } from '@crm/db';
-import { getLogisticsKpiSummary } from '@crm/core';
+import { getLogisticsKpiSummary, getVehicleComplianceWarnings } from '@crm/core';
 import { Container } from '@crm/ui';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,16 +24,18 @@ export default async function LogisticsPage() {
   await requirePermission('logistics:read');
   await connectDB();
 
-  const [recentMovements, activeReservations, draftCount, confirmedToday, kpi] = await Promise.all([
-    StockMovement.find().sort({ createdAt: -1 }).limit(5).lean().exec(),
-    Reservation.find({ status: 'active' }).sort({ createdAt: -1 }).limit(5).lean().exec(),
-    StockMovement.countDocuments({ status: 'draft' }).exec(),
-    StockMovement.countDocuments({
-      status: 'confirmed',
-      confirmedAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) },
-    }).exec(),
-    getLogisticsKpiSummary(),
-  ]);
+  const [recentMovements, activeReservations, draftCount, confirmedToday, kpi, complianceWarnings] =
+    await Promise.all([
+      StockMovement.find().sort({ createdAt: -1 }).limit(5).lean().exec(),
+      Reservation.find({ status: 'active' }).sort({ createdAt: -1 }).limit(5).lean().exec(),
+      StockMovement.countDocuments({ status: 'draft' }).exec(),
+      StockMovement.countDocuments({
+        status: 'confirmed',
+        confirmedAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) },
+      }).exec(),
+      getLogisticsKpiSummary(),
+      getVehicleComplianceWarnings(30),
+    ]);
 
   const driverIds = kpi.topDriversByLoss.map((d) => d.driverId);
   const drivers = driverIds.length
@@ -92,6 +96,49 @@ export default async function LogisticsPage() {
           </Button>
         </div>
       </div>
+
+      {complianceWarnings.length > 0 && (
+        <Card className="border-amber-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base text-amber-800">
+              Jármű figyelmeztetések (30 nap)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2 text-sm">
+              {complianceWarnings.map((warning) => (
+                <li
+                  key={`${warning.vehicleId}-${warning.kind}`}
+                  className="flex flex-wrap items-center justify-between gap-2 border-b pb-2 last:border-0"
+                >
+                  <span>
+                    <Link
+                      href={`/logistics/vehicles/${warning.vehicleId}`}
+                      className="text-primary font-medium hover:underline"
+                    >
+                      {warning.vehicleName}
+                    </Link>
+                    <span className="text-muted-foreground ml-2">{warning.plateNumber}</span>
+                    <span className="text-muted-foreground block text-xs">
+                      {warning.kind === 'registration' ? 'Forgalmi engedély' : 'Biztosítás'} ·{' '}
+                      {format(new Date(warning.dueDate), 'yyyy. MMM d.', { locale: hu })}
+                    </span>
+                  </span>
+                  <span
+                    className={
+                      warning.isOverdue
+                        ? 'shrink-0 font-medium text-red-600'
+                        : 'shrink-0 font-medium text-amber-700'
+                    }
+                  >
+                    {warning.isOverdue ? 'Lejárt' : `${warning.daysUntilDue} nap múlva`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
