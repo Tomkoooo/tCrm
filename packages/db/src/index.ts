@@ -1,4 +1,9 @@
 export { connectDB, getNativeClient, getUploadsBucket, DB_NAME } from './connection';
+export { normalizeMongoUri } from './mongo-uri';
+export {
+  isStandaloneMongoError,
+  runWithOptionalTransaction,
+} from './run-with-optional-transaction';
 export * from './models';
 export * from './repositories';
 export { ensureBaselineRbac, seedDatabase, seedMailTemplates } from './seed';

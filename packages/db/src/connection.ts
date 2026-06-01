@@ -1,9 +1,11 @@
 import { connections, connect, mongo } from 'mongoose';
+import { normalizeMongoUri } from './mongo-uri';
 
 const DB_NAME = process.env.MONGODB_DB_NAME ?? 'tcrm';
 
 function getMongoUri(): string | undefined {
-  return process.env.MONGODB_URI;
+  const raw = process.env.MONGODB_URI?.trim();
+  return raw ? normalizeMongoUri(raw) : undefined;
 }
 
 if (!getMongoUri()) {
@@ -30,6 +32,7 @@ export async function connectDB(): Promise<void> {
   try {
     connectionPromise = connect(mongoUri, {
       dbName: DB_NAME,
+      retryWrites: false,
       serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 10000,
       connectTimeoutMS: 10000,

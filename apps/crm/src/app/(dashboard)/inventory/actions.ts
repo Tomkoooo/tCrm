@@ -6,6 +6,7 @@ import {
   connectDB,
   Category,
   Product,
+  runWithOptionalTransaction,
   StockAdjustment,
   StockLevel,
   Supplier,
@@ -559,9 +560,8 @@ export async function updateProductAction(
     allowedWarehouseIds: scope.warehouseIds.map((id) => new mongoose.Types.ObjectId(id)),
   };
 
-  const session = await mongoose.startSession();
   try {
-    await session.withTransaction(async () => {
+    await runWithOptionalTransaction(async (session) => {
       existing.set({
         supplierSku: parsed.data.supplierSku,
         supplierNo: parsed.data.supplierNo,
@@ -596,7 +596,7 @@ export async function updateProductAction(
         })),
       });
 
-      await existing.save({ session });
+      await existing.save(session ? { session } : undefined);
 
       for (const level of stockParsed.data) {
         await setProductStockLevel(
@@ -605,7 +605,7 @@ export async function updateProductAction(
           level.quantity,
           user.id,
           bulkScope,
-          { session }
+          session ? { session } : undefined
         );
       }
     });
@@ -614,8 +614,6 @@ export async function updateProductAction(
       success: false,
       message: e instanceof Error ? e.message : 'A mentés sikertelen.',
     };
-  } finally {
-    session.endSession();
   }
 
   await syncMediaUsage({
@@ -867,13 +865,16 @@ export async function adjustStockAction(
     return { success: false, message: 'Érvénytelen készlet módosítás.' };
   }
 
-  const session = await mongoose.startSession();
   try {
-    await session.withTransaction(async () => {
+    await runWithOptionalTransaction(async (session) => {
       const productId = new mongoose.Types.ObjectId(parsed.data.productId);
       const warehouseId = new mongoose.Types.ObjectId(parsed.data.warehouseId);
 
-      await Warehouse.findById(warehouseId).session(session);
+      if (session) {
+        await Warehouse.findById(warehouseId).session(session);
+      } else {
+        await Warehouse.findById(warehouseId);
+      }
 
       const stock = await StockLevel.findOneAndUpdate(
         { productId, warehouseId },
@@ -881,7 +882,7 @@ export async function adjustStockAction(
           $inc: { onHand: parsed.data.delta },
           $set: { lastChangedAt: new Date(), lastChangedBy: user.id },
         },
-        { upsert: true, new: true, session }
+        { upsert: true, new: true, ...(session ? { session } : {}) }
       );
 
       await StockAdjustment.create(
@@ -896,7 +897,7 @@ export async function adjustStockAction(
             at: new Date(),
           },
         ],
-        { session }
+        session ? { session } : undefined
       );
 
       // ensure onHand isn't negative in Phase 1
@@ -906,10 +907,11 @@ export async function adjustStockAction(
 
       await syncProductWarehouseIds(productId, session);
     });
-  } catch (e: any) {
-    return { success: false, message: e?.message ?? 'A készlet módosítása sikertelen.' };
-  } finally {
-    session.endSession();
+  } catch (e) {
+    return {
+      success: false,
+      message: e instanceof Error ? e.message : 'A készlet módosítása sikertelen.',
+    };
   }
 
   revalidatePath('/inventory');

@@ -168,6 +168,13 @@ Each entry: **symptom → cause → fix**.
 - **Cause:** Next.js reads env from **`apps/crm/.env.local`**, not repo root `.env`. Example default is `mongodb://localhost:27017` while Compass may use Atlas/Docker/other host.
 - **Fix:** Set `MONGODB_URI` in `apps/crm/.env.local` to the **exact** Compass connection string. `next.config.ts` loads repo `.env` first, then app `.env.local` (app overrides).
 
+### `retryable writes` / `retryWrites=false` (standalone MongoDB)
+
+- **Symptom:** Saving a product (e.g. after adding images) fails: *this MongoDB deployment does not support retryable writes*.
+- **Cause:** Default Node driver uses `retryWrites=true`, which needs a **replica set**. A single self-hosted `mongod` is **standalone** (no replica set). Product save also used multi-document **transactions** (same limitation).
+- **Fix (app):** `@crm/db` now normalizes the URI (`retryWrites=false` if omitted) and falls back to non-transactional saves on standalone. **Restart** the app after deploy/pull.
+- **Fix (env, optional):** `MONGODB_URI=mongodb://host:27017/?retryWrites=false` in `apps/crm/.env.local`. For production HA later, use a replica set (Atlas, or 3-node rs) — then you can enable transactions/retry writes.
+
 ### Slow first load (~10s)
 
 - **Symptom:** Every navigation waits ~10s when DB is down.
