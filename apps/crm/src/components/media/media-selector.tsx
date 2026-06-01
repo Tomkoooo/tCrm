@@ -8,6 +8,7 @@ import { MEDIA_DELETE_PERMISSION_KEYS, MEDIA_UPLOAD_PERMISSION_KEYS } from '@crm
 import { useAuth } from '@/hooks/use-auth';
 import type { SelectedMedia } from '@/lib/media-types';
 import { MediaManagerModal } from './media-manager-modal';
+import { MediaThumbnail } from './media-thumbnail';
 
 export function MediaSelector({
   label = 'Képek',
@@ -64,10 +65,13 @@ export function MediaSelector({
               key={item.id}
               className="bg-muted/30 relative flex flex-col items-center gap-1 rounded-md border p-1"
             >
-              <img
+              <MediaThumbnail
                 src={item.previewUrl}
                 alt={item.filename}
-                className="size-20 rounded object-cover"
+                filename={item.filename}
+                contentType={item.contentType}
+                type={item.type}
+                className="size-20 rounded"
               />
               <div className="flex gap-0.5">
                 {multiple && index > 0 && (
@@ -111,7 +115,7 @@ export function MediaSelector({
           ))}
         </ul>
       ) : (
-        <p className="text-muted-foreground text-sm">Nincs kép csatolva.</p>
+        <p className="text-muted-foreground text-sm">Nincs média csatolva.</p>
       )}
 
       {value.map((item) => (

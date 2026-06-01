@@ -44,6 +44,6 @@ pnpm-debug.log*
 # Vercel
 .vercel
 
-# Docker
-uploads/
+# Docker (repo-root volume only — not Next.js API routes)
+/uploads/
 docker-compose.portainer.yml

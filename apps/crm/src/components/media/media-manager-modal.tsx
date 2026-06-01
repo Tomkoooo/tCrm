@@ -36,8 +36,8 @@ export function MediaManagerModal({
           <DialogTitle>Médiatár</DialogTitle>
           <DialogDescription>
             {multiple
-              ? `Válasszon képeket (max ${maxCount ?? '∞'}) vagy töltsön fel újat.`
-              : 'Válasszon egy képet, töltsön fel, vagy adjon hozzá linket.'}
+              ? `Válasszon képeket vagy PDF-et (max ${maxCount ?? '∞'}), töltsön fel több fájlt egyszerre, vagy adjon hozzá linket.`
+              : 'Válasszon képet vagy PDF-et, töltsön fel, vagy adjon hozzá linket.'}
           </DialogDescription>
         </DialogHeader>
 

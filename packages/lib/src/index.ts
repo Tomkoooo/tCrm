@@ -1,5 +1,6 @@
 export * from './env';
 export * from './mail-env';
+export * from './media-upload';
 export * from './utils';
 export * from './validation';
 export * from './suppliers/contacts';

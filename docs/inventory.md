@@ -149,7 +149,7 @@ Implemented on top of Phase 1 schema:
 - **`Media` collection:** `file` (SHA-256 dedup + GridFS) or `link` (external URL); `usages[]` + `useCount`.
 - **`Product.imageIds`:** Media document ids; served via `GET /api/inventory/images/[id]` (redirect for links, stream for files; legacy GridFS id fallback).
 - Import resolves `bild1`–`bild5` into link Media on commit; manual uploads keep file Media on re-import merge.
-- UI: **Médiatár** modal on product/build forms (gallery, crop upload, add link).
+- UI: **Médiatár** modal on product/build forms (gallery, multi-file upload with per-image crop, PDF upload, add link).
 
 ## Event logistics (Phase 3)
 

@@ -22,4 +22,5 @@ export type SelectedMedia = {
   previewUrl: string;
   filename: string;
   type: 'file' | 'link';
+  contentType?: string;
 };

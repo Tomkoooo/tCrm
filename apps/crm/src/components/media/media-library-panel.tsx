@@ -1,9 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { ImageIcon, Link2, Trash2, Upload } from 'lucide-react';
+import { ExternalLink, ImageIcon, Link2, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  fileNeedsCrop,
+  isAllowedUploadContentType,
+  MEDIA_UPLOAD_ACCEPT,
+  MEDIA_UPLOAD_MAX_BYTES,
+  mediaPreviewPath,
+} from '@crm/lib';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -11,8 +18,25 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import type { MediaListItem, SelectedMedia } from '@/lib/media-types';
 import { ImageCropper } from './image-cropper';
+import { isPdfMedia, MediaThumbnail } from './media-thumbnail';
 
 type Tab = 'library' | 'upload' | 'link';
+
+function filterUploadFiles(files: File[]): File[] {
+  const accepted: File[] = [];
+  for (const file of files) {
+    if (file.size > MEDIA_UPLOAD_MAX_BYTES) {
+      toast.error(`${file.name}: túl nagy fájl (max ${MEDIA_UPLOAD_MAX_BYTES / 1024 / 1024} MB)`);
+      continue;
+    }
+    if (!isAllowedUploadContentType(file.type || '', file.name)) {
+      toast.error(`${file.name}: csak kép és PDF tölthető fel`);
+      continue;
+    }
+    accepted.push(file);
+  }
+  return accepted;
+}
 
 export function MediaLibraryPanel({
   active = true,
@@ -45,9 +69,12 @@ export function MediaLibraryPanel({
   const [picked, setPicked] = useState<Set<string>>(new Set(selectedIds));
   const [detail, setDetail] = useState<MediaListItem | null>(null);
   const [cropFile, setCropFile] = useState<File | null>(null);
+  const [uploadQueue, setUploadQueue] = useState<File[]>([]);
   const [linkUrl, setLinkUrl] = useState('');
   const [linkPending, setLinkPending] = useState(false);
   const [uploadPending, setUploadPending] = useState(false);
+  const processingRef = useRef(false);
+  const hadUploadBatchRef = useRef(false);
 
   useEffect(() => {
     if (active && mode === 'picker') {
@@ -96,7 +123,7 @@ export function MediaLibraryPanel({
       }
       const limit = maxCount ?? 20;
       if (next.size >= limit) {
-        toast.message(`Legfeljebb ${limit} kép választható`);
+        toast.message(`Legfeljebb ${limit} média választható`);
         return next;
       }
       next.add(item.id);
@@ -104,26 +131,15 @@ export function MediaLibraryPanel({
     });
   };
 
-  const uploadBlob = async (blob: Blob, filename: string) => {
-    if (!canUpload) {
-      toast.error('Nincs jogosultság feltöltéshez');
-      return;
-    }
-    setUploadPending(true);
-    try {
-      const fd = new FormData();
-      fd.set('file', new File([blob], filename, { type: blob.type || 'image/jpeg' }));
-      const res = await fetch('/api/uploads', { method: 'POST', body: fd });
-      if (!res.ok) throw new Error('upload failed');
-      const json = (await res.json()) as { id: string; deduplicated?: boolean };
-      if (json.deduplicated) toast.message('Ez a kép már szerepel a médiatárban');
-      else toast.success('Feltöltve');
-
+  const registerUploadedItem = useCallback(
+    (json: { id: string; contentType?: string }, filename: string) => {
+      const previewUrl = mediaPreviewPath(json.id);
       const newItem: MediaListItem = {
         id: json.id,
         type: 'file',
         filename,
-        previewUrl: `/api/inventory/images/${json.id}`,
+        contentType: json.contentType,
+        previewUrl,
         useCount: 0,
         usages: [],
         createdAt: new Date().toISOString(),
@@ -135,12 +151,130 @@ export function MediaLibraryPanel({
       }
       setItems((list) => [newItem, ...list]);
       setDetail(newItem);
-      setCropFile(null);
-      setTab('library');
-    } catch {
-      toast.error('Feltöltés sikertelen');
+      return newItem;
+    },
+    [mode, multiple]
+  );
+
+  const uploadFormFile = useCallback(
+    async (file: File): Promise<boolean> => {
+      if (!canUpload) {
+        toast.error('Nincs jogosultság feltöltéshez');
+        return false;
+      }
+      const fd = new FormData();
+      fd.set('file', file);
+      const res = await fetch('/api/uploads', { method: 'POST', body: fd });
+      if (!res.ok) throw new Error('upload failed');
+      const json = (await res.json()) as {
+        id: string;
+        deduplicated?: boolean;
+        contentType?: string;
+      };
+      if (json.deduplicated) toast.message(`${file.name}: már szerepel a médiatárban`);
+      else toast.success(`${file.name}: feltöltve`);
+      registerUploadedItem(json, file.name);
+      return true;
+    },
+    [canUpload, registerUploadedItem]
+  );
+
+  const uploadBlob = useCallback(
+    async (blob: Blob, filename: string) => {
+      setUploadPending(true);
+      try {
+        const fd = new FormData();
+        fd.set('file', new File([blob], filename, { type: blob.type || 'image/jpeg' }));
+        const res = await fetch('/api/uploads', { method: 'POST', body: fd });
+        if (!res.ok) throw new Error('upload failed');
+        const json = (await res.json()) as {
+          id: string;
+          deduplicated?: boolean;
+          contentType?: string;
+        };
+        if (json.deduplicated) toast.message('Ez a fájl már szerepel a médiatárban');
+        else toast.success('Feltöltve');
+        registerUploadedItem(json, filename);
+        return true;
+      } catch {
+        toast.error('Feltöltés sikertelen');
+        return false;
+      } finally {
+        setUploadPending(false);
+      }
+    },
+    [registerUploadedItem]
+  );
+
+  const processUploadQueue = useCallback(async () => {
+    if (processingRef.current || uploadPending || cropFile) return;
+    if (uploadQueue.length === 0) return;
+
+    processingRef.current = true;
+    const file = uploadQueue[0];
+    try {
+      if (fileNeedsCrop(file)) {
+        setCropFile(file);
+        return;
+      }
+      setUploadPending(true);
+      try {
+        await uploadFormFile(file);
+        setUploadQueue((q) => q.slice(1));
+      } catch {
+        toast.error(`${file.name}: feltöltés sikertelen`);
+      } finally {
+        setUploadPending(false);
+      }
     } finally {
-      setUploadPending(false);
+      processingRef.current = false;
+    }
+  }, [uploadPending, uploadQueue, cropFile, uploadFormFile]);
+
+  useEffect(() => {
+    if (tab === 'upload' && uploadQueue.length > 0 && !cropFile && !uploadPending) {
+      void processUploadQueue();
+    }
+  }, [tab, uploadQueue, cropFile, uploadPending, processUploadQueue]);
+
+  useEffect(() => {
+    if (
+      tab === 'upload' &&
+      hadUploadBatchRef.current &&
+      uploadQueue.length === 0 &&
+      !cropFile &&
+      !uploadPending
+    ) {
+      hadUploadBatchRef.current = false;
+      setTab('library');
+    }
+  }, [tab, uploadQueue.length, cropFile, uploadPending]);
+
+  const enqueueFiles = (fileList: FileList | null) => {
+    if (!fileList?.length) return;
+    const accepted = filterUploadFiles([...fileList]);
+    if (accepted.length === 0) return;
+    hadUploadBatchRef.current = true;
+    setUploadQueue((q) => [...q, ...accepted]);
+    setTab('upload');
+  };
+
+  const skipCurrentCrop = () => {
+    setUploadQueue((q) => q.slice(1));
+    setCropFile(null);
+  };
+
+  const cancelAllUploads = () => {
+    hadUploadBatchRef.current = false;
+    setUploadQueue([]);
+    setCropFile(null);
+  };
+
+  const handleCropped = async (blob: Blob, filename: string) => {
+    const ok = await uploadBlob(blob, filename);
+    if (ok) {
+      setUploadQueue((q) => q.slice(1));
+      setCropFile(null);
     }
   };
 
@@ -167,7 +301,7 @@ export function MediaLibraryPanel({
         type: 'link',
         filename: url,
         url,
-        previewUrl: `/api/inventory/images/${json.id}`,
+        previewUrl: mediaPreviewPath(json.id),
         useCount: 0,
         usages: [],
         createdAt: new Date().toISOString(),
@@ -222,11 +356,12 @@ export function MediaLibraryPanel({
           previewUrl: item.previewUrl,
           filename: item.filename,
           type: item.type,
+          contentType: item.contentType,
         });
       } else if (selectedIds.includes(id)) {
         selected.push({
           id,
-          previewUrl: `/api/inventory/images/${id}`,
+          previewUrl: mediaPreviewPath(id),
           filename: id,
           type: 'file',
         });
@@ -245,6 +380,14 @@ export function MediaLibraryPanel({
     },
     { id: 'link', label: 'Link', icon: <Link2 className="h-4 w-4" />, hidden: !canUpload },
   ];
+
+  const activeCropIndex =
+    cropFile && uploadQueue.length > 0
+      ? uploadQueue.findIndex((f) => f === cropFile) + 1
+      : cropFile
+        ? 1
+        : 0;
+  const activeCropTotal = uploadQueue.length > 0 ? uploadQueue.length : cropFile ? 1 : 0;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -265,6 +408,11 @@ export function MediaLibraryPanel({
             >
               {t.icon}
               {t.label}
+              {t.id === 'upload' && uploadQueue.length > 0 && (
+                <span className="bg-primary text-primary-foreground rounded-full px-1.5 text-[10px]">
+                  {uploadQueue.length}
+                </span>
+              )}
             </button>
           ))}
       </div>
@@ -325,14 +473,22 @@ export function MediaLibraryPanel({
                       )}
                       onClick={() => selectItem(item)}
                     >
-                      <img
+                      <MediaThumbnail
                         src={item.previewUrl}
                         alt={item.filename}
-                        className="size-full object-cover"
+                        filename={item.filename}
+                        contentType={item.contentType}
+                        type={item.type}
+                        className="size-full"
                       />
                       {item.type === 'link' && (
                         <span className="bg-background/80 absolute bottom-1 right-1 rounded px-1 text-[10px]">
                           URL
+                        </span>
+                      )}
+                      {isPdfMedia(item) && (
+                        <span className="bg-background/80 absolute bottom-1 left-1 rounded px-1 text-[10px]">
+                          PDF
                         </span>
                       )}
                       {item.useCount > 0 && mode === 'admin' && (
@@ -351,27 +507,49 @@ export function MediaLibraryPanel({
           {tab === 'upload' && canUpload && (
             <div className="flex flex-col gap-4">
               {cropFile ? (
-                <ImageCropper
-                  file={cropFile}
-                  onCancel={() => setCropFile(null)}
-                  onCropped={(blob, name) => void uploadBlob(blob, name)}
-                />
+                <>
+                  {activeCropTotal > 1 && (
+                    <p className="text-muted-foreground text-sm">
+                      Vágás: {activeCropIndex} / {activeCropTotal} — {cropFile.name}
+                    </p>
+                  )}
+                  <ImageCropper
+                    file={cropFile}
+                    onCancel={skipCurrentCrop}
+                    onCropped={(blob, name) => void handleCropped(blob, name)}
+                  />
+                  {uploadQueue.length > 1 && (
+                    <Button type="button" variant="ghost" size="sm" onClick={cancelAllUploads}>
+                      Összes feltöltés megszakítása
+                    </Button>
+                  )}
+                </>
               ) : (
                 <>
-                  <Label htmlFor="media-file">Kép fájl</Label>
+                  <Label htmlFor="media-file">Kép vagy PDF</Label>
                   <Input
                     id="media-file"
                     type="file"
-                    accept="image/*"
+                    accept={MEDIA_UPLOAD_ACCEPT}
+                    multiple
                     disabled={uploadPending}
                     onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) setCropFile(f);
+                      enqueueFiles(e.target.files);
+                      e.target.value = '';
                     }}
                   />
+                  {uploadPending && (
+                    <p className="text-muted-foreground text-sm">Feltöltés folyamatban…</p>
+                  )}
+                  {uploadQueue.length > 0 && !uploadPending && !cropFile && (
+                    <p className="text-muted-foreground text-sm">
+                      {uploadQueue.length} fájl vár feltöltésre…
+                    </p>
+                  )}
                   <p className="text-muted-foreground text-xs">
-                    A feltöltés előtt vágás és nagyítás állítható. Azonos fájl csak egyszer kerül
-                    tárolásra (hash alapú deduplikáció).
+                    Több fájl kijelölhető egyszerre. A képeket egyenként lehet vágni és feltölteni;
+                    a PDF-ek közvetlenül kerülnek a médiatárba. Azonos fájl csak egyszer tárolódik
+                    (hash alapú deduplikáció).
                   </p>
                 </>
               )}
@@ -407,21 +585,33 @@ export function MediaLibraryPanel({
 
         {detail && tab === 'library' && (
           <aside className="border-t pt-4 md:w-64 md:shrink-0 md:border-l md:border-t-0 md:pl-4 md:pt-0">
-            <img
+            <MediaThumbnail
               src={detail.previewUrl}
               alt={detail.filename}
-              className="mb-3 aspect-square w-full rounded-md border object-cover"
+              filename={detail.filename}
+              contentType={detail.contentType}
+              type={detail.type}
+              className="mb-3 aspect-square w-full rounded-md border"
             />
             <p className="truncate text-sm font-medium" title={detail.filename}>
               {detail.filename}
             </p>
             <p className="text-muted-foreground text-xs">
-              {detail.type === 'link' ? 'Külső link' : 'Fájl'} · {detail.useCount} használat
+              {detail.type === 'link' ? 'Külső link' : isPdfMedia(detail) ? 'PDF fájl' : 'Fájl'} ·{' '}
+              {detail.useCount} használat
             </p>
             {detail.url && (
               <p className="text-muted-foreground mt-1 truncate text-xs" title={detail.url}>
                 {detail.url}
               </p>
+            )}
+            {isPdfMedia(detail) && (
+              <Button type="button" variant="outline" size="sm" className="mt-2 w-full" asChild>
+                <a href={detail.previewUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="mr-1 h-3 w-3" />
+                  PDF megnyitása
+                </a>
+              </Button>
             )}
             {detail.usages.length > 0 && (
               <ul className="mt-2 max-h-32 space-y-1 overflow-y-auto text-xs">
