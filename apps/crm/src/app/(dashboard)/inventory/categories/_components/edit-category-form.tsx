@@ -148,7 +148,7 @@ export function EditCategoryForm({
         </div>
       </div>
       <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={pending}>
+        <Button type="submit" size="sm" loading={pending} disabled={pending}>
           {pending ? 'Mentés…' : 'Mentés'}
         </Button>
         <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>

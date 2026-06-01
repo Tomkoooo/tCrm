@@ -19,7 +19,7 @@ export function ImageCropper({
 }: {
   file: File;
   onCancel: () => void;
-  onCropped: (blob: Blob, filename: string) => void;
+  onCropped: (blob: Blob, filename: string) => void | Promise<void>;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -27,6 +27,7 @@ export function ImageCropper({
   const [dragging, setDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0, ox: 0, oy: 0 });
   const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [exporting, setExporting] = useState(false);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -69,9 +70,11 @@ export function ImageCropper({
   }, [draw]);
 
   const exportCrop = async () => {
+    if (exporting) return;
     const img = imgRef.current;
     if (!img) return;
 
+    setExporting(true);
     const size = Math.min(OUTPUT_MAX, Math.max(img.width, img.height));
     const out = document.createElement('canvas');
     out.width = size;
@@ -93,10 +96,17 @@ export function ImageCropper({
     const blob = await new Promise<Blob | null>((resolve) =>
       out.toBlob((b) => resolve(b), 'image/jpeg', 0.9)
     );
-    if (!blob) return;
+    if (!blob) {
+      setExporting(false);
+      return;
+    }
 
     const base = file.name.replace(/\.[^.]+$/, '') || 'image';
-    onCropped(blob, `${base}.jpg`);
+    try {
+      await Promise.resolve(onCropped(blob, `${base}.jpg`));
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -148,10 +158,21 @@ export function ImageCropper({
       {previewUrl ? <img src={previewUrl} alt="" className="sr-only" /> : null}
 
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          loading={exporting}
+          disabled={exporting}
+        >
           Mégse
         </Button>
-        <Button type="button" onClick={() => void exportCrop()}>
+        <Button
+          type="button"
+          loading={exporting}
+          loadingText="Feltöltés…"
+          onClick={() => void exportCrop()}
+        >
           Vágás és feltöltés
         </Button>
       </div>

@@ -88,6 +88,7 @@ function RequestActions({ row, typeLabel }: { row: RequestRow; typeLabel: string
       <div className="flex gap-2">
         <Button
           size="sm"
+          loading={pending}
           disabled={pending}
           onClick={() => {
             startTransition(async () => {
@@ -104,6 +105,7 @@ function RequestActions({ row, typeLabel }: { row: RequestRow; typeLabel: string
         <Button
           size="sm"
           variant="outline"
+          loading={pending}
           disabled={pending}
           onClick={() => {
             startTransition(async () => {

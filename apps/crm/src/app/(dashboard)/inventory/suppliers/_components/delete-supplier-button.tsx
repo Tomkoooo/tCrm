@@ -14,6 +14,7 @@ export function DeleteSupplierButton({ id, name }: { id: string; name: string })
       type="button"
       variant="destructive"
       size="sm"
+      loading={pending}
       disabled={pending}
       onClick={() => {
         if (!confirm(`Törli a(z) „${name}” beszállítót?`)) return;

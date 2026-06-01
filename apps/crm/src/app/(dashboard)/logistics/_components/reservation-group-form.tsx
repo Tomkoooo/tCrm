@@ -161,7 +161,13 @@ export function ReservationGroupForm({
               onChange={(e) => setSourceRef(e.target.value)}
               placeholder="pl. OFFER-2026-00001"
             />
-            <Button type="button" variant="outline" onClick={loadFromReference} disabled={pending}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={loadFromReference}
+              loading={pending}
+              disabled={pending}
+            >
               Betöltés
             </Button>
           </div>
@@ -230,7 +236,7 @@ export function ReservationGroupForm({
         <Input id="note" value={note} onChange={(e) => setNote(e.target.value)} />
       </div>
 
-      <Button type="button" onClick={submit} disabled={pending}>
+      <Button type="button" onClick={submit} loading={pending} disabled={pending}>
         {pending ? 'Mentés…' : 'Foglalások létrehozása'}
       </Button>
     </div>

@@ -67,6 +67,7 @@ export function VehicleIncidentsList({
                 type="button"
                 size="sm"
                 variant="outline"
+                loading={pending}
                 disabled={pending}
                 onClick={() => markFixed(incident.id)}
               >

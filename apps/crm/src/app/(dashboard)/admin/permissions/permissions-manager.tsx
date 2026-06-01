@@ -189,6 +189,7 @@ export function PermissionsManager({
           <Button
             type="button"
             variant="secondary"
+            loading={syncPending}
             disabled={syncPending}
             onClick={() => {
               startSync(async () => {
@@ -234,7 +235,7 @@ export function PermissionsManager({
               <Label htmlFor="description">Leírás</Label>
               <Input id="description" name="description" placeholder="Opcionális" />
             </div>
-            <Button type="submit" disabled={createPending}>
+            <Button type="submit" loading={createPending} disabled={createPending}>
               {createPending ? 'Létrehozás…' : 'Szerepkör létrehozása'}
             </Button>
           </form>

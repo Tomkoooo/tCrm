@@ -69,7 +69,7 @@ export function EditWarehouseForm({
         </div>
         <WarehouseStaffSelect initialSelected={data.assignedUserIds} />
         <div className="flex gap-2 md:col-span-2">
-          <Button type="submit" disabled={pending}>
+          <Button type="submit" loading={pending} disabled={pending}>
             {pending ? 'Mentés…' : 'Mentés'}
           </Button>
           <Button type="button" variant="destructive" onClick={onDelete}>

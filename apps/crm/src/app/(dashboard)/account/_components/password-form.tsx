@@ -58,7 +58,7 @@ export function PasswordForm() {
           <p className="text-destructive text-sm">{state.fieldErrors.confirmNewPassword[0]}</p>
         )}
       </div>
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" loading={pending} disabled={pending}>
         {pending ? 'Mentés…' : 'Jelszó módosítása'}
       </Button>
     </form>

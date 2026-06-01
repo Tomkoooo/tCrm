@@ -54,7 +54,7 @@ export function EditSecretProjectForm({
           defaultValue={defaultDescription ?? ''}
         />
       </div>
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" loading={pending} disabled={pending}>
         {pending ? 'Mentés…' : 'Mentés'}
       </Button>
     </form>

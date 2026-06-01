@@ -514,7 +514,13 @@ export function ImportModal({ open, onOpenChange }: ImportModalProps) {
 
         <div className="shrink-0 border-t p-6 pt-4">
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" onClick={runPreview} disabled={pending}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={runPreview}
+              loading={pending}
+              disabled={pending}
+            >
               {pending ? 'Feldolgozás…' : 'Előnézet'}
             </Button>
             <Button

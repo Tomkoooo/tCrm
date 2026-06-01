@@ -91,7 +91,7 @@ export function ReservationForm({
         </div>
       </div>
 
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" loading={pending} disabled={pending}>
         {pending ? 'Creating…' : 'Create reservation'}
       </Button>
     </form>

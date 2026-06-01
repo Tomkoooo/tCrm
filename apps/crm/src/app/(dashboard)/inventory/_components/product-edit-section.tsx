@@ -38,7 +38,7 @@ export function ProductEditSection({
             </div>
           </CollapsibleTrigger>
         </CardHeader>
-        <CollapsibleContent>
+        <CollapsibleContent forceMount className="data-[state=closed]:hidden">
           <CardContent className={compact ? 'px-0 pt-0' : 'pt-0'}>{children}</CardContent>
         </CollapsibleContent>
       </Card>

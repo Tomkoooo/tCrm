@@ -14,6 +14,7 @@ export function ReservationActions({ id }: { id: string }) {
       <Button
         size="sm"
         variant="outline"
+        loading={pending}
         disabled={pending}
         onClick={() =>
           startTransition(async () => {
@@ -28,6 +29,7 @@ export function ReservationActions({ id }: { id: string }) {
       <Button
         size="sm"
         variant="ghost"
+        loading={pending}
         disabled={pending}
         onClick={() =>
           startTransition(async () => {

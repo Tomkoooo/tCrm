@@ -204,8 +204,8 @@ export function ProductEditForm({
       </ProductEditSection>
 
       <div className="flex gap-2 border-t pt-4">
-        <Button type="submit" disabled={pending}>
-          {pending ? 'Mentés…' : 'Változtatások mentése'}
+        <Button type="submit" loading={pending} loadingText="Mentés…">
+          Változtatások mentése
         </Button>
       </div>
     </form>

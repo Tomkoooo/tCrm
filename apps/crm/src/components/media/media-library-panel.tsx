@@ -12,6 +12,7 @@ import {
   mediaPreviewPath,
 } from '@crm/lib';
 import { Button } from '@/components/ui/button';
+import { FileUploadButton } from '@/components/ui/file-upload-button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -72,6 +73,7 @@ export function MediaLibraryPanel({
   const [uploadQueue, setUploadQueue] = useState<File[]>([]);
   const [linkUrl, setLinkUrl] = useState('');
   const [linkPending, setLinkPending] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
   const [uploadPending, setUploadPending] = useState(false);
   const processingRef = useRef(false);
   const hadUploadBatchRef = useRef(false);
@@ -323,8 +325,9 @@ export function MediaLibraryPanel({
   };
 
   const deleteDetail = async () => {
-    if (!detail || !canDelete) return;
+    if (!detail || !canDelete || deletePending) return;
     if (!confirm('Biztosan törli ezt a médiát?')) return;
+    setDeletePending(true);
     try {
       const res = await fetch(`/api/media/${detail.id}`, { method: 'DELETE' });
       if (!res.ok) {
@@ -342,8 +345,12 @@ export function MediaLibraryPanel({
       void loadLibrary();
     } catch {
       toast.error('Törlés sikertelen');
+    } finally {
+      setDeletePending(false);
     }
   };
+
+  const isUploadBusy = uploadPending || uploadQueue.length > 0 || Boolean(cropFile);
 
   const handleConfirm = () => {
     if (!onConfirm) return;
@@ -449,7 +456,13 @@ export function MediaLibraryPanel({
                     Csak fel nem használt
                   </label>
                 )}
-                <Button type="button" variant="secondary" onClick={() => void loadLibrary()}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  loading={loading}
+                  loadingText="Keresés…"
+                  onClick={() => void loadLibrary()}
+                >
                   Keresés
                 </Button>
               </div>
@@ -526,19 +539,17 @@ export function MediaLibraryPanel({
                 </>
               ) : (
                 <>
-                  <Label htmlFor="media-file">Kép vagy PDF</Label>
-                  <Input
-                    id="media-file"
-                    type="file"
+                  <Label>Kép vagy PDF</Label>
+                  <FileUploadButton
                     accept={MEDIA_UPLOAD_ACCEPT}
                     multiple
+                    loading={isUploadBusy}
                     disabled={uploadPending}
-                    onChange={(e) => {
-                      enqueueFiles(e.target.files);
-                      e.target.value = '';
-                    }}
-                  />
-                  {uploadPending && (
+                    onFilesSelected={(files) => enqueueFiles(files)}
+                  >
+                    Fájlok kiválasztása
+                  </FileUploadButton>
+                  {isUploadBusy && (
                     <p className="text-muted-foreground text-sm">Feltöltés folyamatban…</p>
                   )}
                   {uploadQueue.length > 0 && !uploadPending && !cropFile && (
@@ -576,8 +587,13 @@ export function MediaLibraryPanel({
                   }}
                 />
               ) : null}
-              <Button type="button" disabled={linkPending} onClick={() => void addLink()}>
-                {linkPending ? 'Mentés…' : 'Link hozzáadása'}
+              <Button
+                type="button"
+                loading={linkPending}
+                loadingText="Mentés…"
+                onClick={() => void addLink()}
+              >
+                Link hozzáadása
               </Button>
             </div>
           )}
@@ -636,6 +652,8 @@ export function MediaLibraryPanel({
                 variant="destructive"
                 size="sm"
                 className="mt-3 w-full"
+                loading={deletePending}
+                loadingText="Törlés…"
                 onClick={() => void deleteDetail()}
               >
                 <Trash2 className="mr-1 h-3 w-3" />

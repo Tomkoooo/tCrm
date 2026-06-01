@@ -129,7 +129,7 @@ export function InviteUserForm({
       )}
 
       <div className="flex justify-end border-t pt-4">
-        <Button type="submit" disabled={pending} size="lg">
+        <Button type="submit" loading={pending} disabled={pending} size="lg">
           {pending ? 'Küldés…' : 'Meghívó küldése'}
         </Button>
       </div>

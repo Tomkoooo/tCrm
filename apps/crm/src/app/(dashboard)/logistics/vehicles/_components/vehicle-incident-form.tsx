@@ -49,7 +49,7 @@ export function VehicleIncidentReportForm({ vehicleId }: { vehicleId: string }) 
         maxCount={5}
         name="incidentPhotoId"
       />
-      <Button type="submit" disabled={pending} className="w-fit">
+      <Button type="submit" loading={pending} disabled={pending} className="w-fit">
         {pending ? 'Küldés…' : 'Bejelentés küldése'}
       </Button>
     </form>

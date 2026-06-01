@@ -15,6 +15,7 @@ export function UnlinkEmployeeButton({ employeeId }: { employeeId: string }) {
       type="button"
       size="sm"
       variant="outline"
+      loading={pending}
       disabled={pending}
       onClick={() => {
         startTransition(async () => {

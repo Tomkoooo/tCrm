@@ -15,6 +15,7 @@ export function DeleteSecretProjectButton({ projectId }: { projectId: string }) 
       type="button"
       variant="destructive"
       size="sm"
+      loading={isPending}
       disabled={isPending}
       onClick={() => {
         if (!confirm('Biztosan törli a teljes titok projektet és minden kulcsot?')) return;

@@ -78,7 +78,7 @@ export function ProductForm({
       </Card>
 
       <div className="flex gap-2">
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" loading={pending} disabled={pending}>
           {pending ? 'Mentés…' : 'Termék mentése'}
         </Button>
         <Button type="button" variant="outline" onClick={() => router.back()}>

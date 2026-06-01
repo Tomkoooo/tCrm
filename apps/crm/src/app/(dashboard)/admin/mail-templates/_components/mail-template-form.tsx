@@ -129,7 +129,7 @@ export function MailTemplateForm({ template }: MailTemplateFormProps) {
       </section>
 
       <div className="flex justify-end border-t pt-4">
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" loading={pending} disabled={pending}>
           {pending ? 'Mentés…' : 'Sablon mentése'}
         </Button>
       </div>

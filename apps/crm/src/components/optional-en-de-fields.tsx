@@ -36,7 +36,9 @@ export function OptionalEnDeFields({
         />
         {toggleLabel}
       </button>
-      {open ? children : null}
+      <div className={cn(!open && 'hidden')} aria-hidden={!open}>
+        {children}
+      </div>
     </div>
   );
 }

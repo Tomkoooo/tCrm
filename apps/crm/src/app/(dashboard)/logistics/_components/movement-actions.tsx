@@ -14,6 +14,7 @@ export function MovementActions({ id, status }: { id: string; status: string }) 
   return (
     <div className="flex gap-2">
       <Button
+        loading={pending}
         disabled={pending}
         onClick={() =>
           startTransition(async () => {
@@ -29,6 +30,7 @@ export function MovementActions({ id, status }: { id: string; status: string }) 
       </Button>
       <Button
         variant="outline"
+        loading={pending}
         disabled={pending}
         onClick={() =>
           startTransition(async () => {

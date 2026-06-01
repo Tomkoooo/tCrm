@@ -67,7 +67,13 @@ export function LoginForm({ showRegisterLink = false }: { showRegisterLink?: boo
                 <p className="text-sm text-red-600">{state.fieldErrors.password[0]}</p>
               )}
             </div>
-            <Button type="submit" disabled={pending} className="w-full" data-testid="login-submit">
+            <Button
+              type="submit"
+              loading={pending}
+              disabled={pending}
+              className="w-full"
+              data-testid="login-submit"
+            >
               {pending ? 'Signing in...' : 'Sign in'}
             </Button>
             {showRegisterLink && (

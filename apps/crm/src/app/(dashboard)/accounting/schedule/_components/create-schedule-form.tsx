@@ -73,7 +73,7 @@ export function CreateScheduleForm({
         <Label htmlFor="title">Cím</Label>
         <Input id="title" name="title" />
       </div>
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" loading={pending} disabled={pending}>
         {pending ? 'Mentés…' : 'Létrehozás'}
       </Button>
     </form>

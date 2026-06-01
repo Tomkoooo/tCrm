@@ -107,7 +107,7 @@ export function RegisterForm({ companies }: { companies: CompanyOption[] }) {
               </p>
             )}
 
-            <Button type="submit" disabled={pending} className="w-full">
+            <Button type="submit" loading={pending} disabled={pending} className="w-full">
               {pending ? 'Létrehozás…' : 'Regisztráció'}
             </Button>
             <p className="text-muted-foreground text-center text-sm">

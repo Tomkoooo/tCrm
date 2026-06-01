@@ -46,6 +46,7 @@ export function CategoryRowActions({
         <Button
           size="sm"
           variant="ghost"
+          loading={pending}
           disabled={pending}
           onClick={() => {
             if (!confirm(`Törli a(z) „${category.slug}” kategóriát?`)) return;

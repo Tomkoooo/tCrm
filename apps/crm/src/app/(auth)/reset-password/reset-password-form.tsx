@@ -70,7 +70,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
                 <p className="text-destructive text-sm">{state.fieldErrors.confirmPassword[0]}</p>
               )}
             </div>
-            <Button type="submit" disabled={pending} className="w-full">
+            <Button type="submit" loading={pending} disabled={pending} className="w-full">
               {pending ? 'Mentés…' : 'Jelszó mentése'}
             </Button>
             <p className="text-muted-foreground text-center text-sm">

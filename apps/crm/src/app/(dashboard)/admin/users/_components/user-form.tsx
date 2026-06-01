@@ -270,7 +270,7 @@ export function UserForm({
       )}
 
       <div className="flex justify-end border-t pt-4">
-        <Button type="submit" disabled={pending} size="lg">
+        <Button type="submit" loading={pending} disabled={pending} size="lg">
           {pending ? 'Mentés…' : mode === 'create' ? 'Felhasználó létrehozása' : 'Mentés'}
         </Button>
       </div>

@@ -70,7 +70,7 @@ export function CreateCategoryForm({ parents }: { parents: ParentOption[] }) {
         <Input id="skuTotalLength" name="skuTotalLength" type="number" />
       </div>
       <div className="md:col-span-2">
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" loading={pending} disabled={pending}>
           {pending ? 'Mentés…' : 'Kategória létrehozása'}
         </Button>
       </div>

@@ -109,7 +109,7 @@ export function BuildForm({
       </Card>
 
       <div className="flex gap-2">
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" loading={pending} disabled={pending}>
           {pending ? 'Mentés…' : 'Összeszerelés létrehozása'}
         </Button>
         <Button type="button" variant="outline" onClick={() => router.back()}>

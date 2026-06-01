@@ -26,12 +26,18 @@ const STATUS_LABELS: Record<InvitationRow['status'], string> = {
 };
 
 function InviteLinkCell({ link }: { link: string }) {
+  const [copyPending, setCopyPending] = useState(false);
+
   const copy = async () => {
+    if (copyPending) return;
+    setCopyPending(true);
     try {
       await navigator.clipboard.writeText(link);
       toast.success('Meghívó link másolva');
     } catch {
       toast.error('Vágólap másolás sikertelen');
+    } finally {
+      setCopyPending(false);
     }
   };
 
@@ -46,6 +52,7 @@ function InviteLinkCell({ link }: { link: string }) {
         size="icon"
         className="shrink-0"
         title="Link másolása"
+        loading={copyPending}
         onClick={() => void copy()}
       >
         <CopyIcon className="h-4 w-4" />

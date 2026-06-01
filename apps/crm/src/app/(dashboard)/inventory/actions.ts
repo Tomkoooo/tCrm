@@ -178,6 +178,12 @@ function parseBildHints(formData: FormData): string[] {
   return BILD_FIELDS.map((k) => String(formData.get(k) ?? '').trim()).filter(Boolean);
 }
 
+/** Use existing value when a collapsed section omits the field from FormData. */
+function formField(formData: FormData, key: string, existing: unknown): unknown {
+  if (!formData.has(key)) return existing;
+  return formData.get(key);
+}
+
 function parseProductCandidate(formData: FormData) {
   return {
     sku: formData.get('sku'),
@@ -394,59 +400,83 @@ export async function updateProductAction(
   const candidate = {
     ...existing.toObject(),
     sku,
-    supplierSku: formData.get('supplierSku'),
-    supplierNo: formData.get('supplierNo'),
-    brand: formData.get('brand'),
-    ean: formData.get('ean'),
+    supplierSku: formField(formData, 'supplierSku', existing.supplierSku),
+    supplierNo: formField(formData, 'supplierNo', existing.supplierNo),
+    brand: formField(formData, 'brand', existing.brand),
+    ean: formField(formData, 'ean', existing.ean),
     names: {
-      de: formData.get('name_de'),
-      en: formData.get('name_en'),
-      hu: formData.get('name_hu'),
+      de: formField(formData, 'name_de', existing.names?.de),
+      en: formField(formData, 'name_en', existing.names?.en),
+      hu: formField(formData, 'name_hu', existing.names?.hu),
     },
     descriptions: {
-      de: formData.get('long_description_de'),
-      en: formData.get('long_description_en'),
-      hu: formData.get('long_description_hu'),
+      de: formField(formData, 'long_description_de', existing.descriptions?.de),
+      en: formField(formData, 'long_description_en', existing.descriptions?.en),
+      hu: formField(formData, 'long_description_hu', existing.descriptions?.hu),
     },
     colors: {
-      de: formData.get('Color_de'),
-      en: formData.get('Color_en'),
-      hu: formData.get('Color_hu'),
+      de: formField(formData, 'Color_de', existing.colors?.de),
+      en: formField(formData, 'Color_en', existing.colors?.en),
+      hu: formField(formData, 'Color_hu', existing.colors?.hu),
     },
     dimensionsMm: {
-      length: formData.get('length'),
-      width: formData.get('width'),
-      height: formData.get('height'),
+      length: formField(formData, 'length', existing.dimensionsMm?.length),
+      width: formField(formData, 'width', existing.dimensionsMm?.width),
+      height: formField(formData, 'height', existing.dimensionsMm?.height),
     },
-    weightKg: formData.get('weight'),
-    packageWeightKg: formData.get('packageweight'),
-    packageVolumeM3: formData.get('packagevolume'),
+    weightKg: formField(formData, 'weight', existing.weightKg),
+    packageWeightKg: formField(formData, 'packageweight', existing.packageWeightKg),
+    packageVolumeM3: formField(formData, 'packagevolume', existing.packageVolumeM3),
     pricing: {
-      recommendedRetailPriceEur: formData.get('recommendet_retail_price_with_german_tax'),
-      recommendedRetailPriceHuf: formData.get('recommendet_retail_price_with_tax_HUF'),
-      streetPriceEur: formData.get('streetprice_with_german_tax'),
-      streetPriceHuf: formData.get('streetprice_without_HUN_tax_HUF'),
-      merchantPriceEur: formData.get('merchant_price'),
-      merchantPriceHuf: formData.get('merchant_price_HUF'),
+      recommendedRetailPriceEur: formField(
+        formData,
+        'recommendet_retail_price_with_german_tax',
+        existing.pricing?.recommendedRetailPriceEur
+      ),
+      recommendedRetailPriceHuf: formField(
+        formData,
+        'recommendet_retail_price_with_tax_HUF',
+        existing.pricing?.recommendedRetailPriceHuf
+      ),
+      streetPriceEur: formField(
+        formData,
+        'streetprice_with_german_tax',
+        existing.pricing?.streetPriceEur
+      ),
+      streetPriceHuf: formField(
+        formData,
+        'streetprice_without_HUN_tax_HUF',
+        existing.pricing?.streetPriceHuf
+      ),
+      merchantPriceEur: formField(formData, 'merchant_price', existing.pricing?.merchantPriceEur),
+      merchantPriceHuf: formField(
+        formData,
+        'merchant_price_HUF',
+        existing.pricing?.merchantPriceHuf
+      ),
     },
-    youtubeVideo: formData.get('youtubevideo'),
-    youtubeId: formData.get('youtubeid'),
-    freightLevel: formData.get('freightlevel'),
-    stockLevelHint: formData.get('stocklevel'),
-    availabilityWeeks: formData.get('availability_in_weeks'),
-    inCategories: formData.get('inCategories'),
-    isDiscontinued: formData.get('discontinued') === '1' || formData.get('discontinued') === 'true',
-    isActive: formData.get('isActive') !== 'false',
-    owner: formData.get('Owner'),
+    youtubeVideo: formField(formData, 'youtubevideo', existing.youtubeVideo),
+    youtubeId: formField(formData, 'youtubeid', existing.youtubeId),
+    freightLevel: formField(formData, 'freightlevel', existing.freightLevel),
+    stockLevelHint: formField(formData, 'stocklevel', existing.stockLevelHint),
+    availabilityWeeks: formField(formData, 'availability_in_weeks', existing.availabilityWeeks),
+    inCategories: formField(formData, 'inCategories', existing.inCategories),
+    isDiscontinued: formData.has('discontinued')
+      ? formData.get('discontinued') === '1' || formData.get('discontinued') === 'true'
+      : (existing.isDiscontinued ?? false),
+    isActive: formData.has('isActive')
+      ? formData.get('isActive') !== 'false'
+      : (existing.isActive ?? true),
+    owner: formField(formData, 'Owner', existing.owner),
     rental: {
-      rentFeeDay: formData.get('RentFeeDay'),
-      rentFeeWeekend: formData.get('RentFeeWeekend'),
-      rentFeeWeek: formData.get('RentFeeWeek'),
-      rentFlag: formData.get('Rent'),
+      rentFeeDay: formField(formData, 'RentFeeDay', existing.rental?.rentFeeDay),
+      rentFeeWeekend: formField(formData, 'RentFeeWeekend', existing.rental?.rentFeeWeekend),
+      rentFeeWeek: formField(formData, 'RentFeeWeek', existing.rental?.rentFeeWeek),
+      rentFlag: formField(formData, 'Rent', existing.rental?.rentFlag),
     },
     discounts: {
-      discount1Max: formData.get('Discont 1.'),
-      discount2Owner: formData.get('Discont 2.'),
+      discount1Max: formField(formData, 'Discont 1.', existing.discounts?.discount1Max),
+      discount2Owner: formField(formData, 'Discont 2.', existing.discounts?.discount2Owner),
     },
   };
 

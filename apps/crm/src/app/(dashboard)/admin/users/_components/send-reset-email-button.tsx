@@ -13,6 +13,7 @@ export function SendResetEmailButton({ userId }: { userId: string }) {
       type="button"
       variant="outline"
       size="sm"
+      loading={pending}
       disabled={pending}
       onClick={() => {
         startTransition(async () => {

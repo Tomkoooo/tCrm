@@ -159,13 +159,14 @@ function ReportRowEditor({ row, year, month }: { row: ReportRow; year: number; m
             defaultValue={row.sickPayAmount ?? ''}
             placeholder="HUF"
           />
-          <Button type="submit" size="sm" disabled={pending}>
+          <Button type="submit" size="sm" loading={pending} disabled={pending}>
             Mentés
           </Button>
           <Button
             type="button"
             size="sm"
             variant="ghost"
+            loading={suggestPending}
             disabled={suggestPending}
             onClick={() => {
               startSuggest(async () => {

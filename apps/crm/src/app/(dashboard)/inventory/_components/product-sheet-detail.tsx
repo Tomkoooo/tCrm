@@ -114,6 +114,7 @@ export function ProductSheetDetail({
               size="sm"
               className="ml-auto"
               variant="destructive"
+              loading={pendingDelete}
               disabled={pendingDelete}
               onClick={() => {
                 if (!confirm(`Inaktiválja a terméket (${row.sku})?`)) return;

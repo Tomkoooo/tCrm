@@ -168,7 +168,7 @@ export function SecretAccessDialog({
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Mégse
             </Button>
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" loading={pending} disabled={pending}>
               {pending ? 'Mentés…' : 'Megosztás mentése'}
             </Button>
           </div>

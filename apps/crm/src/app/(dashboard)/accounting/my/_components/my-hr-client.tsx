@@ -159,7 +159,7 @@ function RequestForm({
         <Input id="reason" name="reason" />
       </div>
 
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" loading={pending} disabled={pending}>
         Beküldés
       </Button>
     </form>

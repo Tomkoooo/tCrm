@@ -213,6 +213,7 @@ export function SecretItemsPanel({
                         variant="ghost"
                         size="icon"
                         title={revealed[item.id] ? 'Elrejtés' : 'Megjelenítés'}
+                        loading={pendingReveal[item.id] || isPending}
                         disabled={pendingReveal[item.id] || isPending}
                         onClick={() => toggleReveal(item.id)}
                       >
@@ -227,6 +228,7 @@ export function SecretItemsPanel({
                         variant="ghost"
                         size="icon"
                         title="Másolás"
+                        loading={pendingReveal[item.id] || isPending}
                         disabled={pendingReveal[item.id] || isPending}
                         onClick={() => copyValue(item.id)}
                       >
@@ -239,6 +241,7 @@ export function SecretItemsPanel({
                             variant="ghost"
                             size="icon"
                             title="Szerkesztés"
+                            loading={isPending}
                             disabled={isPending}
                             onClick={() => setEditItem(item)}
                           >
@@ -249,6 +252,7 @@ export function SecretItemsPanel({
                             variant="ghost"
                             size="icon"
                             title="Törlés"
+                            loading={isPending}
                             disabled={isPending}
                             onClick={() => handleDelete(item.id)}
                           >
@@ -334,7 +338,11 @@ export function SecretItemsPanel({
               <Label htmlFor="description">Leírás (opcionális)</Label>
               <Input id="description" name="description" placeholder="Mihez tartozik ez a kulcs?" />
             </div>
-            <Button type="submit" disabled={addPending || isPending}>
+            <Button
+              type="submit"
+              loading={addPending || isPending}
+              disabled={addPending || isPending}
+            >
               {addPending ? 'Mentés…' : 'Hozzáadás'}
             </Button>
           </form>

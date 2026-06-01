@@ -21,10 +21,22 @@ export function ReservationGroupActions({ sourceRef }: { sourceRef: string }) {
 
   return (
     <div className="flex gap-2">
-      <Button size="sm" variant="outline" disabled={pending} onClick={() => run('fulfilled')}>
+      <Button
+        size="sm"
+        variant="outline"
+        loading={pending}
+        disabled={pending}
+        onClick={() => run('fulfilled')}
+      >
         Teljesítés
       </Button>
-      <Button size="sm" variant="ghost" disabled={pending} onClick={() => run('cancelled')}>
+      <Button
+        size="sm"
+        variant="ghost"
+        loading={pending}
+        disabled={pending}
+        onClick={() => run('cancelled')}
+      >
         Törlés
       </Button>
     </div>

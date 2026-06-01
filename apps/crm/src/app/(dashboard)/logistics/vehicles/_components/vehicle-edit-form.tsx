@@ -271,7 +271,7 @@ export function EditVehicleForm({
         </div>
       </section>
 
-      <Button type="submit" disabled={pending} className="w-fit">
+      <Button type="submit" loading={pending} disabled={pending} className="w-fit">
         {pending ? 'Mentés…' : 'Mentés'}
       </Button>
     </form>

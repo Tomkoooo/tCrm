@@ -66,7 +66,7 @@ export function CreateVehicleForm({ onSuccess }: { onSuccess?: () => void }) {
           Aktív
         </label>
       </div>
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" loading={pending} disabled={pending}>
         Mentés
       </Button>
     </form>

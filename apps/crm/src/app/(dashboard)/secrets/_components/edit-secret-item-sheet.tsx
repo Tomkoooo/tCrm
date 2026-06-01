@@ -113,7 +113,7 @@ export function EditSecretItemSheet({
             placeholder="Mihez tartozik ez a kulcs?"
           />
         </div>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" loading={pending} disabled={pending}>
           {pending ? 'Mentés…' : 'Mentés'}
         </Button>
       </form>

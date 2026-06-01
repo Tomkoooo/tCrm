@@ -77,7 +77,7 @@ export function SetupForm() {
                 ))}
             </div>
 
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" loading={pending} disabled={pending}>
               {pending ? 'Creating...' : 'Create admin'}
             </Button>
           </form>

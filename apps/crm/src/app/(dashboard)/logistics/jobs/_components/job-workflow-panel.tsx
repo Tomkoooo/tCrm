@@ -165,7 +165,7 @@ function LineQuantityForm({
           </PickupLineWorkflowRow>
         ))}
       </ul>
-      <Button type="submit" size="sm" disabled={pending}>
+      <Button type="submit" size="sm" loading={pending} disabled={pending}>
         {submitLabel}
       </Button>
     </form>
@@ -183,14 +183,21 @@ function PickupWorkflowCard({
 }) {
   const router = useRouter();
   const [docMsg, setDocMsg] = useState<string | null>(null);
+  const [docLoading, setDocLoading] = useState<'packing_list' | 'return_slip' | null>(null);
 
   const loadDoc = async (type: 'packing_list' | 'pickup_slip' | 'return_slip') => {
-    const res = await getPickupDocumentPayloadAction(jobId, pickup.pickupId, type);
-    if (res.success) {
-      setDocMsg(`${type} előkészítve (${res.payload.lines.length} tétel) — PDF/e-mail hamarosan`);
-      console.info('[logistics-document]', res.payload);
-    } else {
-      setDocMsg(res.message ?? 'Hiba');
+    if (docLoading) return;
+    setDocLoading(type === 'return_slip' ? 'return_slip' : 'packing_list');
+    try {
+      const res = await getPickupDocumentPayloadAction(jobId, pickup.pickupId, type);
+      if (res.success) {
+        setDocMsg(`${type} előkészítve (${res.payload.lines.length} tétel) — PDF/e-mail hamarosan`);
+        console.info('[logistics-document]', res.payload);
+      } else {
+        setDocMsg(res.message ?? 'Hiba');
+      }
+    } finally {
+      setDocLoading(null);
     }
   };
 
@@ -301,10 +308,24 @@ function PickupWorkflowCard({
       )}
 
       <div className="flex flex-wrap gap-2 border-t pt-2">
-        <Button type="button" variant="outline" size="sm" onClick={() => loadDoc('packing_list')}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          loading={docLoading === 'packing_list'}
+          loadingText="Betöltés…"
+          onClick={() => void loadDoc('packing_list')}
+        >
           Csomaglista (PDF előkészítés)
         </Button>
-        <Button type="button" variant="outline" size="sm" onClick={() => loadDoc('return_slip')}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          loading={docLoading === 'return_slip'}
+          loadingText="Betöltés…"
+          onClick={() => void loadDoc('return_slip')}
+        >
           Visszáru jegyzék
         </Button>
       </div>

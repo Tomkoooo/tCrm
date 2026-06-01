@@ -46,7 +46,7 @@ export function CreateWarehouseForm({ onSuccess }: { onSuccess?: () => void }) {
       </div>
       <WarehouseStaffSelect initialSelected={[]} />
       <div>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" loading={pending} disabled={pending}>
           {pending ? 'Mentés…' : 'Raktár létrehozása'}
         </Button>
       </div>

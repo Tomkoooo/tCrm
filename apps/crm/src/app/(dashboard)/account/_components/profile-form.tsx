@@ -42,7 +42,7 @@ export function ProfileForm({ name, email }: { name: string; email: string }) {
           Az e-mail cím csak adminisztrátor módosíthatja.
         </p>
       </div>
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" loading={pending} disabled={pending}>
         {pending ? 'Mentés…' : 'Profil mentése'}
       </Button>
     </form>

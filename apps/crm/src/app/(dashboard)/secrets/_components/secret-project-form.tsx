@@ -49,7 +49,7 @@ export function CreateSecretProjectForm({ onSuccess }: { onSuccess?: () => void 
       <p className="text-muted-foreground text-xs">
         A létrehozás után a projekt oldalán adhat hozzá titkokat (kulcs–érték párok).
       </p>
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" loading={pending} disabled={pending}>
         {pending ? 'Létrehozás…' : 'Projekt létrehozása'}
       </Button>
     </form>
