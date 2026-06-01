@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { getAppUrl } from '@crm/lib/mail-env';
 import { isPublicRegistrationEnabled } from '@crm/lib/env';
 import { hasInitializedCookie } from '@/lib/initialized-cookie';
 
 const authSecret = process.env.AUTH_SECRET;
+
+function redirectTo(pathname: string, search?: string) {
+  const url = new URL(pathname, getAppUrl());
+  if (search) url.search = search;
+  return NextResponse.redirect(url);
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -17,18 +24,18 @@ export async function middleware(request: NextRequest) {
   const isInviteRegisterPage = pathname.startsWith('/register/invite');
 
   if (pathname.startsWith('/register') && !isInviteRegisterPage && !isPublicRegistrationEnabled()) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    return redirectTo('/login');
   }
 
   const initialized = hasInitializedCookie(request);
 
   if (!initialized && !isSetupPage) {
-    return NextResponse.redirect(new URL('/setup', request.url));
+    return redirectTo('/setup');
   }
 
   if (isSetupPage) {
     if (initialized) {
-      return NextResponse.redirect(new URL('/login', request.url));
+      return redirectTo('/login');
     }
     return NextResponse.next();
   }
@@ -49,13 +56,13 @@ export async function middleware(request: NextRequest) {
 
   if (isAuthPage) {
     if (isLoggedIn) {
-      return NextResponse.redirect(new URL('/', request.url));
+      return redirectTo('/');
     }
     return NextResponse.next();
   }
 
   if (!isLoggedIn) {
-    const response = NextResponse.redirect(new URL('/login', request.url));
+    const response = redirectTo('/login');
     response.cookies.delete('authjs.session-token');
     response.cookies.delete('__Secure-authjs.session-token');
     return response;
