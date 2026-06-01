@@ -1,5 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { productComponentsSchema, productStockLevelsSchema } from './inventory';
+import { productComponentsSchema, productSchema, productStockLevelsSchema } from './inventory';
+
+describe('productSchema components', () => {
+  it('rejects mongoose BOM lines (productId only)', () => {
+    const result = productSchema.safeParse({
+      sku: 'PARENT-1',
+      names: { hu: 'Parent' },
+      components: [{ productId: '507f1f77bcf86cd799439011', quantity: 1 }],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts product payload without embedded components', () => {
+    const result = productSchema.safeParse({
+      sku: 'PARENT-1',
+      names: { hu: 'Parent' },
+    });
+    expect(result.success).toBe(true);
+  });
+});
 
 describe('productComponentsSchema', () => {
   it('accepts empty BOM', () => {

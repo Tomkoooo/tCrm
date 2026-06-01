@@ -398,8 +398,12 @@ export async function updateProductAction(
   );
   if (!allowed) return { success: false, message: 'Nincs jogosultság ehhez a termékhez.' };
 
+  // DB stores components as { productId, quantity }; productSchema expects { productSku } (import shape).
+  // BOM is validated separately from componentsJson below.
+  const { components: _ignoredComponents, ...existingFields } = existing.toObject();
+
   const candidate = {
-    ...existing.toObject(),
+    ...existingFields,
     sku,
     supplierSku: formField(formData, 'supplierSku', existing.supplierSku),
     supplierNo: formField(formData, 'supplierNo', existing.supplierNo),
