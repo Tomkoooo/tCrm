@@ -1,0 +1,7 @@
+#!/bin/sh
+# Fast gate before push (matches CI). E2E is opt-in: RUN_E2E=1 git push or pnpm preflight:e2e
+pnpm run preflight
+
+if [ "$RUN_E2E" = "1" ]; then
+  pnpm --filter @crm/app test:e2e
+fi

@@ -1,0 +1,43 @@
+---
+description: Run before committing or pushing — quality gates and what CI does not catch
+alwaysApply: true
+---
+
+# Pre-push quality gate
+
+Before telling the user a change is ready to push (or before pushing yourself), run:
+
+```bash
+pnpm preflight
+```
+
+This runs **lint → typecheck → unit tests → Button `asChild` guard → production build** — the same bar as GitHub Actions CI.
+
+## Playwright (E2E)
+
+- **Not in CI** today — the workflow has no E2E job; `playwright.config.ts` *can* start a server via `webServer`, but full E2E is slow and needs MongoDB + env.
+- **Not on every `git push` by default** — Husky `pre-push` runs `pnpm preflight` only. For E2E locally: `RUN_E2E=1 git push` or `pnpm preflight:e2e`.
+- After UI changes to shared primitives (`components/ui/*`), routes with `Button asChild`, or auth flows, run `pnpm --filter @crm/app test:e2e` before push when possible.
+
+## What CI missed (learn from production)
+
+| Issue | Why CI passed | Prevention |
+|-------|----------------|------------|
+| React #143 (`Button` + `asChild` + two children) | `pnpm build` does not SSR every dashboard route | `scripts/verify-button-aschild.mjs`; never add spinner siblings when `asChild` |
+| Product save “names required” with collapsed sections | No server-action test for partial FormData | `formField()` merge on update; accordion `forceMount` |
+| Duplicate Mongoose index warnings | Warnings only, not failures | One index per field — field `index: true` **or** `schema.index()`, not both |
+
+## UI primitives checklist
+
+When editing `apps/crm/src/components/ui/button.tsx` or adding `loading` to buttons:
+
+1. `asChild` → exactly **one** React element child (Radix `Slot`).
+2. `loading` spinner only on native `<button>` path, not with `asChild`.
+3. `node scripts/verify-button-aschild.mjs` (included in `pnpm preflight`).
+
+## Agent workflow
+
+1. Implement change.
+2. Run `pnpm preflight` and fix failures.
+3. If touching lists, auth, or shared UI — consider `pnpm preflight:e2e`.
+4. Only then commit/push (if the user asked).

@@ -51,23 +51,38 @@ function Button({
     /** When set, replaces button label during loading. */
     loadingText?: string;
   }) {
-  const Comp = asChild ? Slot : 'button';
   const isDisabled = disabled || loading;
+
+  // Radix Slot (asChild) requires exactly one React element child — never add Loader2 as a sibling.
+  if (asChild) {
+    return (
+      <Slot
+        data-slot="button"
+        data-loading={loading ? '' : undefined}
+        className={cn(buttonVariants({ variant, size, className }))}
+        aria-busy={loading || undefined}
+        aria-disabled={isDisabled || undefined}
+        {...props}
+      >
+        {children}
+      </Slot>
+    );
+  }
+
   const label = loading && loadingText !== undefined ? loadingText : children;
 
   return (
-    <Comp
+    <button
       data-slot="button"
       data-loading={loading ? '' : undefined}
       className={cn(buttonVariants({ variant, size, className }))}
       disabled={isDisabled}
       aria-busy={loading || undefined}
-      aria-disabled={isDisabled || undefined}
       {...props}
     >
       {loading ? <Loader2 className="animate-spin" aria-hidden /> : null}
       {label}
-    </Comp>
+    </button>
   );
 }
 

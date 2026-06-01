@@ -39,7 +39,7 @@ const MediaSchema = new Schema<IMedia>(
   {
     type: { type: String, required: true, enum: ['file', 'link'], index: true },
     hash: { type: String, sparse: true, unique: true },
-    url: { type: String, sparse: true },
+    url: { type: String },
     filename: { type: String, required: true },
     contentType: { type: String },
     size: { type: Number },
@@ -50,7 +50,7 @@ const MediaSchema = new Schema<IMedia>(
   { timestamps: true }
 );
 
-MediaSchema.index({ filename: 'text', url: 'text' });
+MediaSchema.index({ filename: 'text' });
 MediaSchema.index(
   { url: 1 },
   {

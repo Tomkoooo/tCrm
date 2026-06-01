@@ -30,3 +30,7 @@ Next.js 16 App Router · React 19 · TypeScript strict · Tailwind v4 · shadcn 
 ## Phase 0 scope
 
 Foundation only: auth shell, dynamic RBAC, admin permissions UI, dashboard. Inventory is Phase 1.
+
+## Before push
+
+Run `pnpm preflight` (Husky pre-push runs this automatically). E2E is opt-in — see `.cursor/rules/pre-push.mdc`.

@@ -14,6 +14,8 @@
     "test:e2e:report": "pnpm --filter @crm/app test:e2e:report",
     "test:e2e:install": "pnpm --filter @crm/app test:e2e:install",
     "test:all": "pnpm test:unit && pnpm test:e2e",
+    "preflight": "pnpm lint && pnpm typecheck && pnpm test && node scripts/verify-button-aschild.mjs && pnpm build",
+    "preflight:e2e": "pnpm preflight && pnpm --filter @crm/app test:e2e",
     "typecheck": "turbo run typecheck",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css}\"",

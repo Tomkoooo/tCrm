@@ -37,7 +37,6 @@ const CategorySchema = new Schema<ICategory>(
 );
 
 CategorySchema.index({ parentId: 1, level: 1 });
-CategorySchema.index({ slug: 1 }, { unique: false });
 
 export const Category =
   (mongoose.models.Category as mongoose.Model<ICategory>) ||

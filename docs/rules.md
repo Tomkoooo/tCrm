@@ -69,6 +69,13 @@ Single source of truth for frontend, backend, and team conventions.
 5. Do not edit `ui/` primitives for one-offs — compose wrappers
 6. Extend shadcn via `className`, not forks
 
+### `Button` loading and `asChild`
+
+- Use `loading` / `loadingText` on submit and async actions (replaces manual `disabled` + label swap).
+- **Never** pass multiple children to `Button` when `asChild` is set — Radix `Slot` allows exactly one element (e.g. `<Link>`). The shared `Button` keeps a single child for `asChild`; the spinner is only rendered on the native `<button>` path.
+- Do not use `loading` with `asChild` (use a plain `<button>` or disable the link via `aria-busy` on the child if needed).
+- Run `node scripts/verify-button-aschild.mjs` when changing `components/ui/button.tsx` (included in `pnpm preflight`).
+
 ---
 
 ## 5. Component Rules
@@ -167,9 +174,14 @@ Do **not** add new raw shadcn `Table` list views. Exceptions: documented in [ARC
 ## 11. Testing & Quality
 
 - Unit tests for utils, validation schemas, permission helpers
+- UI guard script: `node scripts/verify-button-aschild.mjs` (prevents React #143 on `Button asChild`)
 - Server Action schema tests (no real Mongo in CI)
-- Husky pre-commit: lint-staged (eslint + prettier)
-- CI: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`
+- Husky **pre-commit**: lint-staged (eslint + prettier)
+- Husky **pre-push**: `pnpm preflight` (lint, typecheck, tests, build — same as CI)
+- **E2E (Playwright)**: local only by default — `pnpm preflight:e2e` or `RUN_E2E=1 git push`. Not in GitHub CI (slow; needs built app + MongoDB). Config already defines `webServer` for when you run it locally.
+- CI (`.github/workflows/ci.yml`): `pnpm lint`, `pnpm typecheck`, `pnpm test`, `verify-button-aschild`, `pnpm build`
+
+Before pushing, agents and humans should run `pnpm preflight`. See `.cursor/rules/pre-push.mdc`.
 
 ---
 

@@ -32,11 +32,12 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      # Unit tests only in CI — integration tests use mongodb-memory-server (local: pnpm test)
+      # Unit tests + Button asChild guard. E2E: local preflight:e2e (see docs/rules.md).
       - name: Test
-        run: pnpm test
+        run: pnpm test && node scripts/verify-button-aschild.mjs
         env:
           CI: true
+          AUTH_SECRET: ci-build-secret-minimum-32-characters-long
 
       - name: Build
         run: pnpm build
