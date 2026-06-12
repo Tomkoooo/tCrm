@@ -18,7 +18,7 @@ Update `docs/inventory_and_logistics_flows.md` in the **same PR / task** when yo
 - New permissions that gate whole modules
 - Phase completion (add or extend the **CRM overview** section)
 
-Also update `docs/inventory.md` for inventory-specific schema/import notes, and `docs/ARCHITECTURE.md` §9 if navigation or cross-cutting rules change.
+Also update `docs/inventory.md` for inventory-specific schema/import notes, `docs/ARCHITECTURE.md` §9 if navigation or cross-cutting rules change, and the matching chapter(s) in `docs/user-guide/` (see `.cursor/rules/user-documentation.mdc`).
 
 ## How to update
 

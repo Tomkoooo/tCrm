@@ -5,7 +5,7 @@ export const edgeAuthConfig = {
   providers: [],
   session: {
     strategy: 'jwt',
-    maxAge: 8 * 60 * 60,
+    maxAge: 180 * 24 * 60 * 60,
   },
   pages: {
     signIn: '/login',

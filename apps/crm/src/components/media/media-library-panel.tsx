@@ -6,6 +6,7 @@ import { ExternalLink, ImageIcon, Link2, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fileNeedsCrop,
+  formatProductSkuLine,
   isAllowedUploadContentType,
   MEDIA_UPLOAD_ACCEPT,
   MEDIA_UPLOAD_MAX_BYTES,
@@ -635,7 +636,7 @@ export function MediaLibraryPanel({
                   <li key={i}>
                     {u.entityType === 'product' && u.sku ? (
                       <Link href={`/inventory/${u.sku}`} className="text-primary underline">
-                        {u.label ?? u.sku}
+                        {formatProductSkuLine(u.label ?? u.sku, u.sku)}
                       </Link>
                     ) : (
                       <span className="text-muted-foreground">

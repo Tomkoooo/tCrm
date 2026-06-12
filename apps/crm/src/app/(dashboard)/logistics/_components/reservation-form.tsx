@@ -51,7 +51,7 @@ export function ReservationForm({
             <option value="">Select product</option>
             {products.map((p) => (
               <option key={p._id} value={p._id}>
-                {p.sku} — {p.name}
+                {p.name} · {p.sku}
               </option>
             ))}
           </select>

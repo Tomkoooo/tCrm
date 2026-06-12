@@ -5,7 +5,7 @@ alwaysApply: true
 
 # tCrm — Cursor Rules
 
-Internal CRM monorepo. Read `docs/ARCHITECTURE.md`, `docs/rules.md`, `docs/design.md`, and `docs/inventory_and_logistics_flows.md` before making changes. When a change affects user-visible flows, update that flows doc in the same task (see `.cursor/rules/flows-documentation.mdc`).
+Internal CRM monorepo. Read `docs/ARCHITECTURE.md`, `docs/rules.md`, `docs/design.md`, and `docs/inventory_and_logistics_flows.md` before making changes. When a change affects user-visible flows, update that flows doc and the in-app user guide (`docs/user-guide/`, `/help`) in the same task (see `.cursor/rules/flows-documentation.mdc` and `.cursor/rules/user-documentation.mdc`).
 
 ## Stack
 
@@ -21,6 +21,7 @@ Next.js 16 App Router · React 19 · TypeScript strict · Tailwind v4 · shadcn 
 - User-visible email: `sendTemplatedEmail` from `@crm/core` (see `docs/rules.md` §8); logistics via `enqueueLogisticsNotification`
 - Wrap pages in `<Container>` from `@crm/ui`
 - List views → `DataTable` (`tableId` required); panels → `EntitySheet` (not inline Cards above tables). Server pages use a client `*-table.tsx` wrapper — never pass `rowHref`, `rowDetail`, or column `render` from RSC (see `.cursor/rules/datatable.mdc`)
+- Product CRM SKU in UI → always with localized name (`ProductSkuLabel` / `.cursor/rules/product-sku-display.mdc`)
 - Use semantic Tailwind tokens, not raw colors
 
 ## Workspace packages

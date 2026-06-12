@@ -1,0 +1,36 @@
+---
+description: Entity view + edit on one surface (no duplicate edit routes)
+globs: "**/inventory/**,**/logistics/**,**/admin/**"
+alwaysApply: false
+---
+
+# Entity view and edit
+
+## Pattern
+
+Users with write permission edit **on the same surface** they view — not a separate mystery route.
+
+| Surface | View | Edit |
+|---------|------|------|
+| Detail page (`/inventory/[sku]`) | Default | `?edit=1` or **Szerkesztés** toggles `ProductEditPanel` in `ProductDetailShell` |
+| List row sheet (`DataTable` `rowDetail`) | Quick summary | **Szerkesztés** replaces sheet body with `ProductEditPanel` (no nested `EntitySheet`) |
+| Create | — | Dedicated `/new` route only |
+
+## Shared pieces
+
+- `ProductEditPanel` — loads `getProductEditContext`, renders `ProductEditForm`.
+- `ProductEditForm` — single form; optional `onCancel` for inline edit flows.
+
+## Do not
+
+- Add parallel `/entity/[id]/edit` pages unless redirecting to `?edit=1` for bookmarks.
+- Open a second `EntitySheet` for edit when the parent already provides one.
+- Split BOM edit from product edit — BOM is a section in `ProductEditForm` (`ComponentLinesEditor`).
+
+## BOM component lines
+
+`ComponentLinesEditor` shows **name + CRM SKU** (`productName` + `productSku`). Populate `productName` when loading existing lines from the server.
+
+## Product SKU display
+
+Any user-visible CRM SKU must include the product name — see `.cursor/rules/product-sku-display.mdc` (`ProductSkuLabel`, `formatProductSkuLine`).

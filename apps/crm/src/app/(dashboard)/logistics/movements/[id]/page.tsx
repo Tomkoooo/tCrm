@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { ProductSkuLabel } from '@/components/product-sku-label';
 import { MovementActions } from '../../_components/movement-actions';
 import { MovementStatusLabel, MovementTypeLabel } from '../../_components/movement-labels';
 
@@ -42,7 +43,7 @@ export default async function MovementDetailPage({ params }: { params: Promise<{
       .exec(),
   ]);
 
-  const productMap = new Map(products.map((p) => [String(p._id), p.sku]));
+  const productMap = new Map(products.map((p) => [String(p._id), p]));
   const warehouseMap = new Map(warehouses.map((w) => [String(w._id), w.name]));
   const canWrite = await hasPermission('logistics:write');
 
@@ -113,7 +114,11 @@ export default async function MovementDetailPage({ params }: { params: Promise<{
               {movement.lines.map((line, idx) => (
                 <TableRow key={idx}>
                   <TableCell>
-                    {productMap.get(String(line.productId)) ?? String(line.productId)}
+                    {(() => {
+                      const p = productMap.get(String(line.productId));
+                      if (!p) return String(line.productId);
+                      return <ProductSkuLabel sku={p.sku} names={p.names} layout="stack" />;
+                    })()}
                   </TableCell>
                   <TableCell>{line.quantity}</TableCell>
                   <TableCell>

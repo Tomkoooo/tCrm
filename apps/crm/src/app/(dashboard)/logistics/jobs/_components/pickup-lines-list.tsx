@@ -2,6 +2,7 @@
 
 import { ChevronRightIcon } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ProductSkuLabel } from '@/components/product-sku-label';
 import { cn } from '@/lib/utils';
 
 export type PickupBomComponentView = {
@@ -49,8 +50,7 @@ function BomBreakdown({
                 összeállítás
               </span>
             ) : null}
-            <span className="text-foreground font-mono">{c.sku}</span>
-            <span className="ml-1">{c.name}</span>
+            <ProductSkuLabel sku={c.sku} name={c.name} layout="inline" />
           </span>
           <span className="shrink-0 tabular-nums">
             {formatQty(c.totalQuantity)} db
@@ -82,8 +82,7 @@ export function PickupLinesList({
                 <CollapsibleTrigger className="group flex min-w-0 flex-1 items-start gap-2 text-left">
                   <ChevronRightIcon className="text-muted-foreground mt-0.5 size-4 shrink-0 transition-transform group-data-[state=open]:rotate-90" />
                   <span className="min-w-0">
-                    <span className="font-medium">{line.sku}</span>
-                    <span className="text-muted-foreground ml-1">— {line.name}</span>
+                    <ProductSkuLabel sku={line.sku} name={line.name} layout="inline" />
                     <span className="bg-primary/10 text-primary ml-1.5 inline rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide">
                       összeszerelés
                     </span>
@@ -106,10 +105,7 @@ export function PickupLinesList({
             key={line.productId}
             className="flex justify-between gap-2 rounded-md border px-3 py-2 text-sm"
           >
-            <span className="min-w-0">
-              <span className="font-medium">{line.sku}</span>
-              <span className="text-muted-foreground ml-1">— {line.name}</span>
-            </span>
+            <ProductSkuLabel sku={line.sku} name={line.name} layout="inline" className="min-w-0" />
             <span className="text-muted-foreground shrink-0 tabular-nums">
               {formatQty(line.quantity)} db
             </span>
@@ -139,7 +135,7 @@ export function PickupLineWorkflowRow({
               <CollapsibleTrigger className="group flex min-w-0 flex-1 items-start gap-2 text-left">
                 <ChevronRightIcon className="text-muted-foreground mt-0.5 size-4 shrink-0 transition-transform group-data-[state=open]:rotate-90" />
                 <span className="font-medium">
-                  {line.sku} — {line.name}
+                  <ProductSkuLabel sku={line.sku} name={line.name} layout="inline" />
                   <span className="bg-primary/10 text-primary ml-1.5 inline rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide">
                     összeszerelés
                   </span>
@@ -159,7 +155,7 @@ export function PickupLineWorkflowRow({
           </Collapsible>
         ) : (
           <div className="mb-2 font-medium">
-            {line.sku} — {line.name}
+            <ProductSkuLabel sku={line.sku} name={line.name} layout="inline" />
             {line.isConsumable && (
               <span className="text-muted-foreground ml-1 text-xs font-normal">(fogyó)</span>
             )}

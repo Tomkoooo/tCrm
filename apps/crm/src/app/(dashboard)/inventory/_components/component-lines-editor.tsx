@@ -5,14 +5,35 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchAutocomplete } from '@/components/ui/search-autocomplete';
+import { productDisplayName } from '@crm/lib';
 import { searchProductsAction } from '../search-actions';
 
 export type ComponentLine = {
   productId: string;
   productSku: string;
-  label: string;
+  /** Display name (HU/EN); falls back to SKU in the list */
+  productName?: string;
   quantity: number;
 };
+
+function lineFromSearchItem(item: {
+  value: string;
+  label: string;
+  sublabel?: string;
+  raw?: unknown;
+}) {
+  const raw = item.raw as
+    | { sku?: string; names?: { hu?: string; en?: string; de?: string } }
+    | undefined;
+  const productSku = raw?.sku ?? item.sublabel ?? item.label;
+  const displayName = productDisplayName(raw?.names, productSku);
+  return {
+    productId: item.value,
+    productSku,
+    productName: displayName !== productSku ? displayName : undefined,
+    quantity: 1,
+  };
+}
 
 export function ComponentLinesEditor({
   name = 'componentsJson',
@@ -25,15 +46,7 @@ export function ComponentLinesEditor({
 
   const addLine = (item: { value: string; label: string; sublabel?: string }) => {
     if (lines.some((l) => l.productId === item.value)) return;
-    setLines((prev) => [
-      ...prev,
-      {
-        productId: item.value,
-        productSku: item.label,
-        label: item.sublabel ? `${item.label} · ${item.sublabel}` : item.label,
-        quantity: 1,
-      },
-    ]);
+    setLines((prev) => [...prev, lineFromSearchItem(item)]);
   };
 
   const updateQty = (productId: string, quantity: number) => {
@@ -63,7 +76,16 @@ export function ComponentLinesEditor({
         <ul className="flex flex-col gap-2 rounded-md border p-3">
           {lines.map((line) => (
             <li key={line.productId} className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="min-w-0 flex-1 font-mono text-xs">{line.productSku}</span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">
+                  {line.productName ?? line.productSku}
+                </p>
+                {line.productName ? (
+                  <p className="text-muted-foreground truncate font-mono text-xs">
+                    {line.productSku}
+                  </p>
+                ) : null}
+              </div>
               <Input
                 type="number"
                 min={0.000001}

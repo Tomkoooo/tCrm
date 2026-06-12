@@ -50,6 +50,7 @@ export function translateSegment(segment: string): string {
     reports: 'Kimutatások',
     my: 'Saját beosztás',
     branding: 'Arculat',
+    help: 'Súgó',
   };
   return map[segment] ?? segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ');
 }

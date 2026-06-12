@@ -2,6 +2,7 @@
 
 import { requirePermission } from '@crm/auth';
 import { connectDB, Category, Product, Supplier } from '@crm/db';
+import { productDisplayName } from '@crm/lib';
 import type { SearchItem } from '@/components/ui/search-autocomplete';
 import { buildScopedProductFilter } from '@/lib/inventory/warehouse-scope';
 
@@ -31,12 +32,15 @@ export async function searchProductsAction(query: string): Promise<SearchItem[]>
     .lean()
     .exec();
 
-  return products.map((p) => ({
-    value: String(p._id),
-    label: p.sku,
-    sublabel: [p.supplierSku, p.names?.hu ?? p.names?.en].filter(Boolean).join(' · ') || p.brand,
-    raw: p,
-  }));
+  return products.map((p) => {
+    const name = productDisplayName(p.names, p.sku);
+    return {
+      value: String(p._id),
+      label: name,
+      sublabel: name !== p.sku ? p.sku : p.supplierSku || p.brand || undefined,
+      raw: p,
+    };
+  });
 }
 
 export async function searchSuppliersAction(query: string): Promise<SearchItem[]> {

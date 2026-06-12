@@ -1,6 +1,6 @@
 # tCrm — működési folyamatok
 
-> **Karbantartás:** Ezt a fájlt a viselkedést érintő változtatásokkal együtt kell frissíteni (fáziszárás, import, logisztika, navigáció). Részletek: [`ARCHITECTURE.md`](./ARCHITECTURE.md) §9, [`.cursor/rules/flows-documentation.mdc`](../.cursor/rules/flows-documentation.mdc).
+> **Karbantartás:** Ezt a fájlt a viselkedést érintő változtatásokkal együtt kell frissíteni (fáziszárás, import, logisztika, navigáció). Ugyanabban a feladatban frissítsd a felhasználói súgót is: [`docs/user-guide/`](./user-guide/) → CRM **Súgó** (`/help`). Részletek: [`ARCHITECTURE.md`](./ARCHITECTURE.md) §9, [`.cursor/rules/flows-documentation.mdc`](../.cursor/rules/flows-documentation.mdc), [`.cursor/rules/user-documentation.mdc`](../.cursor/rules/user-documentation.mdc).
 
 ## 0. CRM áttekintés (egész rendszer)
 
@@ -157,9 +157,12 @@ flowchart TD
 | Beállítás | Jelentés |
 |-----------|----------|
 | Egyeztetés kulcs | `sku` (CRM SKU), `supplierSku` (`product_id`), vagy `ean` |
-| Összefűzés mód | Meglévő termék frissítése az Excelből (új termék továbbra is teljes létrehozás) |
+| Összefűzés mód | Meglévő termék frissítése az Excelből (új termék továbbra is teljes létrehozás); eltérő beszállítói SKU nem blokkolja a sort |
 | Mezők | Név/leírás/szín nyelvenként (üres cella nem írja felül); opcionálisan ár, méret, kép, kategória, BOM, készlet |
-| `Relatedproduct_*` | 2. pass: CRM SKU alapján; ha nincs a batchben, adatbázisból keresi |
+| Árak / bérlés | `-` vagy üres Excel cella **nem** írja felül a meglévő értéket (merge); bérlési díjak (`RentFeeDay` stb.) külön mezők |
+| Képek (merge) | Csak ha „Képek” be van pipálva — egyébként meglévő `imageIds` érintetlen |
+| BOM (merge) | Csak ha „Alkatrészlista” be van pipálva; üres vagy feloldhatatlan `Relatedproduct_*` **nem** törli a meglévő BOM-ot |
+| `Relatedproduct_*` | 2. pass: CRM SKU alapján; ha nincs a batchben, adatbázisból keresi; import automatikusan beállítja a `components` listát |
 
 ### Terméklista — aktív státusz
 
@@ -168,6 +171,17 @@ flowchart TD
 | Raktáros / nem globális | Csak `isActive: true` termékek |
 | Logisztikai vezető (`logistics:scope_all`) | `?showAll=true` → inaktív termékek is |
 | Szerkesztés | **Aktív** oszlop checkbox a listában (`inventory:write`) |
+
+### Terméklista — BOM típus (badge + szűrő)
+
+| Badge | Jelentés |
+|-------|----------|
+| **Összeszerelés** | `Product.components` nem üres (BOM / build kit; import `Relatedproduct_*` is ide teszi) |
+| **Kötelező alkatrész** | Más termék BOM-jában szerepel; `Rent` ≠ 2 |
+| **Opcionális alkatrész** | BOM alkatrész és `Rent` = 2 (nem bérlehető önállóan) |
+| *(nincs badge)* | Önálló termék — nincs BOM kapcsolat |
+
+Szűrő: **BOM típus** oszlop a készlet listában (`f.bomRole`). Több érték OR kapcsolattal.
 
 ### Szabályok
 
@@ -322,6 +336,8 @@ flowchart TD
 ## 6. Összeszerelések (BOM)
 
 Összeszerelés = termék `components` listával. UI: **Készletkezelés → Összeszerelések** (`/inventory/builds`).
+
+**Szerkesztés:** `/inventory/{sku}?edit=1` vagy **Szerkesztés** a részletek oldalon — alkatrészek (név + SKU a listában), nevek, raktárak, útmutató, képek (`inventory:write`). Excel import `Relatedproduct_*` oszlopokból is automatikusan BOM-ot hoz létre (nem külön „build” entitás).
 
 `calculateBomAvailability` → **canBuild** = hány db építhető/ajánlható a szabad alkatrészkészletből.
 
@@ -565,4 +581,4 @@ Részletek: [`hr.md`](./hr.md).
 
 ---
 
-*Utolsó frissítés: 2026-05 — **Készlet scope javítás** (minden raktár globális adminnak), **RBAC baseline szinkron** gomb, **accordion szerkesztő** localStorage-szal; korábban: EntitySheet termék szerkesztő, SM SKU import.*
+*Utolsó frissítés: 2026-06 — készlet lista BOM típus badge + szűrő; korábban: in-app súgó, BOM szerkesztő, merge-safe import.*

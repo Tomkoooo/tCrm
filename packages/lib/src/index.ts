@@ -1,3 +1,5 @@
+export * from './product-display';
+export * from './product-bom-role';
 export * from './env';
 export * from './mail-env';
 export * from './media-upload';

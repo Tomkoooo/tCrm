@@ -5,9 +5,13 @@ import { toast } from 'sonner';
 import { DataTable } from '@crm/ui';
 import type { ColumnDef, DataTableQuery } from '@crm/ui';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ProductSkuLabel } from '@/components/product-sku-label';
+import { formatProductSkuLine } from '@crm/lib';
 import type { ProductTableRow } from '@/lib/inventory/product-table-columns';
+import { productTableRowDisplayName } from '@/lib/inventory/product-table-columns';
 import { toggleProductActiveAction } from '../actions';
 import { InventoryTableToolbar } from './inventory-toolbar';
+import { ProductBomBadges } from './product-bom-badges';
 import { ProductSheetDetail } from './product-sheet-detail';
 
 export type InventoryTableRow = ProductTableRow;
@@ -81,18 +85,39 @@ export function InventoryTable({
 
   const tableColumns = useMemo(
     () =>
-      columns.map((column) =>
-        column.key === 'isActive'
-          ? {
-              ...column,
-              sortable: false,
-              filterable: false,
-              render: (_value: unknown, row: InventoryTableRow) => (
-                <ActiveStatusCell row={row} canEdit={canEditActive} />
-              ),
-            }
-          : column
-      ),
+      columns.map((column) => {
+        if (column.key === 'isActive') {
+          return {
+            ...column,
+            sortable: false,
+            filterable: false,
+            render: (_value: unknown, row: InventoryTableRow) => (
+              <ActiveStatusCell row={row} canEdit={canEditActive} />
+            ),
+          };
+        }
+        if (column.key === 'sku') {
+          return {
+            ...column,
+            render: (_value: unknown, row: InventoryTableRow) => (
+              <ProductSkuLabel
+                sku={row.sku}
+                name={productTableRowDisplayName(row)}
+                layout="stack"
+              />
+            ),
+          };
+        }
+        if (column.key === 'bomRole') {
+          return {
+            ...column,
+            render: (_value: unknown, row: InventoryTableRow) => (
+              <ProductBomBadges roles={row.bomRoles} />
+            ),
+          };
+        }
+        return column;
+      }),
     [columns, canEditActive]
   );
 
@@ -128,8 +153,8 @@ export function InventoryTable({
           : 'Nincs termék a jelenlegi szűrők mellett.'
       }
       rowDetail={{
-        title: (r) => r.name_hu ?? r.name_en ?? r.sku,
-        description: (r) => r.sku,
+        title: (r) => productTableRowDisplayName(r),
+        description: (r) => formatProductSkuLine(productTableRowDisplayName(r), r.sku),
         render: (r) => <ProductSheetDetail row={r} canWrite={canWrite} canDelete={canDelete} />,
       }}
     />

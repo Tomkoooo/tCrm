@@ -415,6 +415,26 @@ function mergeI18nText(existing: I18nLike | undefined, incoming: I18nLike | unde
   };
 }
 
+/** Spread only defined numeric fields — empty Excel cells ("-") must not wipe stored values. */
+function pickDefinedNumericFields<T extends Record<string, number | undefined>>(
+  obj: T | undefined
+): Partial<T> {
+  if (!obj) return {};
+  return Object.fromEntries(
+    Object.entries(obj).filter(
+      ([, value]) => value !== undefined && value !== null && !Number.isNaN(value)
+    )
+  ) as Partial<T>;
+}
+
+function mergeNumericFields<T extends Record<string, number | undefined>>(
+  existing: T | undefined,
+  incoming: T | undefined
+): T | undefined {
+  const merged = { ...(existing ?? {}), ...pickDefinedNumericFields(incoming) };
+  return Object.keys(merged).length > 0 ? (merged as T) : undefined;
+}
+
 function mergeFieldEnabled(
   isMerge: boolean,
   mergeFields: ImportMergeField[] | undefined,
@@ -671,12 +691,20 @@ export async function prepareImportRows(
       existing.supplierSku &&
       existing.supplierSku !== supplierSku
     ) {
-      skipped.push({
-        row: row.rowNumber,
-        field: 'product_id',
-        message: `A CRM SKU „${crmSku}” már létezik más beszállítói SKU-val (${existing.supplierSku}).`,
-      });
-      continue;
+      if (mergeOptions?.isMerge) {
+        warnings.push({
+          row: row.rowNumber,
+          field: 'product_id',
+          message: `Meglévő termék (CRM SKU „${crmSku}”) — beszállítói SKU eltér („${existing.supplierSku}” → „${supplierSku}”). Összefűzés: a kijelölt mezők frissülnek.`,
+        });
+      } else {
+        skipped.push({
+          row: row.rowNumber,
+          field: 'product_id',
+          message: `A CRM SKU „${crmSku}” már létezik más beszállítói SKU-val (${existing.supplierSku}).`,
+        });
+        continue;
+      }
     }
 
     if (existing && matchKey !== 'sku' && !existing.sku) {
@@ -848,7 +876,7 @@ export async function commitInventoryImport(
         weightKg: row.product.weightKg,
         packageWeightKg: row.product.packageWeightKg,
         packageVolumeM3: row.product.packageVolumeM3,
-        pricing: row.product.pricing,
+        pricing: pickDefinedNumericFields(row.product.pricing),
         youtubeId: row.product.youtubeId,
         youtubeVideo: row.product.youtubeVideo,
         externalImageHints: bildUrls,
@@ -865,8 +893,8 @@ export async function commitInventoryImport(
         isConsumable: row.product.isConsumable ?? false,
         isActive: true,
         owner: row.product.owner,
-        rental: row.product.rental,
-        discounts: row.product.discounts,
+        rental: pickDefinedNumericFields(row.product.rental),
+        discounts: pickDefinedNumericFields(row.product.discounts),
       });
       created++;
       createdSkus.add(crmSku);
@@ -898,8 +926,8 @@ export async function commitInventoryImport(
           availabilityWeeks: row.product.availabilityWeeks ?? doc.availabilityWeeks,
           inCategories: row.product.inCategories ?? doc.inCategories,
           owner: row.product.owner ?? doc.owner,
-          rental: row.product.rental ?? doc.rental,
-          discounts: row.product.discounts ?? doc.discounts,
+          rental: mergeNumericFields(doc.rental, row.product.rental),
+          discounts: mergeNumericFields(doc.discounts, row.product.discounts),
           isDiscontinued: row.product.isDiscontinued ?? doc.isDiscontinued,
           isConsumable: row.product.isConsumable ?? doc.isConsumable,
           shipperCategoryPath: row.product.shipperCategoryPath ?? doc.shipperCategoryPath,
@@ -917,7 +945,7 @@ export async function commitInventoryImport(
           patch.colors = mergeI18nText(doc.colors, row.product.colors);
         }
         if (mergeFieldEnabled(isMerge, mergeFields, 'pricing')) {
-          patch.pricing = { ...(doc.pricing ?? {}), ...(row.product.pricing ?? {}) };
+          patch.pricing = mergeNumericFields(doc.pricing, row.product.pricing);
         }
         if (mergeFieldEnabled(isMerge, mergeFields, 'dimensions')) {
           patch.dimensionsMm = { ...(doc.dimensionsMm ?? {}), ...(row.product.dimensionsMm ?? {}) };
@@ -949,7 +977,7 @@ export async function commitInventoryImport(
           weightKg: row.product.weightKg,
           packageWeightKg: row.product.packageWeightKg,
           packageVolumeM3: row.product.packageVolumeM3,
-          pricing: row.product.pricing,
+          pricing: pickDefinedNumericFields(row.product.pricing),
           youtubeId: row.product.youtubeId,
           youtubeVideo: row.product.youtubeVideo,
           externalImageHints: bildUrls,
@@ -963,8 +991,8 @@ export async function commitInventoryImport(
           isDiscontinued: row.product.isDiscontinued ?? false,
           isConsumable: row.product.isConsumable ?? false,
           owner: row.product.owner,
-          rental: row.product.rental,
-          discounts: row.product.discounts,
+          rental: pickDefinedNumericFields(row.product.rental),
+          discounts: pickDefinedNumericFields(row.product.discounts),
           isActive: true,
         });
       }
@@ -1005,6 +1033,12 @@ export async function commitInventoryImport(
         continue;
       }
       componentRefs.push({ productId: compId, quantity: c.quantity });
+    }
+
+    if (row.componentSkus.length === 0) continue;
+    if (componentRefs.length === 0) {
+      componentLinkWarnings++;
+      continue;
     }
 
     await Product.updateOne({ _id: productId }, { $set: { components: componentRefs } }).exec();

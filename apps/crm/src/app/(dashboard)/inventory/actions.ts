@@ -45,7 +45,7 @@ export type ProductEditContext = {
   components: Array<{
     productId: string;
     productSku: string;
-    label: string;
+    productName?: string;
     quantity: number;
   }>;
   stockLevels: Array<{
@@ -121,7 +121,7 @@ export async function getProductEditContext(sku: string): Promise<ProductEditCon
       return {
         productId: String(line.productId),
         productSku,
-        label: name === productSku ? productSku : `${productSku} · ${name}`,
+        productName: name !== productSku ? name : undefined,
         quantity: line.quantity,
       };
     }),

@@ -13,6 +13,8 @@ import {
   loadReferenceLinesAction,
   type LogisticsFormState,
 } from '../actions';
+import { ProductSkuLabel } from '@/components/product-sku-label';
+import { productDisplayName } from '@crm/lib';
 import { cn } from '@/lib/utils';
 
 type WarehouseOption = { _id: string; name: string; key: string };
@@ -50,12 +52,13 @@ export function ReservationGroupForm({
       return;
     }
     const raw = item.raw as { sku?: string; names?: { hu?: string; en?: string } } | undefined;
+    const sku = raw?.sku ?? item.sublabel ?? item.label;
     setLines((prev) => [
       ...prev,
       {
         productId: item.value,
-        sku: raw?.sku ?? item.label,
-        name: item.sublabel ?? item.label,
+        sku,
+        name: productDisplayName(raw?.names, sku),
         quantity: qty,
       },
     ]);
@@ -188,8 +191,7 @@ export function ReservationGroupForm({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
-                <th className="px-3 py-2 text-left">SKU</th>
-                <th className="px-3 py-2 text-left">Név</th>
+                <th className="px-3 py-2 text-left">Termék</th>
                 <th className="px-3 py-2 text-right">Menny.</th>
                 <th className="px-3 py-2" />
               </tr>
@@ -197,8 +199,9 @@ export function ReservationGroupForm({
             <tbody>
               {lines.map((line, idx) => (
                 <tr key={line.productId} className="border-b last:border-0">
-                  <td className="px-3 py-2 font-mono text-xs">{line.sku}</td>
-                  <td className="px-3 py-2">{line.name}</td>
+                  <td className="px-3 py-2">
+                    <ProductSkuLabel sku={line.sku} name={line.name} layout="stack" />
+                  </td>
                   <td className="px-3 py-2 text-right">
                     <Input
                       type="number"

@@ -14,6 +14,7 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from '@/components/ui/sidebar';
+import { isNavItemActive, resolveActiveNavHref } from '@/lib/navigation/active-nav';
 import { cn } from '@/lib/utils';
 
 export type SidebarNavItem = {
@@ -34,9 +35,8 @@ export function SidebarNavGroup({
   onLinkClick?: () => void;
 }) {
   const pathname = usePathname();
-  const isActiveGroup = items.some(
-    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
-  );
+  const hrefs = items.map((item) => item.href);
+  const isActiveGroup = resolveActiveNavHref(pathname, hrefs) !== null;
 
   if (items.length === 0) return null;
 
@@ -60,7 +60,7 @@ export function SidebarNavGroup({
               <SidebarMenuItem>
                 <SidebarMenuSub>
                   {items.map((item) => {
-                    const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                    const active = isNavItemActive(pathname, item.href, hrefs);
                     return (
                       <SidebarMenuSubItem key={item.href}>
                         <SidebarMenuSubButton asChild isActive={active}>

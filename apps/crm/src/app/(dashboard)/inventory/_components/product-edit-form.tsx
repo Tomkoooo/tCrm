@@ -68,10 +68,12 @@ export function ProductEditForm({
   row,
   editContext,
   onSuccess,
+  onCancel,
 }: {
   row: ProductTableRow;
   editContext: ProductEditContext;
   onSuccess?: () => void;
+  onCancel?: () => void;
 }) {
   const router = useRouter();
   const { sections, setOpen, ready } = useProductEditSections();
@@ -207,6 +209,11 @@ export function ProductEditForm({
         <Button type="submit" loading={pending} loadingText="Mentés…">
           Változtatások mentése
         </Button>
+        {onCancel ? (
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Mégse
+          </Button>
+        ) : null}
       </div>
     </form>
   );

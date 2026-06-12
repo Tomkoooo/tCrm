@@ -90,12 +90,15 @@ export default async function DashboardPage() {
             Az alaprendszer kész. A készlet, logisztika és ajánlat modulok folyamatosan bővülnek.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-3">
           <p className="text-muted-foreground text-sm">
             {permissions.length} aktív jogosultsága van.
             {has('roles:manage') &&
               ' A Szerepkörök és jogosultságok menüpontban állíthatja be a csapat hozzáférését.'}
           </p>
+          <Button variant="outline" size="sm" className="w-fit" asChild>
+            <Link href="/help">Felhasználói útmutató megnyitása</Link>
+          </Button>
         </CardContent>
       </Card>
 

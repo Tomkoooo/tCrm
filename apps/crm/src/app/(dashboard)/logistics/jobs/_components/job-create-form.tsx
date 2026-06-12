@@ -15,6 +15,7 @@ import {
 } from '../actions';
 import { PickupLinesList, type PickupLineListItem } from './pickup-lines-list';
 import { TeamMemberSelect } from './team-member-select';
+import { productDisplayName } from '@crm/lib';
 import { cn } from '@/lib/utils';
 
 type Line = { productId: string; sku: string; name: string; quantity: number };
@@ -60,7 +61,8 @@ export function JobCreateForm({
   const [pickups, setPickups] = useState<PickupDraft[]>(() => [newPickup(warehouses[0]?.id ?? '')]);
   const [activePickupId, setActivePickupId] = useState(pickups[0]?.id ?? '');
   const [productId, setProductId] = useState('');
-  const [productLabel, setProductLabel] = useState('');
+  const [productSku, setProductSku] = useState('');
+  const [productName, setProductName] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [vehicleSuggestions, setVehicleSuggestions] = useState<
     Array<{
@@ -120,15 +122,16 @@ export function JobCreateForm({
     if (!productId || !activePickup) return;
     const line: Line = {
       productId,
-      sku: productLabel.split(' — ')[0] ?? productLabel,
-      name: productLabel,
+      sku: productSku,
+      name: productName,
       quantity: Number(quantity) || 1,
     };
     updatePickup(activePickup.id, {
       lines: [...activePickup.lines.filter((l) => l.productId !== productId), line],
     });
     setProductId('');
-    setProductLabel('');
+    setProductSku('');
+    setProductName('');
     setQuantity('1');
   };
 
@@ -273,10 +276,11 @@ export function JobCreateForm({
                   placeholder="CRM SKU / név"
                   onSearch={searchProductsAction}
                   onSelect={(item: SearchItem) => {
+                    const raw = item.raw as { sku?: string; names?: { hu?: string; en?: string } };
+                    const sku = raw?.sku ?? item.sublabel ?? item.label;
                     setProductId(item.value);
-                    setProductLabel(
-                      item.sublabel ? `${item.label} — ${item.sublabel}` : item.label
-                    );
+                    setProductSku(sku);
+                    setProductName(productDisplayName(raw?.names, sku));
                   }}
                 />
               </div>

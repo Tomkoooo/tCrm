@@ -1,0 +1,30 @@
+---
+description: Sidebar nav active state — one item per route
+globs: "**/sidebar*.tsx,**/app-sidebar.tsx,**/navigation/**"
+alwaysApply: false
+---
+
+# Sidebar navigation active state
+
+## Problem
+
+Naive `pathname.startsWith(href)` marks **parent and child** routes active together (e.g. `/inventory` and `/inventory/builds`).
+
+## Rule
+
+Use `resolveActiveNavHref` / `isNavItemActive` from `@/lib/navigation/active-nav`:
+
+- Collect all `href`s in the nav group.
+- **Only the longest matching href** is active for the current pathname.
+- Group expand state: `resolveActiveNavHref(pathname, hrefs) !== null`.
+
+## Adding nav items
+
+- Prefer **flat sibling routes** under a group (`/inventory`, `/inventory/builds`) over nesting list routes under a parent path when they are separate pages.
+- Product detail URLs (`/inventory/[sku]`) correctly highlight **Termékek** (`/inventory`), not Összeszerelések.
+- Add a unit test case in `active-nav.test.ts` when introducing a new parent/child pair in the same group.
+
+## Do not
+
+- Compare `pathname.startsWith(href)` per item without sibling deduplication.
+- Use `/inventory` as the href for multiple distinct pages.

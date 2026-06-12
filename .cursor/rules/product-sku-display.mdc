@@ -1,0 +1,34 @@
+---
+description: Always show product name together with CRM SKU in UI
+globs: "**/*.{tsx,ts}"
+alwaysApply: true
+---
+
+# Product SKU + name display
+
+Whenever a **CRM product SKU** is shown to users, show the **localized product name** as well.
+
+## Use
+
+- **React UI:** `ProductSkuLabel` from `@/components/product-sku-label`
+  - `layout="stack"` — tables, cards (name above, SKU below in mono)
+  - `layout="inline"` — compact lists (`Név · SKU`)
+  - `href` — optional link to `/inventory/{sku}`
+- **Strings / descriptions:** `formatProductSkuLine(name, sku)` or `productDisplayName(names, sku)` from `@crm/lib`
+- **Table rows with `ProductTableRow`:** `productNameFromParts(row)` pattern or `name_hu ?? name_en ?? sku`
+
+## Autocomplete / search results
+
+Primary `label` = product name (or SKU if no name). `sublabel` = CRM SKU when distinct. Keep `raw` product on the item so editors can read `sku` reliably.
+
+## Exceptions (SKU alone is OK)
+
+- Hidden form fields (`<input type="hidden" name="sku">`)
+- Form inputs where the user **edits** the SKU (`product-form-excel` create flow)
+- Category / supplier slug fields (not product CRM SKU)
+- Technical logs and import error messages that cite a single identifier
+
+## Do not
+
+- Render bare `{row.sku}` or `font-mono` SKU in tables, links, or detail panels without the name.
+- Split name and SKU into distant columns without both visible in the same row context.

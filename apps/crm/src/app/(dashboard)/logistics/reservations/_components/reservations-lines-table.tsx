@@ -1,5 +1,6 @@
 'use client';
 
+import { ProductSkuLabel } from '@/components/product-sku-label';
 import { DataTable } from '@crm/ui';
 import type { ColumnDef, DataTableQuery } from '@crm/ui';
 import { ReservationStatusBadge } from '../../_components/reservation-status-badge';
@@ -27,8 +28,14 @@ export function ReservationsLinesTable({ data }: { data: ReservationLineRow[] })
       searchable: true,
     },
     { key: 'warehouseName', label: 'Raktár', type: 'string', sortable: true, filterable: true },
-    { key: 'sku', label: 'SKU', type: 'string', sortable: true, searchable: true },
-    { key: 'name', label: 'Termék', type: 'string', sortable: true, searchable: true },
+    {
+      key: 'sku',
+      label: 'Termék',
+      type: 'string',
+      sortable: true,
+      searchable: true,
+      render: (_v, row) => <ProductSkuLabel sku={row.sku} name={row.name} layout="stack" />,
+    },
     { key: 'quantity', label: 'Menny.', type: 'number', sortable: true, align: 'right' },
     {
       key: 'status',

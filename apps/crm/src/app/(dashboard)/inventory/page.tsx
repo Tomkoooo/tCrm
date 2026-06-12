@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { hasPermission, requirePermission } from '@crm/auth';
+import { classifyProductBomRoles } from '@crm/lib';
 import { connectDB, Product, StockLevel, Warehouse } from '@crm/db';
 import { Container, buildDataTableMongoQuery, parseDataTableQuery } from '@crm/ui';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,11 @@ import {
   mapProductToTableRow,
   warehouseDisplayLabel,
 } from '@/lib/inventory/product-table-columns';
+import {
+  applyBomRoleMongoFilter,
+  loadBomComponentProductIds,
+  stripBomRoleFromMongoFilter,
+} from '@/lib/inventory/bom-role-query';
 import {
   buildScopedProductFilter,
   getInventoryWarehouseScope,
@@ -56,9 +62,12 @@ export default async function InventoryPage({
   const columns = INVENTORY_PRODUCT_COLUMNS;
 
   const { filter, sort, skip, limit } = buildDataTableMongoQuery(query, columns);
+  const bomRoleFilter = filter.bomRole;
+  const baseFilter = stripBomRoleFromMongoFilter(filter);
+  const componentIdSet = await loadBomComponentProductIds();
   const activeFilter = showAllProducts ? {} : { isActive: true };
   const listFilter = await buildScopedProductFilter(
-    { ...filter, ...activeFilter },
+    applyBomRoleMongoFilter({ ...baseFilter, ...activeFilter }, bomRoleFilter, componentIdSet),
     warehouseIdParam
   );
 
@@ -118,11 +127,20 @@ export default async function InventoryPage({
         'hu'
       )
     );
+    const bomRoles = classifyProductBomRoles(
+      {
+        id: productId,
+        componentCount: p.components?.length ?? 0,
+        rentFlag: p.rental?.rentFlag,
+      },
+      componentIdSet
+    );
     return mapProductToTableRow(
       p,
       resolveProductThumbnailUrl(p),
       (p.warehouseIds ?? []).map((id) => warehouseKeyById.get(String(id)) ?? String(id)),
-      formatProductStockSummary(stockEntries)
+      formatProductStockSummary(stockEntries),
+      bomRoles
     );
   });
 

@@ -29,6 +29,7 @@ import {
   CalendarDaysIcon,
   ClipboardCheckIcon,
   UserCircleIcon,
+  CircleHelpIcon,
 } from 'lucide-react';
 import {
   ACCOUNTING_NAV_PERMISSION_KEYS,
@@ -301,6 +302,12 @@ export function AppSidebar({ serverUser }: { serverUser?: SidebarUser }) {
                 href="/"
                 icon={<LayoutDashboardIcon className="h-4 w-4" />}
                 label="Vezérlőpult"
+                onClick={linkClick}
+              />
+              <MenuItem
+                href="/help"
+                icon={<CircleHelpIcon className="h-4 w-4" />}
+                label="Súgó"
                 onClick={linkClick}
               />
             </SidebarMenu>

@@ -56,6 +56,39 @@ describe('parseInventoryRows', () => {
     expect(result.rows[0]!.crmCategorySlug).toBe('alutent');
   });
 
+  it('parses rental fees when retail price columns are dashes (Alutent-style)', () => {
+    const result = parseInventoryRows(
+      [
+        {
+          product_id_SM: '100003301',
+          product_id: '-',
+          brand: 'ALUTENT',
+          name_en: 'Alutent folding tent',
+          recommendet_retail_price_with_german_tax: '-',
+          recommendet_retail_price_with_tax_HUF: '-',
+          streetprice_with_german_tax: '-',
+          streetprice_without_HUN_tax_HUF: '-',
+          merchant_price: '-',
+          merchant_price_HUF: '-',
+          RentFeeDay: 16000,
+          RentFeeWeekend: 26000,
+          RentFeeWeek: 36000,
+          Relatedproduct_1: '100010301',
+          Relatedproduct_pc_1: 4,
+        },
+      ],
+      { skuMode: 'from_sm' }
+    );
+
+    expect(result.errors).toHaveLength(0);
+    const row = result.rows[0]!;
+    expect(row.product.rental?.rentFeeDay).toBe(16000);
+    expect(row.product.rental?.rentFeeWeekend).toBe(26000);
+    expect(row.product.rental?.rentFeeWeek).toBe(36000);
+    expect(row.product.pricing?.streetPriceHuf).toBeUndefined();
+    expect(row.componentSkus).toEqual([{ sku: '100010301', quantity: 4 }]);
+  });
+
   it('allows missing product_id in from_sm mode when SM SKU is present', () => {
     const result = parseInventoryRows(
       [

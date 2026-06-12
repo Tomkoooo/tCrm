@@ -1,0 +1,43 @@
+---
+description: Keep in-app user help docs in sync when CRM flows or UI change
+alwaysApply: true
+---
+
+# User documentation (`docs/user-guide/`)
+
+Hungarian end-user help shown in the CRM at **`/help`** (sidebar → **Súgó**). Markdown files with YAML frontmatter; permission-filtered TOC.
+
+Complements:
+
+- [`docs/inventory_and_logistics_flows.md`](../docs/inventory_and_logistics_flows.md) — technical flow map (agents/devs)
+- [`docs/user-guide/`](../docs/user-guide/) — step-by-step user instructions
+
+## When you MUST update user guide
+
+Update the relevant `docs/user-guide/*.md` chapter(s) in the **same PR / task** when you change anything that alters **what users see or do**:
+
+- New or renamed sidebar item or major route
+- User-visible workflow (import wizard steps, movement confirm, logistics job states, HR request approval, product edit sections, etc.)
+- UI button/menu label changes referenced in help steps
+- New permission that gates a whole module or help section
+- Phase milestone: new module shipped to users (add chapter + frontmatter `permissions`)
+
+If you update [`docs/inventory_and_logistics_flows.md`](../docs/inventory_and_logistics_flows.md) per [`.cursor/rules/flows-documentation.mdc`](./flows-documentation.mdc), **also** check the matching user-guide chapter.
+
+## How to update
+
+1. Edit the affected markdown file(s) under `docs/user-guide/`.
+2. Keep frontmatter: `title`, `description`, `order`, `section`, optional `permissions` (OR — user needs any listed key).
+3. Use the chapter template: purpose → where in UI → required permission (plain language) → numbered steps with **exact UI labels** → tips → related `/help/...` links.
+4. Set `*Utolsó frissítés: YYYY-MM*` at the bottom of each touched chapter.
+5. Do **not** put Mongo field names, server action names, or Mermaid in user chapters.
+
+## Section order
+
+`Áttekintés` → `Készletkezelés` → `Logisztika` → `Könyvelés és HR` → `Titoktár` → `Adminisztráció`
+
+New modules: add a `section` value and extend `groupHelpArticlesBySection` in [`apps/crm/src/lib/help/load-help.ts`](../apps/crm/src/lib/help/load-help.ts) if needed.
+
+## Do not duplicate
+
+User guide is **rewritten for operators**, not a copy of the flows doc. Link to routes (`/inventory`, …) and `/help/...` chapters; keep technical detail in flows doc + `docs/inventory.md` / `docs/hr.md`.

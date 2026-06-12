@@ -62,7 +62,7 @@ export default async function InventoryBuildsPage({
         )}
       </div>
 
-      <BuildsTable data={tableData} />
+      <BuildsTable data={tableData} canWrite={canWrite} />
     </Container>
   );
 }

@@ -1,5 +1,12 @@
+import { productNameFromParts, type ProductBomRole } from '@crm/lib';
 import type { ColumnDef } from '@crm/ui';
 import { countProductImages } from '@/lib/product-thumbnail';
+
+export function productTableRowDisplayName(
+  row: Pick<ProductTableRow, 'name_hu' | 'name_en' | 'name_de' | 'sku'>
+): string {
+  return productNameFromParts(row);
+}
 
 export type ProductTableRow = {
   sku: string;
@@ -49,6 +56,7 @@ export type ProductTableRow = {
   thumbnailUrl?: string;
   thumbnailAlt: string;
   imageCount: number;
+  bomRoles: ProductBomRole[];
   createdAt: Date;
 };
 
@@ -159,6 +167,23 @@ export const INVENTORY_PRODUCT_COLUMNS: Array<ColumnDef<ProductTableRow>> = [
     filterable: false,
     headerHint: 'Excel bild1–bild5 és/vagy feltöltött GridFS képek száma.',
   }),
+  {
+    key: 'bomRole',
+    label: 'BOM típus',
+    type: 'enum',
+    sortable: false,
+    filterable: true,
+    searchable: false,
+    defaultVisible: true,
+    headerHint:
+      'Összeszerelés = saját alkatrészlista. Kötelező/opcionális alkatrész = más BOM-ban szerepel (Rent=2 → opcionális). Termék = nincs BOM kapcsolat.',
+    enumValues: [
+      { value: 'assembly', label: 'Összeszerelés' },
+      { value: 'component_required', label: 'Kötelező alkatrész' },
+      { value: 'component_optional', label: 'Opcionális alkatrész' },
+      { value: 'standalone', label: 'Termék' },
+    ],
+  },
   {
     key: 'sku',
     label: 'CRM SKU',
@@ -321,14 +346,16 @@ export const INVENTORY_PRODUCT_SELECT = {
   externalImageHints: 1,
   isDiscontinued: 1,
   isActive: 1,
+  components: 1,
   createdAt: 1,
 } as const;
 
 export function mapProductToTableRow(
-  p: ProductLean,
+  p: ProductLean & { components?: unknown[] },
   thumbnailUrl?: string,
   warehouseKeys?: string[],
-  stockSummary?: string
+  stockSummary?: string,
+  bomRoles: ProductBomRole[] = ['standalone']
 ): ProductTableRow {
   return {
     sku: p.sku,
@@ -378,6 +405,7 @@ export function mapProductToTableRow(
     thumbnailUrl,
     thumbnailAlt: p.names?.hu ?? p.sku,
     imageCount: countProductImages(p),
+    bomRoles,
     createdAt: p.createdAt,
   };
 }

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ProductSkuLabel } from '@/components/product-sku-label';
 import mongoose from 'mongoose';
 import { requirePermission } from '@crm/auth';
 import { getInventoryDashboardSummary } from '@crm/core';
@@ -113,9 +114,12 @@ export default async function InventoryDashboardPage({
               <ul className="space-y-2 text-sm">
                 {summary.lowStockItems.map((item) => (
                   <li key={item.productId} className="flex justify-between gap-2 border-b pb-2">
-                    <Link href={`/inventory/${item.sku}`} className="text-primary hover:underline">
-                      {item.sku}
-                    </Link>
+                    <ProductSkuLabel
+                      sku={item.sku}
+                      name={item.name}
+                      layout="stack"
+                      href={`/inventory/${item.sku}`}
+                    />
                     <span className="text-muted-foreground shrink-0">{item.available} szabad</span>
                   </li>
                 ))}
@@ -135,9 +139,12 @@ export default async function InventoryDashboardPage({
               <ul className="space-y-2 text-sm">
                 {summary.buildsAvailability.map((b) => (
                   <li key={b.productId} className="flex justify-between gap-2 border-b pb-2">
-                    <Link href={`/inventory/${b.sku}`} className="text-primary hover:underline">
-                      {b.sku}
-                    </Link>
+                    <ProductSkuLabel
+                      sku={b.sku}
+                      name={b.name}
+                      layout="stack"
+                      href={`/inventory/${b.sku}`}
+                    />
                     <span className="shrink-0">
                       {b.canBuild} db · {b.componentCount} alk.
                     </span>

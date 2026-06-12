@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { ProductSkuLabel } from '@/components/product-sku-label';
 import { EditWarehouseForm } from '../_components/edit-warehouse-form';
 
 export default async function WarehouseDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -87,8 +88,7 @@ export default async function WarehouseDetailPage({ params }: { params: Promise<
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>SKU</TableHead>
-                <TableHead>Név</TableHead>
+                <TableHead>Termék</TableHead>
                 <TableHead className="text-right">Készleten</TableHead>
                 <TableHead className="text-right">Foglalt</TableHead>
               </TableRow>
@@ -98,10 +98,9 @@ export default async function WarehouseDetailPage({ params }: { params: Promise<
                 const p = productMap.get(String(l.productId));
                 return (
                   <TableRow key={String(l._id)}>
-                    <TableCell className="font-mono text-xs">
-                      {p?.internalSku ?? p?.sku ?? '—'}
+                    <TableCell>
+                      {p ? <ProductSkuLabel sku={p.sku} name={p.name} layout="stack" /> : '—'}
                     </TableCell>
-                    <TableCell>{p?.name ?? '—'}</TableCell>
                     <TableCell className="text-right">{l.onHand}</TableCell>
                     <TableCell className="text-right">{l.reserved}</TableCell>
                   </TableRow>

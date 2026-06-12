@@ -219,6 +219,10 @@ The CRM uses a **collapsible sidebar** (`apps/crm/src/components/app-sidebar.tsx
 
 Groups expand/collapse independently; the active route’s group opens by default. Breadcrumb labels are localized in `app-header.tsx` (`translateSegment`).
 
+**Active nav item:** only the **most specific** matching `href` in a group is highlighted (`apps/crm/src/lib/navigation/active-nav.ts`). Example: on `/inventory/builds`, **Termékek** (`/inventory`) is not active — only **Összeszerelések** is. See `.cursor/rules/navigation.mdc`.
+
+**Entity view/edit:** detail pages use inline edit (`/inventory/[sku]?edit=1`, `ProductDetailShell` + `ProductEditPanel`). List row sheets toggle edit in-place — no nested edit sheet. See `.cursor/rules/entity-pages.mdc`.
+
 **Suppliers (beszállítók/partnerek):** managed at `/inventory/suppliers` (`suppliers:read`, `suppliers:manage` — no `admin:access` required). Legacy `/admin/suppliers` redirects here. Each supplier has a unique `key` (slug) used as `crm_supplier_slug` in Excel.
 
 ### List & table UI standard (`@crm/ui`)
@@ -232,6 +236,8 @@ Groups expand/collapse independently; the active route’s group opens by defaul
 
 **Documented exceptions:** RBAC permission matrix (`/admin/permissions`) — role × permission checkboxes. Product detail sub-grids (BOM, stock by warehouse) may stay static `Table` until migrated.
 
+**Product SKU in UI:** Always show localized name with CRM SKU (`ProductSkuLabel`, `@crm/lib` `formatProductSkuLine`). See `.cursor/rules/product-sku-display.mdc`.
+
 **Product images:** Central `Media` collection (`file` with SHA-256 dedup + GridFS, or `link` with URL). `Product.imageIds[]` references Media ids; Excel `bild1`–`bild5` resolve to link Media on import (`externalImageHints` kept for export). UI: Médiatár modal on forms. Serve: `GET /api/inventory/images/[id]` (redirect/stream; legacy GridFS id fallback).
 
 **Import categories:** CRM uses simplified `Category` documents (slug + SKU prefix). Excel import requires `crm_category_slug` per row; shipper taxonomy columns (`cat*Name_*`) are stored on the product as `shipperCategoryPath` only. See [inventory.md](./inventory.md).
@@ -240,17 +246,23 @@ Groups expand/collapse independently; the active route’s group opens by defaul
 
 **Import suppliers:** `crm_supplier_slug` per row (`Supplier.key`), or optional default supplier in the import modal when every row omits the column.
 
-### Operational flow documentation (living doc)
+### Documentation layers (living docs)
 
-[`docs/inventory_and_logistics_flows.md`](./inventory_and_logistics_flows.md) is the **canonical flow map** (Mermaid + tables). It must stay aligned with the product:
+| Layer | Path | Audience | Content |
+|-------|------|----------|---------|
+| Architecture | `docs/ARCHITECTURE.md` | Devs / agents | Structure, packages, conventions |
+| Operational flows | [`docs/inventory_and_logistics_flows.md`](./inventory_and_logistics_flows.md) | Devs / agents | Mermaid + tables — technical truth |
+| User guide | [`docs/user-guide/`](./user-guide/) | CRM users | Hungarian step-by-step; rendered at `/help` |
+
+Both flow and user docs must stay aligned with the product:
 
 | Trigger | Action |
 |---------|--------|
-| Phase milestone completed | Extend §0 CRM overview; add module section |
-| Import / logistics / RBAC behavior change | Update diagrams + glossary in same PR |
-| New major routes in sidebar | Update §0 and navigation notes |
+| Phase milestone completed | Extend flows §0; add user-guide chapter |
+| Import / logistics / RBAC behavior change | Update flows diagrams + glossary; update user-guide steps |
+| New major routes in sidebar | Update flows §0; add/update user-guide chapter + sidebar Súgó |
 
-Agents and contributors: follow [`.cursor/rules/flows-documentation.mdc`](../.cursor/rules/flows-documentation.mdc). `docs/ARCHITECTURE.md` describes structure; the flows doc describes **what happens step by step**.
+Agents: [`.cursor/rules/flows-documentation.mdc`](../.cursor/rules/flows-documentation.mdc) (technical flows), [`.cursor/rules/user-documentation.mdc`](../.cursor/rules/user-documentation.mdc) (user help).
 
 ---
 
