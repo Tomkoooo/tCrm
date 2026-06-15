@@ -16,6 +16,7 @@ import { LinkAccountSheetClient } from '../_components/link-account-sheet-client
 import { InviteSheetClient } from '../_components/invite-sheet-client';
 import { UnlinkEmployeeButton } from '../_components/unlink-button';
 import { AddToCompanySheetClient } from '../_components/add-to-company-sheet-client';
+import { DeleteEmployeeButton } from '../_components/delete-employee-button';
 
 export default async function EmployeeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requireAnyPermission([...HR_READ_PERMISSION_KEYS]);
@@ -122,6 +123,21 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
           sourceEmployeeId={String(emp._id)}
           companies={addToCompanyOptions}
         />
+      )}
+
+      {canWrite && (
+        <section className="border-border border-destructive/30 rounded-lg border p-4">
+          <h3 className="mb-2 text-sm font-medium">Rekord törlése</h3>
+          <p className="text-muted-foreground mb-3 text-sm">
+            Csak üres rekord törölhető (nincs beosztás, kérelem, kimutatás). Duplikátum
+            takarításához vagy újrarendezéshez használható — a másik cégnél lévő rekord megmarad.
+          </p>
+          <DeleteEmployeeButton
+            employeeId={String(emp._id)}
+            employeeName={emp.name}
+            companyName={company?.name ?? '—'}
+          />
+        </section>
       )}
 
       <section>

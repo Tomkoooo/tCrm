@@ -13,6 +13,7 @@ import {
   linkGuestEmployeeByEmailMatch,
   linkAllGuestEmployeesByEmailMatch,
   addEmployeeToAnotherCompany,
+  deleteEmployee,
 } from '@crm/core';
 import { createAndSendInvitation } from '@crm/core';
 import { connectDB, Employee, Role } from '@crm/db';
@@ -25,6 +26,16 @@ import {
 import { zodToFieldErrors, type HrFormState } from '../_components/form-utils';
 import { getHrSessionScope } from '@/lib/hr/session-scope';
 import { employeePayloadFromInput, parseEmployeeFormData } from './_lib/employee-form-data';
+
+function linkSuccessMessage(alsoLinkedCount: number, mode: 'link' | 'invite' | 'email'): string {
+  const suffix =
+    alsoLinkedCount > 0
+      ? ` További ${alsoLinkedCount} cég rekordja is összekötve ugyanazzal a fiókkal.`
+      : '';
+  if (mode === 'email') return `Fiók összekötve e-mail alapján.${suffix}`;
+  if (mode === 'invite') return `Felhasználó létrehozva és összekötve.${suffix}`;
+  return `Felhasználó összekötve.${suffix}`;
+}
 
 export async function createEmployeeAction(
   _prev: HrFormState,
@@ -137,7 +148,18 @@ export async function inviteEmployeeAction(
         return { success: false, message: 'A felhasználó már dolgozó ebben a cégben.' };
       }
 
-      await linkGuestEmployeeToExistingUser(employeeOid, targetUserId, userId, permissions);
+      const { alsoLinkedCount } = await linkGuestEmployeeToExistingUser(
+        employeeOid,
+        targetUserId,
+        userId,
+        permissions
+      );
+      revalidatePath('/accounting/employees');
+      revalidatePath(`/accounting/employees/${parsed.data.employeeId}`);
+      return {
+        success: true,
+        message: linkSuccessMessage(alsoLinkedCount, 'link'),
+      };
     } else if (parsed.data.mode === 'email_invite') {
       await connectDB();
       const emp = await Employee.findById(employeeOid).exec();
@@ -157,19 +179,25 @@ export async function inviteEmployeeAction(
         invitedBy: userId,
       });
     } else {
-      await inviteEmployeeToUser(employeeOid, parsed.data.password!, userId, permissions);
+      const { alsoLinkedCount } = await inviteEmployeeToUser(
+        employeeOid,
+        parsed.data.password!,
+        userId,
+        permissions
+      );
+      revalidatePath('/accounting/employees');
+      revalidatePath(`/accounting/employees/${parsed.data.employeeId}`);
+      return {
+        success: true,
+        message: linkSuccessMessage(alsoLinkedCount, 'invite'),
+      };
     }
 
     revalidatePath('/accounting/employees');
     revalidatePath(`/accounting/employees/${parsed.data.employeeId}`);
     return {
       success: true,
-      message:
-        parsed.data.mode === 'email_invite'
-          ? 'Meghívó elküldve.'
-          : parsed.data.mode === 'link_existing'
-            ? 'Felhasználó összekötve.'
-            : 'Felhasználó létrehozva és összekötve.',
+      message: 'Meghívó elküldve.',
     };
   } catch (e) {
     return { success: false, message: e instanceof Error ? e.message : 'Hiba történt.' };
@@ -185,14 +213,14 @@ export async function linkEmployeeByEmailAction(employeeId: string): Promise<HrF
   }
 
   try {
-    await linkGuestEmployeeByEmailMatch(
+    const { alsoLinkedCount } = await linkGuestEmployeeByEmailMatch(
       new mongoose.Types.ObjectId(employeeId),
       userId,
       permissions
     );
     revalidatePath('/accounting/employees');
     revalidatePath(`/accounting/employees/${employeeId}`);
-    return { success: true, message: 'Fiók összekötve e-mail alapján.' };
+    return { success: true, message: linkSuccessMessage(alsoLinkedCount, 'email') };
   } catch (e) {
     return { success: false, message: e instanceof Error ? e.message : 'Hiba történt.' };
   }
@@ -272,6 +300,25 @@ export async function unlinkEmployeeAction(employeeId: string): Promise<HrFormSt
     revalidatePath('/accounting/employees');
     revalidatePath(`/accounting/employees/${employeeId}`);
     return { success: true, message: 'Fiók leválasztva.' };
+  } catch (e) {
+    return { success: false, message: e instanceof Error ? e.message : 'Hiba történt.' };
+  }
+}
+
+export async function deleteEmployeeAction(employeeId: string): Promise<HrFormState> {
+  await requirePermission('hr:write');
+  const { userId, permissions } = await getHrSessionScope();
+
+  if (!mongoose.Types.ObjectId.isValid(employeeId)) {
+    return { success: false, message: 'Érvénytelen azonosító.' };
+  }
+
+  try {
+    await deleteEmployee(new mongoose.Types.ObjectId(employeeId), userId, permissions);
+    revalidatePath('/accounting/employees');
+    revalidatePath('/accounting/schedule');
+    revalidatePath('/accounting/leave-summary');
+    return { success: true, message: 'Dolgozói rekord törölve.' };
   } catch (e) {
     return { success: false, message: e instanceof Error ? e.message : 'Hiba történt.' };
   }

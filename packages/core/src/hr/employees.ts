@@ -1,5 +1,16 @@
 import bcrypt from 'bcryptjs';
-import { connectDB, Employee, Role, User, type IEmployee, type EmploymentType } from '@crm/db';
+import {
+  connectDB,
+  Employee,
+  Role,
+  User,
+  HrRequest,
+  ScheduleEntry,
+  MonthlyWorkSummary,
+  EmployeeLeaveYear,
+  type IEmployee,
+  type EmploymentType,
+} from '@crm/db';
 import type { Types } from 'mongoose';
 import { assertCompanyInScope, resolveAllowedCompanyIds } from './company-scope';
 
@@ -221,6 +232,56 @@ export async function listEmployeeRecordsForSamePerson(
   return [emp as IEmployee];
 }
 
+export type EmployeeLinkResult = {
+  employee: IEmployee;
+  /** Other company guest records linked to the same CRM user in this operation. */
+  alsoLinkedCount: number;
+};
+
+/** Link guest records at other companies that share the same e-mail to the same CRM user. */
+async function propagateUserLinkToSiblingGuestEmployees(
+  sourceEmployee: IEmployee,
+  targetUserId: Types.ObjectId,
+  actorUserId: Types.ObjectId,
+  permissions: string[]
+): Promise<number> {
+  if (!sourceEmployee.email?.trim()) return 0;
+
+  const allowed = await resolveAllowedCompanyIds(actorUserId, permissions);
+  const email = sourceEmployee.email.toLowerCase().trim();
+
+  const filter: Record<string, unknown> = {
+    email,
+    isActive: true,
+    _id: { $ne: sourceEmployee._id },
+    $or: [{ userId: { $exists: false } }, { userId: null }],
+  };
+  if (allowed !== null) {
+    if (!allowed.length) return 0;
+    filter.companyId = { $in: allowed };
+  }
+
+  const siblings = await Employee.find(filter).exec();
+  let linked = 0;
+
+  for (const sibling of siblings) {
+    const duplicate = await Employee.findOne({
+      userId: targetUserId,
+      companyId: sibling.companyId,
+      _id: { $ne: sibling._id },
+    }).exec();
+    if (duplicate) continue;
+
+    sibling.userId = targetUserId;
+    sibling.employmentType = 'employee';
+    if (!sibling.email) sibling.email = email;
+    await sibling.save();
+    linked++;
+  }
+
+  return linked;
+}
+
 /** New employee record in another company — separate beosztás, szabadság, kimutatás. */
 export async function addEmployeeToAnotherCompany(
   sourceEmployeeId: Types.ObjectId,
@@ -295,7 +356,7 @@ export async function linkGuestEmployeeToExistingUser(
   targetUserId: Types.ObjectId,
   actorUserId: Types.ObjectId,
   permissions: string[]
-): Promise<IEmployee> {
+): Promise<EmployeeLinkResult> {
   await connectDB();
   const emp = await Employee.findById(employeeId).exec();
   if (!emp) throw new Error('Dolgozó nem található.');
@@ -325,7 +386,15 @@ export async function linkGuestEmployeeToExistingUser(
   emp.employmentType = 'employee';
   if (!emp.email) emp.email = user.email.toLowerCase();
   await emp.save();
-  return emp;
+
+  const alsoLinkedCount = await propagateUserLinkToSiblingGuestEmployees(
+    emp,
+    targetUserId,
+    actorUserId,
+    permissions
+  );
+
+  return { employee: emp, alsoLinkedCount };
 }
 
 /** Link guest employee to CRM user when emails match (case-insensitive). */
@@ -333,7 +402,7 @@ export async function linkGuestEmployeeByEmailMatch(
   employeeId: Types.ObjectId,
   actorUserId: Types.ObjectId,
   permissions: string[]
-): Promise<IEmployee> {
+): Promise<EmployeeLinkResult> {
   await connectDB();
   const emp = await Employee.findById(employeeId).exec();
   if (!emp) throw new Error('Dolgozó nem található.');
@@ -394,7 +463,7 @@ export async function inviteEmployeeToUser(
   password: string,
   actorUserId: Types.ObjectId,
   permissions: string[]
-): Promise<IEmployee> {
+): Promise<EmployeeLinkResult> {
   await connectDB();
   const emp = await Employee.findById(employeeId).exec();
   if (!emp) throw new Error('Dolgozó nem található.');
@@ -436,7 +505,46 @@ export async function inviteEmployeeToUser(
   emp.userId = user._id;
   emp.employmentType = 'employee';
   await emp.save();
-  return emp;
+
+  const alsoLinkedCount = await propagateUserLinkToSiblingGuestEmployees(
+    emp,
+    user._id,
+    actorUserId,
+    permissions
+  );
+
+  return { employee: emp, alsoLinkedCount };
+}
+
+export async function deleteEmployee(
+  employeeId: Types.ObjectId,
+  actorUserId: Types.ObjectId,
+  permissions: string[]
+): Promise<void> {
+  await connectDB();
+  const emp = await Employee.findById(employeeId).exec();
+  if (!emp) throw new Error('Dolgozó nem található.');
+  await assertCompanyInScope(emp.companyId, actorUserId, permissions);
+
+  const id = emp._id;
+  const [requests, schedules, summaries, leaveYears] = await Promise.all([
+    HrRequest.countDocuments({ employeeId: id }).exec(),
+    ScheduleEntry.countDocuments({ employeeId: id }).exec(),
+    MonthlyWorkSummary.countDocuments({ employeeId: id }).exec(),
+    EmployeeLeaveYear.countDocuments({ employeeId: id }).exec(),
+  ]);
+
+  const blocks: string[] = [];
+  if (requests) blocks.push(`${requests} kérelem`);
+  if (schedules) blocks.push(`${schedules} beosztás`);
+  if (summaries) blocks.push(`${summaries} havi kimutatás`);
+  if (leaveYears) blocks.push(`${leaveYears} éves szabadságkeret`);
+
+  if (blocks.length) {
+    throw new Error(`A dolgozó nem törölhető: ${blocks.join(', ')} kapcsolódik hozzá.`);
+  }
+
+  await Employee.deleteOne({ _id: id }).exec();
 }
 
 export async function unlinkEmployeeUser(

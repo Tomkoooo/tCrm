@@ -84,19 +84,27 @@ Egy személy **cégenként külön dolgozói rekord**. Mindegyiknek saját beosz
 
 ### Már két külön rekord van (mindkét cégben)
 
-**Ne törölje** a rekordokat — elveszne a beosztás és kimutatás.
+**Ne törölje** a rekordokat, ha van beosztás vagy kimutatás — az adat elvész.
 
-1. **Fiók összekötése** az **első** rekordon (e-mail vagy keresés).
-2. **Fiók összekötése** a **második** rekordon is — **ugyanazt a felhasználót** válassza ki.
+1. **Fiók összekötése** az **egyik** rekordon (e-mail vagy keresés).
+2. A CRM **ugyanazzal a fiókkal automatikusan összeköti** a többi, azonos e-mailű, fiók nélküli rekordot is (más cégek).
 
-Ha csak az egyik rekordon van fiók, a dolgozó a **Saját beosztás** oldalon csak azt a céget látja, amíg a másik rekordot is össze nem kötik.
+Ha csak az egyik rekordon van fiók, ellenőrizze, hogy mindkét rekordon **ugyanaz az e-mail** szerepel-e, majd futtassa az összekötést újra, vagy a listán **E-mail egyezés összekötése**.
+
+### Duplikátum vagy hibás rekord törlése
+
+Ha **ugyanabban a cégben** két rekord keletkezett, vagy üres, felesleges rekordot szeretne eltávolítani:
+
+1. Nyissa meg a rekordot — csak akkor törölhető, ha **nincs** hozzá beosztás, kérelem vagy kimutatás.
+2. A **Rekord törlése** szekcióban: **Rekord törlése**.
+3. Ezután **Másik céghez adás** vagy új felvétel a helyes módon.
 
 ### Mit ne csináljon
 
 | Helyzet | Teendő |
 |---------|--------|
-| Két rekord, két különböző cég | Megtartani mindkettőt; fiókot mindkettőhöz kötni |
-| Két rekord **ugyanabban** a cégben (duplikátum) | HR egyeztetés után az egyik inaktiválása/törlése |
+| Két rekord, két különböző cég | Megtartani mindkettőt; fiók összekötése elég az egyiken (több cég automatikusan kötődik) |
+| Két rekord **ugyanabban** a cégben (duplikátum) | **Rekord törlése** (ha üres) vagy HR egyeztetés után inaktiválás |
 | „Újra felvenni" másik céghez adás helyett | Felesleges — használja **Másik céghez adás** |
 
 ---
