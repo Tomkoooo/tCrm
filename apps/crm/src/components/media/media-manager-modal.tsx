@@ -31,8 +31,8 @@ export function MediaManagerModal({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl">
-        <DialogHeader className="border-b px-6 py-4">
+      <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-4xl sm:rounded-lg sm:border">
+        <DialogHeader className="shrink-0 border-b px-4 py-3 sm:px-6 sm:py-4">
           <DialogTitle>Médiatár</DialogTitle>
           <DialogDescription>
             {multiple

@@ -100,23 +100,19 @@ describe('employeeProfileFromForm', () => {
 
 describe('scheduleEntrySchema', () => {
   it('accepts valid shift window', () => {
-    const start = new Date('2026-06-01T08:00:00');
-    const end = new Date('2026-06-01T16:00:00');
     const result = scheduleEntrySchema.safeParse({
       employeeId: '507f1f77bcf86cd799439011',
-      start,
-      end,
+      start: '2026-06-01T08:00:00',
+      end: '2026-06-01T16:00:00',
     });
     expect(result.success).toBe(true);
   });
 
   it('rejects end before start', () => {
-    const start = new Date('2026-06-01T16:00:00');
-    const end = new Date('2026-06-01T08:00:00');
     const result = scheduleEntrySchema.safeParse({
       employeeId: '507f1f77bcf86cd799439011',
-      start,
-      end,
+      start: '2026-06-01T16:00:00',
+      end: '2026-06-01T08:00:00',
     });
     expect(result.success).toBe(false);
   });

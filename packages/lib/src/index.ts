@@ -5,6 +5,8 @@ export * from './mail-env';
 export * from './media-upload';
 export * from './utils';
 export * from './hr-calendar';
+export * from './hr-schedule-datetime';
+export * from './employee-schedule-colors';
 export * from './hr-payroll';
 export * from './validation';
 export * from './suppliers/contacts';

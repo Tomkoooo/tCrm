@@ -23,6 +23,7 @@ export function parseEmployeeFormData(formData: FormData): EmployeeInput {
     hourlyRateHuf: formData.get('hourlyRateHuf')
       ? Number(formData.get('hourlyRateHuf'))
       : undefined,
+    calendarColor: String(formData.get('calendarColor') ?? '').trim() || undefined,
     birthName: String(formData.get('birthName') ?? '') || undefined,
     birthPlaceDate: String(formData.get('birthPlaceDate') ?? '') || undefined,
     mothersName: String(formData.get('mothersName') ?? '') || undefined,
@@ -67,6 +68,7 @@ export function employeePayloadFromInput(parsed: EmployeeInput) {
     payType,
     monthlySalaryHuf: monthlySalary,
     hourlyRateHuf: hourlyRate,
+    calendarColor: parsed.calendarColor || undefined,
     personalData: {
       birthName: parsed.birthName,
       birthPlaceDate: parsed.birthPlaceDate,

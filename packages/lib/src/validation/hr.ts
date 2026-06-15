@@ -1,4 +1,16 @@
 import { z } from 'zod';
+import { parseHrDateOnly, parseHrDateTime, formatHrDateKey } from '../hr-schedule-datetime';
+
+const hrDateOnlyField = z
+  .union([z.string(), z.date()])
+  .transform((v) =>
+    v instanceof Date ? parseHrDateOnly(formatHrDateKey(v)) : parseHrDateOnly(String(v).trim())
+  );
+
+const hrDateTimeField = z.union([z.string(), z.date()]).transform((v) => {
+  if (v instanceof Date) return v;
+  return parseHrDateTime(String(v).trim());
+});
 
 export const companyDataEntrySchema = z.object({
   key: z.string().min(1, 'A kulcs kötelező').max(100),
@@ -51,6 +63,11 @@ export const employeeSchema = z.object({
   payType: z.enum(['monthly', 'hourly']).optional().or(z.literal('')),
   monthlySalaryHuf: z.coerce.number().min(0).optional().or(z.literal('')),
   hourlyRateHuf: z.coerce.number().min(0).optional().or(z.literal('')),
+  calendarColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .optional()
+    .or(z.literal('')),
   birthName: z.string().optional(),
   birthPlaceDate: z.string().optional(),
   mothersName: z.string().optional(),
@@ -135,8 +152,8 @@ export const inviteEmployeeSchema = z
 export const scheduleEntrySchema = z
   .object({
     employeeId: z.string().min(1),
-    start: z.coerce.date(),
-    end: z.coerce.date(),
+    start: hrDateTimeField,
+    end: hrDateTimeField,
     allDay: z.boolean().optional(),
     kind: z.enum(['shift', 'off', 'training', 'other']).default('shift'),
     title: z.string().optional(),
@@ -212,12 +229,12 @@ export const employeePersonalDataSchema = z.object({
 
 export const bulkScheduleSchema = z.object({
   employeeIds: z.array(z.string().min(1)).min(1),
-  startDate: z.coerce.date(),
-  endDate: z.coerce.date(),
+  startDate: hrDateOnlyField,
+  endDate: hrDateOnlyField,
   shiftStartTime: z.string().regex(/^\d{2}:\d{2}$/),
   shiftEndTime: z.string().regex(/^\d{2}:\d{2}$/),
   mode: z.enum(['workdays', 'selected_dates']),
-  selectedDates: z.array(z.string()).optional(),
+  selectedDates: z.array(hrDateOnlyField).optional(),
   skipExisting: z.coerce.boolean().default(true),
 });
 

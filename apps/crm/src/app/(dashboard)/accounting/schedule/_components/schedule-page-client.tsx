@@ -4,7 +4,11 @@ import { useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { EntitySheet } from '@crm/ui';
 import { Button } from '@/components/ui/button';
-import { HrScheduleCalendar, type CalendarEvent } from '../../_components/hr-schedule-calendar';
+import {
+  HrScheduleCalendar,
+  type CalendarEvent,
+  type EmployeeCalendarMeta,
+} from '../../_components/hr-schedule-calendar';
 import { CreateScheduleForm } from './create-schedule-form';
 import { BulkScheduleForm } from './bulk-schedule-form';
 
@@ -14,6 +18,7 @@ type CompanyOption = { _id: string; name: string };
 export function SchedulePageClient({
   editable,
   employees,
+  employeeLegend,
   companies,
   initialEvents,
   initialEmployeeId,
@@ -21,6 +26,7 @@ export function SchedulePageClient({
 }: {
   editable: boolean;
   employees: EmployeeOption[];
+  employeeLegend: EmployeeCalendarMeta[];
   companies: CompanyOption[];
   initialEvents: CalendarEvent[];
   initialEmployeeId?: string;
@@ -123,6 +129,7 @@ export function SchedulePageClient({
         employeeId={employeeId || undefined}
         companyId={companyId || undefined}
         initialEvents={initialEvents}
+        employeeLegend={employeeLegend}
       />
 
       {editable && (

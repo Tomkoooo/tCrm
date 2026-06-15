@@ -144,6 +144,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
               payType: emp.payType,
               monthlySalaryHuf: emp.monthlySalaryHuf,
               hourlyRateHuf: emp.hourlyRateHuf,
+              calendarColor: emp.calendarColor,
               birthName: emp.personalData?.birthName,
               birthPlaceDate: emp.personalData?.birthPlaceDate,
               mothersName: emp.personalData?.mothersName,

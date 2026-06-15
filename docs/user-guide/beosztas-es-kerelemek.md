@@ -41,6 +41,8 @@ Dolgozók műszakbeosztása és HR kérelmek (szabadság, betegszabadság, beosz
 4. Új egyedi esemény: **Új beosztás** — műszak vagy szabad nap.
 5. Naptárban kattintás / húzás az időszakra — szerkesztés.
 
+A naptár **Outlook-szerű**: átfedő műszakok oszlopokban, szöveg a blokkokban (cím, dolgozó, idő). Dolgozónként **Naptár szín** állítható a dolgozó adatlapon; alapból automatikus szín.
+
 ### Tömeges műszak
 
 **Tömeges műszak** gomb (`hr:write`) — akkor aktív, ha egy **dolgozót** kiválasztott:

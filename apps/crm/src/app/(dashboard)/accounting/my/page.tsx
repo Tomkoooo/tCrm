@@ -6,6 +6,7 @@ import { Container } from '@crm/ui';
 import { format } from 'date-fns';
 import mongoose from 'mongoose';
 import { HrRequest } from '@crm/db';
+import { resolveEmployeeScheduleColor } from '@crm/lib';
 import { listEmployeeMemberships, resolveActiveEmployee } from '@/lib/hr/active-employee';
 import { MyHrClient } from './_components/my-hr-client';
 import { MyNoEmployee } from './_components/my-no-employee';
@@ -85,6 +86,9 @@ export default async function MyHrPage({
     end: e.end,
     allDay: e.allDay,
     kind: e.kind,
+    employeeId: emp._id.toString(),
+    employeeName: emp.name,
+    color: resolveEmployeeScheduleColor(emp._id.toString(), emp.calendarColor),
   }));
 
   const requestRows = requests.map((r) => {

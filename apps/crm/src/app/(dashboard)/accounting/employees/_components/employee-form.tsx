@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { createEmployeeAction, updateEmployeeAction } from '../actions';
 import type { HrFormState } from '../../_components/form-utils';
+import { EMPLOYEE_SCHEDULE_COLORS } from '@crm/lib';
 
 type CompanyOption = { _id: string; name: string };
 
@@ -27,6 +28,7 @@ type EmployeeValues = {
   payType?: 'monthly' | 'hourly';
   monthlySalaryHuf?: number;
   hourlyRateHuf?: number;
+  calendarColor?: string;
   birthName?: string;
   birthPlaceDate?: string;
   mothersName?: string;
@@ -161,6 +163,27 @@ function EmployeeFormFields({
         <Label htmlFor="phone">Telefon</Label>
         <Input id="phone" name="phone" defaultValue={defaultValues?.phone} />
       </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="calendarColor">Naptár szín</Label>
+        <select
+          id="calendarColor"
+          name="calendarColor"
+          className="border-input bg-background flex h-9 w-full rounded-md border px-3 text-sm"
+          defaultValue={defaultValues?.calendarColor ?? ''}
+        >
+          <option value="">Automatikus</option>
+          {EMPLOYEE_SCHEDULE_COLORS.map((color) => (
+            <option key={color} value={color}>
+              {color}
+            </option>
+          ))}
+        </select>
+        <p className="text-muted-foreground text-xs">
+          Beosztás naptárban — dolgozónként külön szín.
+        </p>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="employmentType">Státusz</Label>

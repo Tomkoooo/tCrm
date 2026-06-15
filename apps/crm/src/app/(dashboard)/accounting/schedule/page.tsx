@@ -2,11 +2,11 @@ import mongoose from 'mongoose';
 import { requireAnyPermission, hasPermission } from '@crm/auth';
 import { connectDB, Employee } from '@crm/db';
 import { listScheduleEntries, listActiveCompanies, buildCompanyFilter } from '@crm/core';
-import { HR_READ_PERMISSION_KEYS } from '@crm/lib';
+import { HR_READ_PERMISSION_KEYS, resolveEmployeeScheduleColor } from '@crm/lib';
 import { Container } from '@crm/ui';
 import { getHrSessionScope } from '@/lib/hr/session-scope';
 import { SchedulePageClient } from './_components/schedule-page-client';
-import type { CalendarEvent } from '../_components/hr-schedule-calendar';
+import type { CalendarEvent, EmployeeCalendarMeta } from '../_components/hr-schedule-calendar';
 
 export default async function SchedulePage({
   searchParams,
@@ -55,9 +55,11 @@ export default async function SchedulePage({
 
   const employeeDocs = await Employee.find(empFilter)
     .sort({ name: 1, companyId: 1 })
-    .select({ name: 1, companyId: 1 })
+    .select({ name: 1, companyId: 1, calendarColor: 1 })
     .lean()
     .exec();
+
+  const employeeById = new Map(employeeDocs.map((e) => [String(e._id), e]));
 
   const employees = employeeDocs.map((e) => {
     const coName = companyNameById.get(String(e.companyId)) ?? '—';
@@ -69,15 +71,30 @@ export default async function SchedulePage({
     };
   });
 
-  const initialEvents: CalendarEvent[] = entries.map((e) => ({
-    id: e._id.toString(),
-    title: e.title ?? (e.kind === 'shift' ? 'Műszak' : e.kind),
-    start: e.start,
-    end: e.end,
-    allDay: e.allDay,
-    kind: e.kind,
-    employeeId: e.employeeId.toString(),
-  }));
+  const employeeLegend: EmployeeCalendarMeta[] = employeeDocs.map((e) => {
+    const coName = companyNameById.get(String(e.companyId)) ?? '—';
+    return {
+      _id: String(e._id),
+      name: companyOid ? e.name : `${e.name} · ${coName}`,
+      color: resolveEmployeeScheduleColor(String(e._id), e.calendarColor),
+    };
+  });
+
+  const initialEvents: CalendarEvent[] = entries.map((e) => {
+    const empId = e.employeeId.toString();
+    const emp = employeeById.get(empId);
+    return {
+      id: e._id.toString(),
+      title: e.title ?? (e.kind === 'shift' ? 'Műszak' : e.kind),
+      start: e.start,
+      end: e.end,
+      allDay: e.allDay,
+      kind: e.kind,
+      employeeId: empId,
+      employeeName: emp?.name,
+      color: resolveEmployeeScheduleColor(empId, emp?.calendarColor),
+    };
+  });
 
   return (
     <Container className="flex max-w-6xl flex-col gap-4">
@@ -91,6 +108,7 @@ export default async function SchedulePage({
         editable={canWrite}
         companies={companies.map((c) => ({ _id: String(c._id), name: c.name }))}
         employees={employees}
+        employeeLegend={employeeLegend}
         initialEvents={initialEvents}
         initialEmployeeId={employeeId}
         initialCompanyId={companyId}

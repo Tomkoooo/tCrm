@@ -31,6 +31,7 @@ export interface IEmployee extends Document {
   payType?: EmployeePayType;
   monthlySalaryHuf?: number;
   hourlyRateHuf?: number;
+  calendarColor?: string;
   personalData?: IEmployeePersonalData;
   isActive: boolean;
   hrNotes?: string;
@@ -67,6 +68,7 @@ const EmployeeSchema = new Schema<IEmployee>(
     payType: { type: String, enum: ['monthly', 'hourly'] },
     monthlySalaryHuf: { type: Number, min: 0 },
     hourlyRateHuf: { type: Number, min: 0 },
+    calendarColor: { type: String },
     personalData: {
       birthName: { type: String },
       birthPlaceDate: { type: String },

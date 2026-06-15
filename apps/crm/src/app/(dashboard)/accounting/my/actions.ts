@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import mongoose from 'mongoose';
 import { submitHrRequest, cancelHrRequest, listScheduleEntries } from '@crm/core';
 import { hrRequestSchema } from '@crm/lib/validation';
+import { resolveEmployeeScheduleColor } from '@crm/lib';
 import { getLinkedEmployeeForSession } from '@/lib/hr/require-linked-employee';
 import { zodToFieldErrors, type HrFormState } from '../_components/form-utils';
 
@@ -101,10 +102,13 @@ export async function fetchMyScheduleAction(start: string, end: string, employee
 
   return entries.map((e) => ({
     id: e._id.toString(),
-    title: e.title ?? e.kind,
+    title: e.title ?? (e.kind === 'shift' ? 'Műszak' : e.kind),
     start: e.start.toISOString(),
     end: e.end.toISOString(),
     allDay: e.allDay ?? false,
     kind: e.kind,
+    employeeId: emp._id.toString(),
+    employeeName: emp.name,
+    color: resolveEmployeeScheduleColor(emp._id.toString(), emp.calendarColor),
   }));
 }

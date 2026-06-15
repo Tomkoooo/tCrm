@@ -1,4 +1,4 @@
-import { eachDayInRange, isWorkday } from '@crm/lib';
+import { eachDayInRange, isWorkday, combineHrDayAndTime } from '@crm/lib';
 import { connectDB, Employee, ScheduleEntry, type IScheduleEntry } from '@crm/db';
 import type { Types } from 'mongoose';
 import { assertCompanyInScope } from './company-scope';
@@ -83,13 +83,6 @@ export async function deleteScheduleEntry(
   await ScheduleEntry.deleteOne({ _id: id }).exec();
 }
 
-function parseTimeOnDate(date: Date, time: string): Date {
-  const [h, m] = time.split(':').map(Number);
-  const d = new Date(date);
-  d.setHours(h ?? 0, m ?? 0, 0, 0);
-  return d;
-}
-
 function hasOverlap(
   existing: Array<{ start: Date; end: Date; kind: string }>,
   dayStart: Date,
@@ -108,7 +101,7 @@ export async function bulkCreateScheduleEntries(
     shiftStartTime: string;
     shiftEndTime: string;
     mode: 'workdays' | 'selected_dates';
-    selectedDates?: string[];
+    selectedDates?: Date[];
     skipExisting?: boolean;
   },
   actorUserId: Types.ObjectId,
@@ -120,11 +113,7 @@ export async function bulkCreateScheduleEntries(
 
   const targetDays: Date[] =
     data.mode === 'selected_dates' && data.selectedDates?.length
-      ? data.selectedDates.map((d) => {
-          const parsed = new Date(d);
-          parsed.setHours(0, 0, 0, 0);
-          return parsed;
-        })
+      ? data.selectedDates
       : eachDayInRange(data.startDate, data.endDate).filter((d) => isWorkday(d));
 
   for (const employeeId of data.employeeIds) {
@@ -149,8 +138,8 @@ export async function bulkCreateScheduleEntries(
     }));
 
     for (const day of targetDays) {
-      const start = parseTimeOnDate(day, data.shiftStartTime);
-      const end = parseTimeOnDate(day, data.shiftEndTime);
+      const start = combineHrDayAndTime(day, data.shiftStartTime);
+      const end = combineHrDayAndTime(day, data.shiftEndTime);
       if (end <= start) {
         skipped++;
         continue;

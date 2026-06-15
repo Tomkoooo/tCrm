@@ -11,7 +11,8 @@ import {
   bulkCreateScheduleEntries,
 } from '@crm/core';
 import { scheduleEntrySchema, bulkScheduleSchema } from '@crm/lib/validation';
-import { HR_READ_PERMISSION_KEYS } from '@crm/lib';
+import { HR_READ_PERMISSION_KEYS, resolveEmployeeScheduleColor } from '@crm/lib';
+import { connectDB, Employee } from '@crm/db';
 import { zodToFieldErrors, type HrFormState } from '../_components/form-utils';
 import { getHrSessionScope } from '@/lib/hr/session-scope';
 
@@ -38,15 +39,32 @@ export async function fetchScheduleEventsAction(params: {
     allowedCompanyIds,
   });
 
-  return entries.map((e) => ({
-    id: e._id.toString(),
-    title: e.title ?? (e.kind === 'shift' ? 'Műszak' : e.kind),
-    start: e.start.toISOString(),
-    end: e.end.toISOString(),
-    allDay: e.allDay ?? false,
-    kind: e.kind,
-    employeeId: e.employeeId.toString(),
-  }));
+  await connectDB();
+  const employeeIds = [...new Set(entries.map((e) => String(e.employeeId)))];
+  const employees =
+    employeeIds.length > 0
+      ? await Employee.find({ _id: { $in: employeeIds } })
+          .select({ name: 1, calendarColor: 1 })
+          .lean()
+          .exec()
+      : [];
+  const employeeById = new Map(employees.map((e) => [String(e._id), e]));
+
+  return entries.map((e) => {
+    const empId = e.employeeId.toString();
+    const emp = employeeById.get(empId);
+    return {
+      id: e._id.toString(),
+      title: e.title ?? (e.kind === 'shift' ? 'Műszak' : e.kind),
+      start: e.start.toISOString(),
+      end: e.end.toISOString(),
+      allDay: e.allDay ?? false,
+      kind: e.kind,
+      employeeId: empId,
+      employeeName: emp?.name,
+      color: resolveEmployeeScheduleColor(empId, emp?.calendarColor),
+    };
+  });
 }
 
 export async function createScheduleEntryAction(

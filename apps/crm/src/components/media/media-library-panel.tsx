@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { ExternalLink, ImageIcon, Link2, Trash2, Upload } from 'lucide-react';
+import { ExternalLink, ImageIcon, Link2, Trash2, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fileNeedsCrop,
@@ -397,9 +397,123 @@ export function MediaLibraryPanel({
         : 0;
   const activeCropTotal = uploadQueue.length > 0 ? uploadQueue.length : cropFile ? 1 : 0;
 
+  const mobileDetailPreview =
+    detail && tab === 'library' ? (
+      <div className="bg-background shrink-0 border-b px-4 py-3 md:hidden">
+        <div className="flex items-start gap-3">
+          <MediaThumbnail
+            src={detail.previewUrl}
+            alt={detail.filename}
+            filename={detail.filename}
+            contentType={detail.contentType}
+            type={detail.type}
+            className="size-16 shrink-0 rounded-md border"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium" title={detail.filename}>
+              {detail.filename}
+            </p>
+            <p className="text-muted-foreground text-xs">
+              {detail.type === 'link' ? 'Külső link' : isPdfMedia(detail) ? 'PDF fájl' : 'Fájl'} ·{' '}
+              {detail.useCount} használat
+              {mode === 'picker' && picked.has(detail.id) ? ' · kiválasztva' : ''}
+            </p>
+            {isPdfMedia(detail) && (
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className="h-auto px-0 text-xs"
+                asChild
+              >
+                <a href={detail.previewUrl} target="_blank" rel="noopener noreferrer">
+                  PDF megnyitása
+                </a>
+              </Button>
+            )}
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8 shrink-0"
+            aria-label="Előnézet bezárása"
+            onClick={() => setDetail(null)}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    ) : null;
+
+  const desktopDetailAside =
+    detail && tab === 'library' ? (
+      <aside className="bg-background hidden w-64 shrink-0 flex-col overflow-y-auto border-l p-4 md:flex">
+        <MediaThumbnail
+          src={detail.previewUrl}
+          alt={detail.filename}
+          filename={detail.filename}
+          contentType={detail.contentType}
+          type={detail.type}
+          className="mb-3 aspect-square w-full rounded-md border"
+        />
+        <p className="truncate text-sm font-medium" title={detail.filename}>
+          {detail.filename}
+        </p>
+        <p className="text-muted-foreground text-xs">
+          {detail.type === 'link' ? 'Külső link' : isPdfMedia(detail) ? 'PDF fájl' : 'Fájl'} ·{' '}
+          {detail.useCount} használat
+        </p>
+        {detail.url && (
+          <p className="text-muted-foreground mt-1 truncate text-xs" title={detail.url}>
+            {detail.url}
+          </p>
+        )}
+        {isPdfMedia(detail) && (
+          <Button type="button" variant="outline" size="sm" className="mt-2 w-full" asChild>
+            <a href={detail.previewUrl} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="mr-1 h-3 w-3" />
+              PDF megnyitása
+            </a>
+          </Button>
+        )}
+        {detail.usages.length > 0 && (
+          <ul className="mt-2 max-h-32 space-y-1 overflow-y-auto text-xs">
+            {detail.usages.map((u, i) => (
+              <li key={i}>
+                {u.entityType === 'product' && u.sku ? (
+                  <Link href={`/inventory/${u.sku}`} className="text-primary underline">
+                    {formatProductSkuLine(u.label ?? u.sku, u.sku)}
+                  </Link>
+                ) : (
+                  <span className="text-muted-foreground">
+                    {u.entityType}: {u.label ?? u.entityId}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        {canDelete && (
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            className="mt-3 w-full"
+            loading={deletePending}
+            loadingText="Törlés…"
+            onClick={() => void deleteDetail()}
+          >
+            <Trash2 className="mr-1 h-3 w-3" />
+            Törlés
+          </Button>
+        )}
+      </aside>
+    ) : null;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex border-b px-2">
+      <div className="flex shrink-0 border-b px-2">
         {tabs
           .filter((t) => !t.hidden)
           .map((t) => (
@@ -425,14 +539,16 @@ export function MediaLibraryPanel({
           ))}
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 md:flex-row">
-        <div className="flex min-h-0 flex-1 flex-col gap-3">
+      {mobileDetailPreview}
+
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
           {tab === 'library' && (
             <>
-              <div className="flex flex-wrap gap-2">
+              <div className="mb-3 flex flex-wrap gap-2">
                 <Input
-                  className="min-w-[200px] flex-1"
-                  placeholder="Keresés név, URL vagy termék alapján…"
+                  className="min-w-0 flex-1 basis-[12rem]"
+                  placeholder="Keresés…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={(e) => {
@@ -472,7 +588,7 @@ export function MediaLibraryPanel({
               ) : items.length === 0 ? (
                 <p className="text-muted-foreground text-sm">Nincs találat.</p>
               ) : (
-                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-3 lg:grid-cols-4">
                   {items.map((item) => (
                     <button
                       key={item.id}
@@ -514,7 +630,7 @@ export function MediaLibraryPanel({
                   ))}
                 </div>
               )}
-              <p className="text-muted-foreground text-xs">{total} média összesen</p>
+              <p className="text-muted-foreground mt-3 text-xs">{total} média összesen</p>
             </>
           )}
 
@@ -599,74 +715,11 @@ export function MediaLibraryPanel({
             </div>
           )}
         </div>
-
-        {detail && tab === 'library' && (
-          <aside className="border-t pt-4 md:w-64 md:shrink-0 md:border-l md:border-t-0 md:pl-4 md:pt-0">
-            <MediaThumbnail
-              src={detail.previewUrl}
-              alt={detail.filename}
-              filename={detail.filename}
-              contentType={detail.contentType}
-              type={detail.type}
-              className="mb-3 aspect-square w-full rounded-md border"
-            />
-            <p className="truncate text-sm font-medium" title={detail.filename}>
-              {detail.filename}
-            </p>
-            <p className="text-muted-foreground text-xs">
-              {detail.type === 'link' ? 'Külső link' : isPdfMedia(detail) ? 'PDF fájl' : 'Fájl'} ·{' '}
-              {detail.useCount} használat
-            </p>
-            {detail.url && (
-              <p className="text-muted-foreground mt-1 truncate text-xs" title={detail.url}>
-                {detail.url}
-              </p>
-            )}
-            {isPdfMedia(detail) && (
-              <Button type="button" variant="outline" size="sm" className="mt-2 w-full" asChild>
-                <a href={detail.previewUrl} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="mr-1 h-3 w-3" />
-                  PDF megnyitása
-                </a>
-              </Button>
-            )}
-            {detail.usages.length > 0 && (
-              <ul className="mt-2 max-h-32 space-y-1 overflow-y-auto text-xs">
-                {detail.usages.map((u, i) => (
-                  <li key={i}>
-                    {u.entityType === 'product' && u.sku ? (
-                      <Link href={`/inventory/${u.sku}`} className="text-primary underline">
-                        {formatProductSkuLine(u.label ?? u.sku, u.sku)}
-                      </Link>
-                    ) : (
-                      <span className="text-muted-foreground">
-                        {u.entityType}: {u.label ?? u.entityId}
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {canDelete && (
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                className="mt-3 w-full"
-                loading={deletePending}
-                loadingText="Törlés…"
-                onClick={() => void deleteDetail()}
-              >
-                <Trash2 className="mr-1 h-3 w-3" />
-                Törlés
-              </Button>
-            )}
-          </aside>
-        )}
+        {desktopDetailAside}
       </div>
 
       {mode === 'picker' && (
-        <div className="flex items-center justify-between gap-2 border-t px-4 py-3">
+        <div className="bg-background flex shrink-0 items-center justify-between gap-2 border-t px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <span className="text-muted-foreground text-sm">{picked.size} kiválasztva</span>
           <div className="flex gap-2">
             <Button type="button" variant="outline" onClick={onCancel}>

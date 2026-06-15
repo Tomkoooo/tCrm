@@ -52,6 +52,7 @@ export async function createEmployee(
     payType?: 'monthly' | 'hourly';
     monthlySalaryHuf?: number;
     hourlyRateHuf?: number;
+    calendarColor?: string;
     personalData?: IEmployee['personalData'];
   },
   actorUserId: Types.ObjectId,
@@ -92,6 +93,7 @@ export async function updateEmployee(
     payType?: 'monthly' | 'hourly';
     monthlySalaryHuf?: number;
     hourlyRateHuf?: number;
+    calendarColor?: string;
     personalData?: {
       birthName?: string;
       birthPlaceDate?: string;
