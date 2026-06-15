@@ -11,6 +11,7 @@ import {
 } from '../../_components/hr-schedule-calendar';
 import { CreateScheduleForm } from './create-schedule-form';
 import { BulkScheduleForm } from './bulk-schedule-form';
+import { EditScheduleForm } from './edit-schedule-form';
 
 type EmployeeOption = { _id: string; name: string; companyId: string; label: string };
 type CompanyOption = { _id: string; name: string };
@@ -36,6 +37,7 @@ export function SchedulePageClient({
   const searchParams = useSearchParams();
   const [createOpen, setCreateOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [editEvent, setEditEvent] = useState<CalendarEvent | null>(null);
 
   const companyId = searchParams.get('companyId') ?? initialCompanyId ?? '';
   const employeeIdParam = searchParams.get('employeeId') ?? initialEmployeeId ?? '';
@@ -60,6 +62,8 @@ export function SchedulePageClient({
   };
 
   const formEmployees = filteredEmployees.map((e) => ({ _id: e._id, name: e.label }));
+
+  const calendarKey = `${companyId}-${employeeId}`;
 
   return (
     <div className="flex flex-col gap-4">
@@ -121,15 +125,19 @@ export function SchedulePageClient({
       )}
       {companyId && !employeeId && (
         <p className="text-muted-foreground text-sm">
-          Válasszon dolgozót a naptárjának megtekintéséhez és tömeges műszak létrehozásához.
+          A naptár a kiválasztott cég beosztásait mutatja. Egy dolgozóhoz válasszon nevet a listából
+          — a tömeges műszakhoz kötelező.
         </p>
       )}
 
       <HrScheduleCalendar
+        key={calendarKey}
         employeeId={employeeId || undefined}
         companyId={companyId || undefined}
         initialEvents={initialEvents}
         employeeLegend={employeeLegend}
+        editable={editable}
+        onSelectEvent={(event) => setEditEvent(event)}
       />
 
       {editable && (
@@ -141,7 +149,12 @@ export function SchedulePageClient({
             description="Egyetlen műszak vagy szabad nap rögzítése."
             mode="create"
           >
-            <CreateScheduleForm employees={formEmployees} onSuccess={() => setCreateOpen(false)} />
+            <CreateScheduleForm
+              employees={formEmployees}
+              defaultEmployeeId={selectedEmployee?._id}
+              defaultEmployeeName={selectedEmployee?.label}
+              onSuccess={() => setCreateOpen(false)}
+            />
           </EntitySheet>
 
           {selectedEmployee && (
@@ -159,6 +172,24 @@ export function SchedulePageClient({
               />
             </EntitySheet>
           )}
+
+          {editEvent ? (
+            <EntitySheet
+              open={!!editEvent}
+              onOpenChange={(open) => {
+                if (!open) setEditEvent(null);
+              }}
+              title="Beosztás szerkesztése"
+              description="Időpont, típus és cím módosítása, vagy törlés."
+              mode="edit"
+            >
+              <EditScheduleForm
+                event={editEvent}
+                onSuccess={() => setEditEvent(null)}
+                onDeleted={() => setEditEvent(null)}
+              />
+            </EntitySheet>
+          ) : null}
         </>
       )}
     </div>

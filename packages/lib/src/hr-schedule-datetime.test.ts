@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   combineHrDayAndTime,
+  formatHrDateTimeLocal,
   formatHrTime,
   parseHrDateOnly,
   parseHrDateTime,
@@ -30,5 +31,10 @@ describe('hr-schedule-datetime', () => {
     const end = combineHrDayAndTime(day, '17:00');
     expect(formatHrTime(start)).toBe('09:00');
     expect(formatHrTime(end)).toBe('17:00');
+  });
+
+  it('formatHrDateTimeLocal round-trips for datetime-local inputs', () => {
+    const d = parseHrDateTime('2026-06-15T09:30:00');
+    expect(formatHrDateTimeLocal(d)).toBe('2026-06-15T09:30');
   });
 });

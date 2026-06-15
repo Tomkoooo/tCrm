@@ -109,6 +109,7 @@ export {
   employeePersonalDataSchema,
   bulkScheduleSchema,
   scheduleEntrySchema,
+  scheduleEntryUpdateSchema,
   hrRequestSchema,
   hrRequestHolidaySchema,
   hrRequestSickSchema,

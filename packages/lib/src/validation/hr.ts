@@ -161,6 +161,18 @@ export const scheduleEntrySchema = z
   })
   .refine((d) => d.end > d.start, { message: 'A befejezés későbbi kell legyen', path: ['end'] });
 
+export const scheduleEntryUpdateSchema = z
+  .object({
+    id: z.string().min(1),
+    start: hrDateTimeField,
+    end: hrDateTimeField,
+    allDay: z.boolean().optional(),
+    kind: z.enum(['shift', 'off', 'training', 'other']).default('shift'),
+    title: z.string().optional(),
+    notes: z.string().optional(),
+  })
+  .refine((d) => d.end > d.start, { message: 'A befejezés későbbi kell legyen', path: ['end'] });
+
 export const hrRequestHolidaySchema = z
   .object({
     type: z.literal('holiday'),

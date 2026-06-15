@@ -91,6 +91,13 @@ export function formatHrTime(date: Date): string {
   }).format(date);
 }
 
+/** `<input type="datetime-local">` érték Budapest falióra időben (YYYY-MM-DDTHH:mm). */
+export function formatHrDateTimeLocal(date: Date): string {
+  const parts = getZonedParts(date, HR_TIMEZONE);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${parts.year}-${pad(parts.month)}-${pad(parts.day)}T${pad(parts.hour)}:${pad(parts.minute)}`;
+}
+
 /** ISO / Date → naptár Date (hydration). */
 export function toCalendarDate(value: Date | string): Date {
   return value instanceof Date ? value : new Date(value);

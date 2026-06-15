@@ -11,15 +11,24 @@ import type { HrFormState } from '../../_components/form-utils';
 
 export function CreateScheduleForm({
   employees,
+  defaultEmployeeId,
+  defaultEmployeeName,
   onSuccess,
 }: {
   employees: { _id: string; name: string }[];
+  defaultEmployeeId?: string;
+  defaultEmployeeName?: string;
   onSuccess?: () => void;
 }) {
   const router = useRouter();
   const [state, action, pending] = useActionState(createScheduleEntryAction, {
     success: false,
   } as HrFormState);
+
+  const lockedEmployee =
+    defaultEmployeeId && employees.some((e) => e._id === defaultEmployeeId)
+      ? employees.find((e) => e._id === defaultEmployeeId)
+      : undefined;
 
   useEffect(() => {
     if (state.success) {
@@ -31,22 +40,32 @@ export function CreateScheduleForm({
 
   return (
     <form action={action} className="flex flex-col gap-4">
-      <div className="space-y-2">
-        <Label htmlFor="employeeId">Dolgozó</Label>
-        <select
-          id="employeeId"
-          name="employeeId"
-          className="border-input bg-background h-9 w-full rounded-md border px-2"
-          required
-        >
-          <option value="">Válasszon…</option>
-          {employees.map((e) => (
-            <option key={e._id} value={e._id}>
-              {e.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      {lockedEmployee ? (
+        <>
+          <input type="hidden" name="employeeId" value={lockedEmployee._id} />
+          <div className="bg-muted/50 rounded-lg border p-3">
+            <p className="text-sm font-medium">{defaultEmployeeName ?? lockedEmployee.name}</p>
+          </div>
+        </>
+      ) : (
+        <div className="space-y-2">
+          <Label htmlFor="employeeId">Dolgozó</Label>
+          <select
+            id="employeeId"
+            name="employeeId"
+            className="border-input bg-background h-9 w-full rounded-md border px-2"
+            required
+            defaultValue={defaultEmployeeId ?? ''}
+          >
+            <option value="">Válasszon…</option>
+            {employees.map((e) => (
+              <option key={e._id} value={e._id}>
+                {e.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="space-y-2">
         <Label htmlFor="start">Kezdet</Label>
         <Input id="start" name="start" type="datetime-local" required />

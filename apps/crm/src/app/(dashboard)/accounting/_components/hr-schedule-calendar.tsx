@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useMemo, useState, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import { Calendar, dateFnsLocalizer, type EventProps, type View } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { hu } from 'date-fns/locale';
+import { Palette } from 'lucide-react';
 import {
   formatHrTime,
   resolveEmployeeScheduleColor,
@@ -11,6 +12,16 @@ import {
   scheduleKindFallbackColor,
   toCalendarDate,
 } from '@crm/lib';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import './hr-schedule-calendar.css';
 import { fetchScheduleEventsAction } from '../schedule/actions';
@@ -55,9 +66,9 @@ type FetchedEvent = {
   color?: string;
 };
 
-function hydrateEvent(
-  raw: CalendarEvent | FetchedEvent
-): CalendarEvent & { start: Date; end: Date } {
+type HydratedEvent = CalendarEvent & { start: Date; end: Date };
+
+function hydrateEvent(raw: CalendarEvent | FetchedEvent): HydratedEvent {
   const employeeId = raw.employeeId;
   const color =
     raw.color ??
@@ -71,7 +82,7 @@ function hydrateEvent(
   };
 }
 
-function ScheduleEventCard({ event }: EventProps<CalendarEvent & { start: Date; end: Date }>) {
+function ScheduleEventCard({ event }: EventProps<HydratedEvent>) {
   const timeLabel = event.allDay
     ? 'Egész nap'
     : `${formatHrTime(event.start)}–${formatHrTime(event.end)}`;
@@ -87,18 +98,68 @@ function ScheduleEventCard({ event }: EventProps<CalendarEvent & { start: Date; 
   );
 }
 
-function ScheduleLegend({ employees }: { employees: EmployeeCalendarMeta[] }) {
+function ScheduleLegendDialog({ employees }: { employees: EmployeeCalendarMeta[] }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return employees;
+    return employees.filter((e) => e.name.toLowerCase().includes(q));
+  }, [employees, query]);
+
   if (employees.length <= 1) return null;
 
   return (
-    <div className="hr-schedule-legend" aria-label="Dolgozók színei">
-      {employees.map((e) => (
-        <span key={e._id} className="hr-schedule-legend__item">
-          <span className="hr-schedule-legend__swatch" style={{ backgroundColor: e.color }} />
-          {e.name}
-        </span>
-      ))}
-    </div>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="hr-schedule-legend-trigger"
+          title="Dolgozók naptárszínei"
+        >
+          <Palette className="mr-1.5 h-3.5 w-3.5" />
+          Színjelmagyarázat ({employees.length})
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="flex max-h-[min(85dvh,32rem)] flex-col gap-3 sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Dolgozók színei</DialogTitle>
+          <DialogDescription>
+            A naptárban minden dolgozó saját színnel jelenik meg. Szín a dolgozó adatlapján
+            állítható.
+          </DialogDescription>
+        </DialogHeader>
+        <Input
+          type="search"
+          placeholder="Keresés név szerint…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Dolgozó keresése"
+        />
+        <ul className="min-h-0 flex-1 overflow-y-auto rounded-md border">
+          {filtered.length === 0 ? (
+            <li className="text-muted-foreground px-3 py-4 text-center text-sm">Nincs találat.</li>
+          ) : (
+            filtered.map((e) => (
+              <li
+                key={e._id}
+                className="flex items-center gap-2 border-b px-3 py-2 text-sm last:border-b-0"
+              >
+                <span
+                  className="hr-schedule-legend__swatch size-3 shrink-0"
+                  style={{ backgroundColor: e.color }}
+                  aria-hidden
+                />
+                <span className="min-w-0 truncate">{e.name}</span>
+              </li>
+            ))
+          )}
+        </ul>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -108,17 +169,25 @@ export function HrScheduleCalendar({
   companyId,
   initialEvents,
   employeeLegend = [],
+  editable = false,
+  onSelectEvent,
 }: {
   mode?: 'hr' | 'self';
   employeeId?: string;
   companyId?: string;
   initialEvents: CalendarEvent[];
   employeeLegend?: EmployeeCalendarMeta[];
+  editable?: boolean;
+  onSelectEvent?: (event: CalendarEvent) => void;
 }) {
   const [events, setEvents] = useState(() => initialEvents.map(hydrateEvent));
   const [view, setView] = useState<View>('week');
   const [date, setDate] = useState(new Date());
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setEvents(initialEvents.map(hydrateEvent));
+  }, [initialEvents]);
 
   const loadRange = useCallback(
     (range: { start: Date; end: Date }) => {
@@ -151,21 +220,33 @@ export function HrScheduleCalendar({
     [loadRange]
   );
 
-  const eventStyleGetter = useCallback((event: CalendarEvent & { start: Date; end: Date }) => {
-    const baseColor =
-      event.color ??
-      (event.employeeId
-        ? resolveEmployeeScheduleColor(event.employeeId)
-        : scheduleKindFallbackColor(event.kind));
-    const styles = scheduleEventStyles(baseColor);
-    return {
-      style: {
-        ...styles,
-        borderLeftColor: 'rgba(0,0,0,0.28)',
-        opacity: event.kind === 'off' ? 0.88 : 1,
-      },
-    };
-  }, []);
+  const handleSelectEvent = useCallback(
+    (event: HydratedEvent) => {
+      if (!editable || !onSelectEvent) return;
+      onSelectEvent(event);
+    },
+    [editable, onSelectEvent]
+  );
+
+  const eventStyleGetter = useCallback(
+    (event: HydratedEvent) => {
+      const baseColor =
+        event.color ??
+        (event.employeeId
+          ? resolveEmployeeScheduleColor(event.employeeId)
+          : scheduleKindFallbackColor(event.kind));
+      const styles = scheduleEventStyles(baseColor);
+      return {
+        style: {
+          ...styles,
+          borderLeftColor: 'rgba(0,0,0,0.28)',
+          opacity: event.kind === 'off' ? 0.88 : 1,
+          cursor: editable ? 'pointer' : undefined,
+        },
+      };
+    },
+    [editable]
+  );
 
   const { messages, scrollToTime, minTime, maxTime } = useMemo(
     () => ({
@@ -199,7 +280,14 @@ export function HrScheduleCalendar({
 
   return (
     <div className={`hr-schedule-calendar ${pending ? 'opacity-70' : ''}`}>
-      <ScheduleLegend employees={employeeLegend} />
+      <div className="hr-schedule-calendar__toolbar">
+        <ScheduleLegendDialog employees={employeeLegend} />
+        {editable ? (
+          <p className="text-muted-foreground text-xs sm:text-sm">
+            Kattintson egy eseményre a szerkesztéshez.
+          </p>
+        ) : null}
+      </div>
       <Calendar
         localizer={localizer}
         culture="hu"
@@ -214,6 +302,8 @@ export function HrScheduleCalendar({
         messages={messages}
         formats={formats}
         onRangeChange={onRangeChange}
+        onSelectEvent={editable ? handleSelectEvent : undefined}
+        selectable={false}
         eventPropGetter={eventStyleGetter}
         components={{ event: ScheduleEventCard }}
         popup

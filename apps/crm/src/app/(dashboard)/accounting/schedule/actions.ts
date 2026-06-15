@@ -10,7 +10,11 @@ import {
   listScheduleEntries,
   bulkCreateScheduleEntries,
 } from '@crm/core';
-import { scheduleEntrySchema, bulkScheduleSchema } from '@crm/lib/validation';
+import {
+  scheduleEntrySchema,
+  bulkScheduleSchema,
+  scheduleEntryUpdateSchema,
+} from '@crm/lib/validation';
 import { HR_READ_PERMISSION_KEYS, resolveEmployeeScheduleColor } from '@crm/lib';
 import { connectDB, Employee } from '@crm/db';
 import { zodToFieldErrors, type HrFormState } from '../_components/form-utils';
@@ -123,6 +127,51 @@ export async function updateScheduleEntryAction(
     await updateScheduleEntry(
       new mongoose.Types.ObjectId(id),
       { start: new Date(data.start), end: new Date(data.end) },
+      userId,
+      permissions
+    );
+    revalidatePath('/accounting/schedule');
+    return { success: true };
+  } catch (e) {
+    return { success: false, message: e instanceof Error ? e.message : 'Hiba történt.' };
+  }
+}
+
+export async function updateScheduleEntryFormAction(
+  _prev: HrFormState,
+  formData: FormData
+): Promise<HrFormState> {
+  await requirePermission('hr:write');
+  const { userId, permissions } = await getHrSessionScope();
+
+  const parsed = scheduleEntryUpdateSchema.safeParse({
+    id: formData.get('id'),
+    start: formData.get('start'),
+    end: formData.get('end'),
+    allDay: formData.get('allDay') === 'true',
+    kind: formData.get('kind') || 'shift',
+    title: formData.get('title') || undefined,
+    notes: formData.get('notes') || undefined,
+  });
+  if (!parsed.success) {
+    return { success: false, fieldErrors: zodToFieldErrors(parsed.error.issues) };
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(parsed.data.id)) {
+    return { success: false, message: 'Érvénytelen azonosító.' };
+  }
+
+  try {
+    await updateScheduleEntry(
+      new mongoose.Types.ObjectId(parsed.data.id),
+      {
+        start: parsed.data.start,
+        end: parsed.data.end,
+        allDay: parsed.data.allDay,
+        kind: parsed.data.kind,
+        title: parsed.data.title,
+        notes: parsed.data.notes,
+      },
       userId,
       permissions
     );

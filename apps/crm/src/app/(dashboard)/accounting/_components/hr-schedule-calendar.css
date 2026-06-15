@@ -182,6 +182,18 @@
   margin-bottom: 0.75rem;
 }
 
+.hr-schedule-calendar__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.hr-schedule-legend-trigger {
+  flex-shrink: 0;
+}
+
 .hr-schedule-legend__item {
   display: inline-flex;
   align-items: center;

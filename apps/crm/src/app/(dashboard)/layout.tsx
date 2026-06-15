@@ -19,11 +19,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
           permissions: sessionUser.permissions,
         }}
       />
-      <SidebarInset className="flex min-h-0 flex-col overflow-hidden">
+      <SidebarInset className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         <AppHeader />
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-          <main className="flex-1 pb-4">{children}</main>
-        </div>
+        <main className="flex-1 pb-4">{children}</main>
       </SidebarInset>
       <Toaster position="bottom-right" />
     </SidebarProvider>
