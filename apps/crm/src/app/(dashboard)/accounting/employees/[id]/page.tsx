@@ -70,14 +70,38 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
       <div>
         <h1 className="text-2xl font-bold">{emp.name}</h1>
         <p className="text-muted-foreground text-sm">
-          {company?.name ?? '—'} · {emp.employmentType === 'guest' ? 'Vendég' : 'Dolgozó'}
-          {emp.userId ? ' · CRM fiók összekötve' : ' · Nincs CRM fiók'}
+          {company?.name ?? '—'}
+          {emp.employmentType === 'guest' ? ' · Külsős' : ' · Alkalmazott'}
         </p>
       </div>
 
+      {canWrite && (
+        <section className="border-border rounded-lg border p-4">
+          <h3 className="mb-3 text-sm font-medium">CRM belépés</h3>
+          {emp.userId ? (
+            <div className="flex items-center gap-3">
+              <span className="rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                Fiók összekötve
+              </span>
+              <UnlinkEmployeeButton employeeId={String(emp._id)} />
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <p className="text-muted-foreground text-sm">
+                Nincs CRM fiók — a dolgozó nem látja a Saját beosztás oldalt.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <LinkAccountSheetClient employeeId={String(emp._id)} email={emp.email} />
+                {emp.email && <InviteSheetClient employeeId={String(emp._id)} email={emp.email} />}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
       {relatedWithNames.length > 0 && (
         <section className="border-border rounded-lg border p-4">
-          <h2 className="mb-2 text-sm font-medium">Más cégek (külön rekord)</h2>
+          <h3 className="mb-2 text-sm font-medium">Más cégek (külön rekord)</h3>
           <ul className="text-sm">
             {relatedWithNames.map((r) => (
               <li key={r._id}>
@@ -93,20 +117,11 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
         </section>
       )}
 
-      {canWrite && (
-        <div className="flex flex-wrap gap-2">
-          <AddToCompanySheetClient
-            sourceEmployeeId={String(emp._id)}
-            companies={addToCompanyOptions}
-          />
-          {!emp.userId && (
-            <>
-              <LinkAccountSheetClient employeeId={String(emp._id)} email={emp.email} />
-              {emp.email && <InviteSheetClient employeeId={String(emp._id)} email={emp.email} />}
-            </>
-          )}
-          {emp.userId && <UnlinkEmployeeButton employeeId={String(emp._id)} />}
-        </div>
+      {canWrite && addToCompanyOptions.length > 0 && (
+        <AddToCompanySheetClient
+          sourceEmployeeId={String(emp._id)}
+          companies={addToCompanyOptions}
+        />
       )}
 
       <section>

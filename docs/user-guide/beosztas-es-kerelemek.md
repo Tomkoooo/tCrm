@@ -36,20 +36,21 @@ Dolgozók műszakbeosztása és HR kérelmek (szabadság, betegszabadság, beosz
 ## Beosztás (HR) — lépésről lépésre
 
 1. Nyissa meg a **Beosztás** oldalt.
-2. Válassza ki a **céget** — **kötelező ajánlott**: a **Dolgozó** lista csak az adott cég rekordjait mutatja. Egy személy több cégnél **külön dolgozói rekord**; a név mellett a cég is látszik, ha nincs cég szűrő.
-3. Opcionálisan válasszon **egy dolgozót** — csak az ő eseményei.
-4. Új esemény: **Új beosztás** — műszak vagy szabad nap (pl. szabadság).
+2. Válassza ki a **céget** — a **Dolgozó** lista csak az adott cég rekordjait mutatja.
+3. Válasszon **dolgozót** — csak az ő eseményei jelennek meg, és a **Tömeges műszak** gomb aktiválódik.
+4. Új egyedi esemény: **Új beosztás** — műszak vagy szabad nap.
 5. Naptárban kattintás / húzás az időszakra — szerkesztés.
 
-### Tömeges beosztás
+### Tömeges műszak
 
-**Tömeges beosztás** gomb (`hr:write`) — panel a naptár felett:
+**Tömeges műszak** gomb (`hr:write`) — akkor aktív, ha egy **dolgozót** kiválasztott:
 
-1. **Dolgozók** — több kijelölés (Cmd/Ctrl + kattintás); csak a kiválasztott **cég** dolgozói érhetők el.
-2. **Dátumtól** / **Dátumig**, **Műszak kezdete** / **Műszak vége**.
-3. **Alkalmazás módja:** minden munkanap (hétköznap, ünnepnélkül), vagy **Kiválasztott napok** (vesszővel felsorolva).
-4. **Meglévő műszak / szabadság napok kihagyása** — bejelölve nem írja felül a már rögzített napokat.
-5. **Tömeges beosztás alkalmazása**.
+1. Válassza ki a **dolgozót** a legördülőből (előbb válasszon céget).
+2. Kattintson **Tömeges műszak** — a panel mutatja a kiválasztott dolgozó nevét.
+3. Állítsa be az **időszakot** (dátumtól–dátumig), **műszak kezdete** és **vége**.
+4. **Mely napokra?** — minden munkanap (H–P, ünnep nélkül) vagy **Csak megadott napok** (vesszővel, pl. `2026-06-01, 2026-06-05`).
+5. **Már rögzített napok kihagyása** — bejelölve nem írja felül a már létező beosztást.
+6. **Műszakok létrehozása**.
 
 ---
 
@@ -71,7 +72,7 @@ Dolgozók műszakbeosztása és HR kérelmek (szabadság, betegszabadság, beosz
 
 ## Gyakori tippek
 
-- **Vendég dolgozó** — nincs belépés, amíg nincs **Fiók összekötése** ([Dolgozók](/help/dolgozok)).
+- **Külsős dolgozó** — nincs belépés, amíg nincs **Fiók összekötése** ([Dolgozók](/help/dolgozok)).
 - **Cég scope:** `hr:scope_all` nélkül csak a hozzárendelt cégek látszanak.
 - Kimutatások **ledolgozott óra** és **szabadság** számítása ehhez a naptárhoz és a jóváhagyott kérelmekhez kapcsolódik.
 

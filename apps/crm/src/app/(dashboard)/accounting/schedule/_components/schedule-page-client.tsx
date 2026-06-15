@@ -43,6 +43,8 @@ export function SchedulePageClient({
     ? employeeIdParam
     : '';
 
+  const selectedEmployee = filteredEmployees.find((e) => e._id === employeeId);
+
   const updateFilter = (key: 'companyId' | 'employeeId', value: string) => {
     const params = new URLSearchParams(searchParams.toString());
     if (value) params.set(key, value);
@@ -55,15 +57,15 @@ export function SchedulePageClient({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-sm">
-          Cég
+          <span className="font-medium">Cég</span>
           <select
             className="border-input bg-background h-9 rounded-md border px-2"
             value={companyId}
             onChange={(e) => updateFilter('companyId', e.target.value)}
           >
-            <option value="">Összes</option>
+            <option value="">Összes cég</option>
             {companies.map((c) => (
               <option key={c._id} value={c._id}>
                 {c.name}
@@ -72,19 +74,13 @@ export function SchedulePageClient({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          Dolgozó
+          <span className="font-medium">Dolgozó</span>
           <select
-            className="border-input bg-background h-9 min-w-[12rem] rounded-md border px-2"
+            className="border-input bg-background h-9 min-w-[14rem] rounded-md border px-2"
             value={employeeId}
             onChange={(e) => updateFilter('employeeId', e.target.value)}
-            disabled={!companyId && filteredEmployees.length > 20}
-            title={
-              !companyId
-                ? 'Cég kiválasztása ajánlott — dolgozói rekord cégenként külön.'
-                : undefined
-            }
           >
-            <option value="">Összes</option>
+            <option value="">Összes dolgozó</option>
             {filteredEmployees.map((e) => (
               <option key={e._id} value={e._id}>
                 {e.label}
@@ -92,47 +88,70 @@ export function SchedulePageClient({
             ))}
           </select>
         </label>
+
         {editable && (
-          <>
+          <div className="flex gap-2">
             <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
               Új beosztás
             </Button>
-            <Button type="button" size="sm" variant="outline" onClick={() => setBulkOpen(true)}>
-              Tömeges beosztás
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setBulkOpen(true)}
+              disabled={!employeeId}
+              title={!employeeId ? 'Előbb válasszon dolgozót' : undefined}
+            >
+              Tömeges műszak
             </Button>
-          </>
+          </div>
         )}
       </div>
-      {!companyId ? (
+
+      {!companyId && (
         <p className="text-muted-foreground text-sm">
-          Válasszon céget a dolgozók szűréséhez — minden céghez külön dolgozói rekord tartozik
-          (külön beosztás és szabadság).
+          Válasszon céget a dolgozók szűréséhez. Minden céghez külön dolgozói rekord tartozik.
         </p>
-      ) : null}
+      )}
+      {companyId && !employeeId && (
+        <p className="text-muted-foreground text-sm">
+          Válasszon dolgozót a naptárjának megtekintéséhez és tömeges műszak létrehozásához.
+        </p>
+      )}
+
       <HrScheduleCalendar
         employeeId={employeeId || undefined}
         companyId={companyId || undefined}
         initialEvents={initialEvents}
       />
+
       {editable && (
         <>
           <EntitySheet
             open={createOpen}
             onOpenChange={setCreateOpen}
             title="Új beosztás"
+            description="Egyetlen műszak vagy szabad nap rögzítése."
             mode="create"
           >
             <CreateScheduleForm employees={formEmployees} onSuccess={() => setCreateOpen(false)} />
           </EntitySheet>
-          <EntitySheet
-            open={bulkOpen}
-            onOpenChange={setBulkOpen}
-            title="Tömeges beosztás"
-            description="Műszakok alkalmazása több napra és dolgozóra — szabadság napok automatikusan kihagyva."
-            mode="create"
-          >
-            <BulkScheduleForm employees={formEmployees} onSuccess={() => setBulkOpen(false)} />
-          </EntitySheet>
+
+          {selectedEmployee && (
+            <EntitySheet
+              open={bulkOpen}
+              onOpenChange={setBulkOpen}
+              title="Tömeges műszak"
+              description="Műszakok létrehozása több napra egyszerre."
+              mode="create"
+            >
+              <BulkScheduleForm
+                employeeId={selectedEmployee._id}
+                employeeName={selectedEmployee.label}
+                onSuccess={() => setBulkOpen(false)}
+              />
+            </EntitySheet>
+          )}
         </>
       )}
     </div>

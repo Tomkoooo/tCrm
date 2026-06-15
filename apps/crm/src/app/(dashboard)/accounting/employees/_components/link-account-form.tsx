@@ -21,7 +21,7 @@ export function LinkAccountForm({
   onSuccess?: () => void;
 }) {
   const router = useRouter();
-  const [query, setQuery] = useState(email ?? '');
+  const [query, setQuery] = useState('');
   const [hits, setHits] = useState<UserHit[]>([]);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [searchPending, startSearch] = useTransition();
@@ -43,6 +43,7 @@ export function LinkAccountForm({
     startSearch(async () => {
       const results = await searchUsersAction(query.trim());
       setHits(results);
+      setSelectedUserId('');
       if (results.length === 1) setSelectedUserId(results[0]!._id);
     });
   };
@@ -61,18 +62,17 @@ export function LinkAccountForm({
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       {email && (
-        <div className="bg-muted/50 flex flex-col gap-2 rounded-lg border p-4">
-          <p className="text-sm">
-            Ha a dolgozó e-mailje (<strong>{email}</strong>) megegyezik egy meglévő CRM fiókéval,
-            egy kattintással összekötheti.
+        <div className="bg-muted/50 rounded-lg border p-4">
+          <p className="mb-2 text-sm font-medium">Gyors összekötés</p>
+          <p className="text-muted-foreground mb-3 text-sm">
+            Ha a dolgozó e-mailje (<code className="bg-muted rounded px-1">{email}</code>) már
+            létezik CRM fiókként:
           </p>
           <Button
             type="button"
-            variant="secondary"
             size="sm"
-            className="self-start"
             loading={emailPending}
             disabled={emailPending}
             onClick={onEmailMatch}
@@ -82,55 +82,62 @@ export function LinkAccountForm({
         </div>
       )}
 
-      <div className="space-y-2">
-        <Label htmlFor="userSearch">Vagy keressen másik felhasználót</Label>
+      <div className="space-y-3">
+        <p className="text-sm font-medium">Keresés név vagy e-mail alapján</p>
         <div className="flex gap-2">
           <Input
-            id="userSearch"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Név vagy e-mail…"
+            placeholder="Írjon be nevet vagy e-mailt…"
+            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), onSearch())}
           />
-          <Button type="button" variant="outline" onClick={onSearch} disabled={searchPending}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onSearch}
+            loading={searchPending}
+            disabled={searchPending || query.trim().length < 2}
+          >
             Keresés
           </Button>
         </div>
+
         {hits.length > 0 && (
-          <select
-            className="border-input bg-background h-9 w-full rounded-md border px-2"
-            value={selectedUserId}
-            onChange={(e) => setSelectedUserId(e.target.value)}
-          >
-            <option value="">Válasszon felhasználót…</option>
-            {hits.map((h) => (
-              <option key={h._id} value={h._id}>
-                {h.name} ({h.email})
-              </option>
-            ))}
-          </select>
+          <div className="space-y-2">
+            <Label>Találatok</Label>
+            <select
+              className="border-input bg-background h-9 w-full rounded-md border px-2"
+              value={selectedUserId}
+              onChange={(e) => setSelectedUserId(e.target.value)}
+            >
+              <option value="">Válasszon…</option>
+              {hits.map((h) => (
+                <option key={h._id} value={h._id}>
+                  {h.name} ({h.email})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {hits.length === 0 && query.trim().length >= 2 && !searchPending && (
+          <p className="text-muted-foreground text-sm">
+            Nincs találat. Ha a személy még nem CRM felhasználó, használja a „Meghívó / új fiók"
+            gombot.
+          </p>
         )}
       </div>
 
-      <form action={action} className="flex flex-col gap-3 border-t pt-4">
-        <input type="hidden" name="employeeId" value={employeeId} />
-        <input type="hidden" name="mode" value="link_existing" />
-        {selectedUserId && <input type="hidden" name="linkUserId" value={selectedUserId} />}
-        <p className="text-muted-foreground text-sm">
-          Új fiók csak akkor kell, ha még nincs CRM felhasználó. E-mail meghívóval is létrehozható.
-        </p>
-        <Button type="submit" loading={pending} disabled={pending || !selectedUserId}>
-          Kiválasztott felhasználó összekötése
-        </Button>
-      </form>
-
-      <details className="text-sm">
-        <summary className="text-muted-foreground cursor-pointer">
-          Új fiók / meghívó (haladó)
-        </summary>
-        <p className="text-muted-foreground mb-2 mt-2">
-          Ha nincs még felhasználó, használja a dolgozó oldalon a teljes meghívó űrlapot.
-        </p>
-      </details>
+      {selectedUserId && (
+        <form action={action}>
+          <input type="hidden" name="employeeId" value={employeeId} />
+          <input type="hidden" name="mode" value="link_existing" />
+          <input type="hidden" name="linkUserId" value={selectedUserId} />
+          <Button type="submit" loading={pending} disabled={pending}>
+            Összekötés
+          </Button>
+        </form>
+      )}
     </div>
   );
 }

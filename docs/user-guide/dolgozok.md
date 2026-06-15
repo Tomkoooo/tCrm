@@ -24,38 +24,38 @@ Könyvelés → **Dolgozók** (`/accounting/employees`).
 
 1. A listán: **Új dolgozó**.
 2. Kötelező: **Cég**, **Név**. Ajánlott: **E-mail** (fiók összekötéshez / meghívóhoz).
-3. **Mentés** — kezdetben a lista **CRM fiók** oszlopában „Nincs fiók” látszik.
+3. **Mentés** — kezdetben a lista **CRM fiók** oszlopában „Nincs fiók" látszik.
 
-## Belépés típus ≠ CRM fiók
+## Státusz ≠ CRM fiók
 
-Az adatlap **Belépés típus** mezője (Vendég / Dolgozó) **csak címkézés** — önmagában **nem** ad belépést és **nem** köti össze a felhasználót.
+Az adatlap **Státusz** mezője (Külsős / Alkalmazott) **csak címkézés** — HR nyilvántartáshoz, nem ad belépést.
 
-A dolgozó csak akkor látja a **Saját beosztás** oldalt, ha a rekordhoz **Fiók összekötése** vagy **Meghívó / új fiók** megtörtént, és a fejlécben **„CRM fiók összekötve”** szerepel.
+A dolgozó csak akkor látja a **Saját beosztás** oldalt, ha a dolgozó részleteknél a **CRM belépés** szekcióban **„Fiók összekötve"** látszik — ehhez **Fiók összekötése** vagy **Meghívó / új fiók** szükséges.
 
 ---
 
-## Meglévő dolgozó + meglevő CRM fiók összekötése
+## Meglévő dolgozó + meglévő CRM fiók összekötése
 
 **Cél:** a személy bejelentkezés után lássa a műszakjait a **Saját beosztás** oldalon.
 
 **Szükséges:** `hr:write`, a dolgozónál még **nincs** összekötött fiók.
 
 1. Nyissa meg a dolgozó **részleteit** (kattintás a sorra) — a **megfelelő cég** rekordját, ha több cégnél is dolgozik.
-2. Ellenőrizze: a fejléc alatt **„Nincs CRM fiók”**.
+2. Ellenőrizze a **CRM belépés** szekciót: **„Nincs CRM fiók"** látszik.
 3. Kattintson **Fiók összekötése**.
 
-**A) E-mail egyezés (legegyszerűbb)**
+**A) Gyors összekötés e-mail alapján**
 
 - A dolgozó **E-mail** mezője legyen kitöltve, és **ugyanaz** legyen, mint a CRM felhasználó e-mailje.
 - A panelen: **Összekötés e-mail alapján**.
 
-**B) Keresés más felhasználóra**
+**B) Keresés név vagy e-mail alapján**
 
 1. Írjon be **nevet vagy e-mailt** (legalább 2 karakter) → **Keresés**.
 2. Válassza ki a listából a felhasználót.
-3. **Kiválasztott felhasználó összekötése**.
+3. **Összekötés**.
 
-Siker után: **CRM fiók összekötve**, a listán **„Összekötve”**. A felhasználó az **employee** szerepkört kapja (saját beosztás, kérelmek).
+Siker után: a **CRM belépés** szekció **„Fiók összekötve"**-ra vált, a listán **CRM fiók** oszlopban **„Összekötve"**. A felhasználó az **employee** szerepkört kapja (saját beosztás, kérelmek).
 
 ### Tömeges összekötés
 
@@ -67,7 +67,7 @@ A dolgozók listán: **E-mail egyezés összekötése** — minden fiók nélkü
 
 ### Fiók leválasztása
 
-Ha már össze van kötve: **Fiók leválasztása** a részleteken. A dolgozói rekord megmarad, de a belépés nem látja többé ezt a rekordot.
+Ha már össze van kötve: a **CRM belépés** szekcióban **Fiók leválasztása** gomb. A dolgozói rekord megmarad, de a belépés nem látja többé ezt a rekordot.
 
 ---
 
@@ -97,7 +97,7 @@ Ha csak az egyik rekordon van fiók, a dolgozó a **Saját beosztás** oldalon c
 |---------|--------|
 | Két rekord, két különböző cég | Megtartani mindkettőt; fiókot mindkettőhöz kötni |
 | Két rekord **ugyanabban** a cégben (duplikátum) | HR egyeztetés után az egyik inaktiválása/törlése |
-| „Újra felvenni” másik céghez adás helyett | Felesleges — használja **Másik céghez adás** |
+| „Újra felvenni" másik céghez adás helyett | Felesleges — használja **Másik céghez adás** |
 
 ---
 
@@ -112,7 +112,8 @@ Ezek a **Kimutatások → Havi bér és órák** fül bruttó oszlopához kellen
 
 ## Lista oszlopok
 
-- **CRM fiók:** „Összekötve” vagy „Nincs fiók”
+- **CRM fiók:** „Összekötve" vagy „Nincs fiók"
+- **Státusz:** „Alkalmazott" vagy „Külsős"
 - **Cég:** melyik céghez tartozik a rekord
 
 ## Kapcsolódó

@@ -58,7 +58,7 @@ export default async function EmployeesPage({
     },
     {
       key: 'employmentType',
-      label: 'Típus',
+      label: 'Státusz',
       type: 'string',
       sortable: true,
       filterable: true,
@@ -94,7 +94,7 @@ export default async function EmployeesPage({
     companyName: companyNameById.get(String(e.companyId)) ?? '—',
     email: e.email,
     department: e.department,
-    employmentType: e.employmentType === 'guest' ? 'Vendég' : 'Dolgozó',
+    employmentType: e.employmentType === 'guest' ? 'Külsős' : 'Alkalmazott',
     isActive: e.isActive,
     hasUser: Boolean(e.userId),
     accountLabel: e.userId ? 'Összekötve' : 'Nincs fiók',

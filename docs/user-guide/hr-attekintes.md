@@ -38,7 +38,7 @@ A régi külön „Kimutatások” és „Szabadság összesítő” menüpontok
 
 - **Dolgozói rekord** = egy személy **egy cégnél** (külön beosztás, szabadságkeret, kimutatás).
 - **CRM fiók** = belépés; egy fiók **több céghez** is tartozhat (több dolgozói rekord, ugyanaz a bejelentkezés).
-- **Vendég dolgozó** = HR rögzíti, nincs (még) összekötött belépés.
+- **Külsős** = HR rögzíti, nincs (még) összekötött belépés; **Alkalmazott** = belső dolgozó (mindkettő csak címke, nem ad automatikus hozzáférést).
 
 ## Tipikus HR folyamat
 

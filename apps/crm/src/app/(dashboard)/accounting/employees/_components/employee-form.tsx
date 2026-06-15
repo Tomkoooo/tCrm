@@ -163,16 +163,17 @@ function EmployeeFormFields({
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="employmentType">Belépés típus</Label>
+          <Label htmlFor="employmentType">Státusz</Label>
           <select
             id="employmentType"
             name="employmentType"
             className="border-input bg-background flex h-9 w-full rounded-md border px-3 text-sm"
             defaultValue={defaultValues?.employmentType ?? 'guest'}
           >
-            <option value="guest">Vendég (nincs belépés)</option>
-            <option value="employee">Dolgozó (van belépés)</option>
+            <option value="guest">Külsős / vendég</option>
+            <option value="employee">Alkalmazott</option>
           </select>
+          <p className="text-muted-foreground text-xs">CRM belépés: lásd „Fiók összekötése" lent</p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="workerCategory">Munkavállaló kategória</Label>
