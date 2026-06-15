@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { requirePermission } from '@crm/auth';
+import { requireAnyPermission } from '@crm/auth';
+import { LOGISTICS_READ_PERMISSION_KEYS } from '@crm/lib';
 import { connectDB, StockMovement } from '@crm/db';
 import { Container, parseDataTableQuery, buildDataTableMongoQuery } from '@crm/ui';
 import type { ColumnDef } from '@crm/ui';
@@ -11,7 +12,7 @@ export default async function MovementsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requirePermission('logistics:read');
+  await requireAnyPermission([...LOGISTICS_READ_PERMISSION_KEYS]);
   await connectDB();
 
   const query = parseDataTableQuery(await searchParams);

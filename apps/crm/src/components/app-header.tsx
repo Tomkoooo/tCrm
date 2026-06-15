@@ -48,6 +48,7 @@ export function translateSegment(segment: string): string {
     schedule: 'Beosztás',
     requests: 'Kérelmek',
     reports: 'Kimutatások',
+    'leave-summary': 'Kimutatások',
     my: 'Saját beosztás',
     branding: 'Arculat',
     help: 'Súgó',
@@ -74,7 +75,7 @@ export default function AppHeader() {
   }, [pathnameSegments.length]);
 
   return (
-    <Container className="bg-background sticky top-0 z-10 pb-0">
+    <Container className="bg-background z-10 shrink-0 pb-0">
       <div className="flex flex-row items-center gap-2">
         <SidebarTrigger />
         <Breadcrumb className="invis-scroll flex-1 overflow-x-auto" ref={ref}>

@@ -302,8 +302,9 @@ stateDiagram-v2
 | `Vehicle.companyId` | Könyvelés cég (`/accounting/companies`) — tulajdonos |
 | `Company.companyData` | Kulcs–érték mezők (adószám, székhely, …) |
 | `Vehicle.registrationDueDate` / `insuranceDueDate` | Forgalmi / biztosítás lejárat — figyelmeztetés 30 napon belül a `/logistics` dashboardon |
-| `Vehicle.allowedUserIds` / `allowedRoleIds` | Jogosult vezetők/karbantartók — incidens bejelentés |
-| `VehicleIncident` | Bejelentés leírással + fotókkal; logisztika `logistics:write` lezárja |
+| `logistics:vehicles:read` | Csak flotta lista/részlet (mozgások, szállítások nélkül) |
+| `logistics:vehicles:report` | Incidens bejelentés leírással + fotókkal (RBAC, nem jármű-párosítás) |
+| `VehicleIncident` | Bejelentés leírással + fotókkal; `logistics:write` lezárja |
 | `Product.isConsumable` | Fogyó: nincs `lostQuantity` |
 | Útvonalak | `/logistics/jobs`, `/logistics/vehicles`, `/logistics/vehicles/[id]`, KPI: `/logistics` |
 | Termék KPI | `/inventory/dashboard` — érték, alacsony készlet, BOM |
@@ -318,9 +319,8 @@ flowchart TD
   vehicle --> media[Médiatár: képek, jogosítvány, forgalmi, biztosítás]
   vehicle --> dueDates[Lejárat dátumok]
   dueDates --> dashWarn[Logisztika dashboard figyelmeztetés 30 nap]
-  vehicle --> staff[Jogosult user/role párosítás]
-  staff --> report[Incidens bejelentés + fotó]
-  report --> logisticsFix[Logisztika lezárja]
+  permReport[logistics:vehicles:report] --> report[Incidens bejelentés + fotó]
+  report --> logisticsFix[logistics:write lezárja]
 ```
 
 | Lépés | Leírás |
@@ -463,8 +463,10 @@ flowchart TD
 | `inventory:read` / `write` / `import` | Készlet |
 | `suppliers:read` / `manage` | Beszállítók |
 | `warehouses:read` / `manage` | Raktárak |
-| `logistics:read` / `write` | Szállítások, workflow |
+| `logistics:read` / `write` | Szállítások, mozgások, foglalások, logisztika áttekintés |
 | `logistics:scope_all` | Minden raktár (nem csak `assignedUserIds`) |
+| `logistics:vehicles:read` | Járműflotta megtekintés (sidebar csak Járműflotta) |
+| `logistics:vehicles:report` | Incidens bejelentés (leírás + fotó) |
 | `media:read` / `upload` / `delete` | Központi médiatár |
 
 ---
@@ -581,4 +583,4 @@ Részletek: [`hr.md`](./hr.md).
 
 ---
 
-*Utolsó frissítés: 2026-06 — készlet lista BOM típus badge + szűrő; korábban: in-app súgó, BOM szerkesztő, merge-safe import.*
+*Utolsó frissítés: 2026-06 — logisztika RBAC: `logistics:vehicles:read` / `report`, sidebar write→read, incidens jogosultság; korábban: készlet lista BOM típus badge + szűrő.*

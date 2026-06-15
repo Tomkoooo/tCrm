@@ -11,7 +11,7 @@ export function InviteSheetClient({ employeeId, email }: { employeeId: string; e
   return (
     <>
       <Button type="button" size="sm" variant="outline" onClick={() => setOpen(true)}>
-        Meghívás (fiók)
+        Meghívó / új fiók
       </Button>
       <EntitySheet
         open={open}

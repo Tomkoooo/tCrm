@@ -100,6 +100,20 @@ const BASELINE_PERMISSIONS = [
     isSystem: true,
   },
   {
+    key: 'logistics:vehicles:read',
+    label: 'View vehicle fleet',
+    group: 'logistics',
+    description: 'View fleet list and vehicle details (no movements, jobs, or reservations)',
+    isSystem: true,
+  },
+  {
+    key: 'logistics:vehicles:report',
+    label: 'Report vehicle incidents',
+    group: 'logistics',
+    description: 'Submit incident descriptions and photos on visible vehicles',
+    isSystem: true,
+  },
+  {
     key: 'warehouses:read',
     label: 'View Warehouses',
     group: 'inventory',
@@ -315,6 +329,20 @@ const BASELINE_ROLES = [
     name: 'Employee',
     description: 'Self-service schedule and time-off requests',
     permissionKeys: ['hr:self'],
+    isSystem: true,
+  },
+  {
+    key: 'fleet_viewer',
+    name: 'Fleet viewer',
+    description: 'Read-only access to the vehicle fleet',
+    permissionKeys: ['logistics:vehicles:read', 'media:read'],
+    isSystem: true,
+  },
+  {
+    key: 'driver',
+    name: 'Driver',
+    description: 'View fleet and report vehicle incidents',
+    permissionKeys: ['logistics:vehicles:read', 'logistics:vehicles:report', 'media:read'],
     isSystem: true,
   },
 ];

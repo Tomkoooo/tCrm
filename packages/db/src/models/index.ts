@@ -49,7 +49,15 @@ export {
   type PickupStatus,
 } from './LogisticsJob';
 export { Company, type ICompany } from './Company';
-export { Employee, type IEmployee, type EmploymentType } from './Employee';
+export {
+  Employee,
+  type IEmployee,
+  type EmploymentType,
+  type WorkerCategory,
+  type WorkScheduleType,
+  type EmployeePayType,
+  type IEmployeePersonalData,
+} from './Employee';
 export { HrCompanyScope, type IHrCompanyScope } from './HrCompanyScope';
 export { ScheduleEntry, type IScheduleEntry, type ScheduleEntryKind } from './ScheduleEntry';
 export {
@@ -60,6 +68,7 @@ export {
   type HrRequestStatus,
 } from './HrRequest';
 export { MonthlyWorkSummary, type IMonthlyWorkSummary } from './MonthlyWorkSummary';
+export { EmployeeLeaveYear, type IEmployeeLeaveYear } from './EmployeeLeaveYear';
 export { MailTemplate, type IMailTemplate } from './MailTemplate';
-export { UserInvitation, type IUserInvitation } from './UserInvitation';
+export { UserInvitation, type IUserInvitation, type UserInvitationKind } from './UserInvitation';
 export { Branding, type IBranding } from './Branding';

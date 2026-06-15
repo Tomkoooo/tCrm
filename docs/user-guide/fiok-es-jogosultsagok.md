@@ -40,10 +40,12 @@ Minden bejelentkezett felhasználó számára elérhető.
 
 - A menü **csak kényelmi szűrés** — az oldalak szerver oldalon is ellenőrzik a jogot. Közvetlen URL megnyitása jog nélkül hibát ad.
 - Szerepkörök kezelése: [Szerepkörök](/help/admin-szerepkorok) (csak `roles:manage` joggal).
+- **Saját beosztás** (műszak, kérelmek) a **Fiók** oldaltól külön van: Beállítások → **Saját beosztás**. Ha üres vagy hibát ír, az HR-nek **Fiók összekötése** kell a dolgozói rekordon — lásd [Dolgozók](/help/dolgozok).
 
 ## Kapcsolódó fejezetek
 
 - [Áttekintés](/help)
 - [Felhasználók és meghívók](/help/admin-felhasznalok)
+- [Saját beosztás](/help/sajat-beosztas)
 
 *Utolsó frissítés: 2026-06*

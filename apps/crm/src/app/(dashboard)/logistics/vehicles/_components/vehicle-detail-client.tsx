@@ -8,12 +8,7 @@ import type { VehicleComplianceWarning, VehicleIncidentListItem } from '@crm/cor
 import { EditVehicleForm } from './vehicle-edit-form';
 import { VehicleIncidentReportForm } from './vehicle-incident-form';
 import { VehicleIncidentsList } from './vehicle-incidents-list';
-import {
-  VehicleDetailShell,
-  VehicleDetailTabs,
-  type VehicleDetailTab,
-  useVehicleDetailTab,
-} from './vehicle-detail-tabs';
+import { VehicleDetailShell, VehicleDetailTabs, useVehicleDetailTab } from './vehicle-detail-tabs';
 
 type CompanyInfo = {
   _id: string;
@@ -21,9 +16,6 @@ type CompanyInfo = {
   slug: string;
   companyDataEntries: Array<{ key: string; value: string }>;
 };
-
-type StaffMember = { id: string; name: string };
-type RoleInfo = { id: string; name: string };
 
 function formatDueDate(value?: string): string {
   if (!value) return '—';
@@ -58,8 +50,6 @@ function ComplianceAlert({ label, dueDate }: { label: string; dueDate?: string }
 function OverviewTab({
   vehicle,
   company,
-  allowedUsers,
-  allowedRoles,
   warnings,
 }: {
   vehicle: {
@@ -75,8 +65,6 @@ function OverviewTab({
     insuranceDueDate?: string;
   };
   company?: CompanyInfo;
-  allowedUsers: StaffMember[];
-  allowedRoles: RoleInfo[];
   warnings: VehicleComplianceWarning[];
 }) {
   return (
@@ -139,38 +127,6 @@ function OverviewTab({
           ) : (
             <p className="text-muted-foreground">Nincs hozzárendelt cég.</p>
           )}
-        </CardContent>
-      </Card>
-
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle className="text-base">Jogosult vezetők / karbantartók</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          <div>
-            <p className="text-muted-foreground mb-2 text-xs font-medium uppercase">Felhasználók</p>
-            {allowedUsers.length > 0 ? (
-              <ul className="space-y-1 text-sm">
-                {allowedUsers.map((user) => (
-                  <li key={user.id}>{user.name}</li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-muted-foreground text-sm">Nincs egyedi felhasználó.</p>
-            )}
-          </div>
-          <div>
-            <p className="text-muted-foreground mb-2 text-xs font-medium uppercase">Szerepkörök</p>
-            {allowedRoles.length > 0 ? (
-              <ul className="space-y-1 text-sm">
-                {allowedRoles.map((role) => (
-                  <li key={role.id}>{role.name}</li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-muted-foreground text-sm">Nincs szerepkör hozzárendelve.</p>
-            )}
-          </div>
         </CardContent>
       </Card>
 
@@ -285,9 +241,6 @@ export function VehicleDetailClient({
   vehicle,
   company,
   companies,
-  roles,
-  allowedUsers,
-  allowedRoles,
   incidents,
   warnings,
   canWrite,
@@ -310,14 +263,9 @@ export function VehicleDetailClient({
     licenseFileId?: string;
     registrationFileId?: string;
     insuranceFileId?: string;
-    allowedUserIds: string[];
-    allowedRoleIds: string[];
   };
   company?: CompanyInfo;
   companies: Array<{ _id: string; name: string }>;
-  roles: RoleInfo[];
-  allowedUsers: StaffMember[];
-  allowedRoles: RoleInfo[];
   incidents: VehicleIncidentListItem[];
   warnings: VehicleComplianceWarning[];
   canWrite: boolean;
@@ -340,13 +288,7 @@ export function VehicleDetailClient({
       }
     >
       {activeTab === 'overview' && (
-        <OverviewTab
-          vehicle={vehicle}
-          company={company}
-          allowedUsers={allowedUsers}
-          allowedRoles={allowedRoles}
-          warnings={warnings}
-        />
+        <OverviewTab vehicle={vehicle} company={company} warnings={warnings} />
       )}
       {activeTab === 'documents' && (
         <DocumentsTab
@@ -360,7 +302,15 @@ export function VehicleDetailClient({
       )}
       {activeTab === 'incidents' && (
         <div className="flex flex-col gap-6">
-          {canReportIncident && <VehicleIncidentReportForm vehicleId={vehicle._id} />}
+          {canReportIncident ? (
+            <VehicleIncidentReportForm vehicleId={vehicle._id} />
+          ) : (
+            <p className="text-muted-foreground rounded-md border border-dashed p-4 text-sm">
+              Incidens bejelentéshez a <span className="font-medium">Report vehicle incidents</span>{' '}
+              (<code className="text-xs">logistics:vehicles:report</code>) jogosultság szükséges.
+              Kérje az adminisztrátortól a Fiók → Jogosultságok menüben.
+            </p>
+          )}
           <VehicleIncidentsList
             vehicleId={vehicle._id}
             incidents={incidents}
@@ -369,7 +319,7 @@ export function VehicleDetailClient({
         </div>
       )}
       {activeTab === 'edit' && canWrite && (
-        <EditVehicleForm vehicle={vehicle} companies={companies} roles={roles} />
+        <EditVehicleForm vehicle={vehicle} companies={companies} />
       )}
     </VehicleDetailShell>
   );

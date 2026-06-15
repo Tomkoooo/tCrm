@@ -1,39 +1,78 @@
 ---
-title: Havi kimutatások
-description: Ledolgozott órák és szabadságok exportja XLSX formátumban.
-order: 43
+title: Kimutatások
+description: Szabadság összesítő és havi bér/óra kimutatások, export könyvelőnek.
+order: 34
 section: Könyvelés és HR
 permissions:
   - hr:reports
-  - hr:write
 ---
 
-## Mire való
+# Kimutatások
 
-Havi munkaidő-összesítő kimutatás generálása és Excel export könyveléshez.
+## Hol található
 
-## Hol találod
+Könyvelés → **Kimutatások** (`/accounting/leave-summary`).
 
-**Könyvelés és HR → Kimutatások** (`/accounting/reports`)
+A korábbi külön **Kimutatások** (`/accounting/reports`) útvonal ide irányít.
 
-## Szükséges jogosultság
+## Jogosultság
 
-`hr:reports` vagy `hr:write`
+`hr:reports` (vagy `hr:write`)
 
-## Lépésről lépésre
+## Két fül
 
-1. Nyisd meg a **Kimutatások** oldalt.
-2. Válaszd ki az **évet és hónapot**.
-3. Opcionálisan szűrj cégre vagy dolgozóra.
-4. Tekintsd meg az összesítő táblázatot.
-5. Kattints **Export** — letöltődik az `hr-{év}-{hónap}.xlsx` fájl.
+A lap tetején:
 
-## Export oszlopok
+- **Szabadság összesítő**
+- **Havi bér és órák**
 
-Cég, dolgozó, osztály, ledolgozott óra, szabadság nap, beteg nap, táppénz (HUF), megjegyzés.
+---
 
-## Kapcsolódó fejezetek
+## Szabadság összesítő fül
 
+- **Állandó dolgozók** / **Alkalmi munkavállalók** — váltó gombok a táblázat felett
+- Táblázat: keresés, rendezés, oszlopválasztó, lapozás (ugyanaz a táblázat-kezelő, mint más listáknál, pl. termékek)
+- **Éves keret** — soronként szerkeszthető (szám + ✓ mentés)
+- Havi oszlopok: felhasznált napok **dátumokkal** (jóváhagyott kérelmek + beosztás „szabad” napjai)
+- **Felhasznált** / **Maradék** napok
+- Alkalmi fülön: TAJ, adóazonosító oszlopok
+- Ugyanaz a személy **több cégnél** külön sorban jelenik meg
+
+**Szűrők a táblázat felett:** év, export hónap, cég. **Export hónap (XLSX)** / **Export év (XLSX)**.
+
+Részletes lépések: [Szabadság összesítő](/help/szabadsag-osszesito).
+
+---
+
+## Havi bér és órák fül
+
+- **Éves szabadságkeret** és **maradék** minden sorban
+- **Szabadság / betegnap** — beosztásból és jóváhagyott kérelmekből (dátumokkal a cellában)
+- **Ledolgozott óra** — műszakokból; **Mentés** után könyvelői értékre írható
+- **Bér típus** és bruttó — a dolgozó adatlap **Bérezés** mezői alapján
+- **Táppénz (HUF)** — külön mező
+- **Beosztásból** — javasolt óra / szabadság / betegnap megjelenítése (toast üzenet); ezután szükség esetén kézzel módosít és **Mentés**
+
+**Szűrők:** év, hónap, cég. **XLSX export** — keret, maradék, bér típus, bruttó oszlopokkal.
+
+A bér beállítása: [Dolgozók](/help/dolgozok) → adatlap → **Bérezés (kimutatások)**.
+
+---
+
+## Tipikus havi folyamat (könyvelő / HR)
+
+1. **Kimutatások** → **Havi bér és órák**.
+2. Év, hónap, cég kiválasztása.
+3. Ellenőrizze a beosztásból jövő értékeket; **Beosztásból** gombbal összevetés.
+4. Szükség esetén módosítás → **Mentés** soronként.
+5. **XLSX export** könyvelőnek.
+
+Szabadság éves ellenőrzéshez: **Szabadság összesítő** fül, év + cég, **Export év**.
+
+## Kapcsolódó
+
+- [Dolgozók](/help/dolgozok)
 - [Beosztás és kérelmek](/help/beosztas-es-kerelemek)
+- [Szabadság összesítő](/help/szabadsag-osszesito)
 
 *Utolsó frissítés: 2026-06*

@@ -1,9 +1,9 @@
 import crypto from 'node:crypto';
-import { connectDB, User, UserInvitation, type IUserInvitation } from '@crm/db';
+import { connectDB, Employee, User, UserInvitation, type IUserInvitation } from '@crm/db';
 import { getAppUrl } from '@crm/lib';
 import type { Types } from 'mongoose';
+import { linkUserToCompanyEmployee } from '../hr/user-provisioning';
 import { sendTemplatedEmail } from './mailer';
-import { getActorEmail } from './recipients';
 
 export type CreateInvitationInput = {
   email: string;
@@ -43,8 +43,20 @@ export async function createUserInvitation(
 
   const email = input.email.toLowerCase().trim();
   const existingUser = await User.findOne({ email }).exec();
-  if (existingUser) {
+  const isCompanyJoin = Boolean(existingUser) && Boolean(input.isEmployee && input.companyId);
+
+  if (existingUser && !isCompanyJoin) {
     throw new Error('Ez az e-mail cím már foglalt.');
+  }
+
+  if (isCompanyJoin && existingUser && input.companyId) {
+    const alreadyMember = await Employee.findOne({
+      userId: existingUser._id,
+      companyId: input.companyId,
+    }).exec();
+    if (alreadyMember) {
+      throw new Error('A felhasználó már dolgozó ebben a cégben.');
+    }
   }
 
   const pending = await UserInvitation.findOne({
@@ -65,6 +77,7 @@ export async function createUserInvitation(
     email,
     name: input.name.trim(),
     token,
+    kind: isCompanyJoin ? 'company_join' : 'new_user',
     roleIds: input.roleIds,
     directPermissionKeys: input.directPermissionKeys ?? [],
     companyId: input.companyId,
@@ -140,4 +153,42 @@ export async function createAndSendInvitation(
   const { invitation, inviteLink } = await createUserInvitation(input);
   await sendInvitationEmail(invitation, inviteLink);
   return { invitation, inviteLink };
+}
+
+export async function acceptCompanyJoinInvitation(
+  invitation: IUserInvitation
+): Promise<{ userId: string; email: string; needsOnboarding: boolean }> {
+  await connectDB();
+  const user = await User.findOne({ email: invitation.email }).exec();
+  if (!user) {
+    throw new Error('Felhasználó nem található — érvénytelen cégmeghívó.');
+  }
+  if (!invitation.companyId) {
+    throw new Error('A meghívó nem tartalmaz céget.');
+  }
+
+  await linkUserToCompanyEmployee(
+    user._id,
+    {
+      name: invitation.name.trim() || user.name,
+      email: invitation.email,
+      companyId: invitation.companyId,
+      employeeNumber: invitation.employeeNumber,
+      department: invitation.department,
+      phone: invitation.phone,
+      hrNotes: invitation.hrNotes,
+      isActive: true,
+    },
+    { skipCompanyScope: true }
+  );
+
+  await User.updateOne({ _id: user._id }, { $unset: { employeeOnboardingCompletedAt: 1 } }).exec();
+
+  await markInvitationUsed(invitation._id);
+
+  return {
+    userId: user._id.toString(),
+    email: user.email,
+    needsOnboarding: true,
+  };
 }

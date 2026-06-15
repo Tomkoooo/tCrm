@@ -7,6 +7,7 @@ import {
   type IVehicle,
   type IVehicleIncident,
 } from '@crm/db';
+import { hasAnyPermission, LOGISTICS_VEHICLES_REPORT_PERMISSION_KEYS } from '@crm/lib';
 import { syncMediaUsage } from '../inventory/media';
 
 export type VehicleComplianceWarning = {
@@ -96,17 +97,8 @@ export async function getVehicleComplianceWarnings(
   return warnings.sort((a, b) => a.daysUntilDue - b.daysUntilDue);
 }
 
-export async function canUserReportVehicleIncident(
-  vehicle: Pick<IVehicle, 'allowedUserIds' | 'allowedRoleIds'>,
-  userId: string,
-  userRoleIds: Types.ObjectId[]
-): Promise<boolean> {
-  const uid = userId.toString();
-  if (vehicle.allowedUserIds.some((id) => id.toString() === uid)) {
-    return true;
-  }
-  const allowedRoleSet = new Set(vehicle.allowedRoleIds.map((id) => id.toString()));
-  return userRoleIds.some((roleId) => allowedRoleSet.has(roleId.toString()));
+export function canUserReportVehicleIncident(userPermissionKeys: string[]): boolean {
+  return hasAnyPermission(userPermissionKeys, LOGISTICS_VEHICLES_REPORT_PERMISSION_KEYS);
 }
 
 async function syncVehicleMediaField(opts: {

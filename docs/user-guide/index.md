@@ -19,7 +19,7 @@ A tCrm belső üzemeltetői rendszer készletkezeléshez, logisztikához, HR mod
 1. Jelentkezz be a szervezeti e-mail címeddel és jelszavaddal.
 2. A **Vezérlőpult** (`/`) mutatja a számodra elérhető modulokat — csak azok a kártyák és gyors műveletek jelennek meg, amelyekhez jogosultságod van.
 3. A bal oldali menü csoportokban találod a modulokat: Készletkezelés, Logisztika, Könyvelés és HR, Beállítások, Adminisztráció.
-4. A **Fiók** oldalon (`/account`) ellenőrizheted a neved, jelszavad és az érvényes jogosultságok listáját.
+4. A **Fiók** oldalon (`/account`) a neved, jelszavad és jogosultságok láthatók. Dolgozói **műszak és kérelmek**: Beállítások → **Saját beosztás** (`/accounting/my`).
 
 ## Mit látsz a menüben?
 

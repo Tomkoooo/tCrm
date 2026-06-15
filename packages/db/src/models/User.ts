@@ -12,6 +12,7 @@ export interface IUser extends Document {
   isActive: boolean;
   resetToken?: string;
   resetTokenExpires?: Date;
+  employeeOnboardingCompletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,6 +29,7 @@ const UserSchema = new Schema<IUser>(
     isActive: { type: Boolean, default: true },
     resetToken: { type: String },
     resetTokenExpires: { type: Date },
+    employeeOnboardingCompletedAt: { type: Date },
   },
   { timestamps: true }
 );

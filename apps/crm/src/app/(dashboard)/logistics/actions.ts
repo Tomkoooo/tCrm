@@ -2,7 +2,8 @@
 
 import mongoose from 'mongoose';
 import { revalidatePath } from 'next/cache';
-import { requireAuth, requirePermission } from '@crm/auth';
+import { requireAuth, requireAnyPermission, requirePermission } from '@crm/auth';
+import { LOGISTICS_READ_PERMISSION_KEYS } from '@crm/lib';
 import { connectDB, Product, Reservation } from '@crm/db';
 import {
   cancelMovement,
@@ -276,16 +277,14 @@ export async function releaseReservationsByRefAction(
   }
 }
 
-export async function loadReferenceLinesAction(
-  reference: string
-): Promise<
+export async function loadReferenceLinesAction(reference: string): Promise<
   | { success: false; message: string }
   | {
       success: true;
       lines: Array<{ productId: string; sku: string; name: string; quantity: number }>;
     }
 > {
-  await requirePermission('logistics:read');
+  await requireAnyPermission([...LOGISTICS_READ_PERMISSION_KEYS]);
   await connectDB();
 
   const ref = reference.trim().toUpperCase();
@@ -339,7 +338,7 @@ export async function releaseReservationAction(
 }
 
 export async function requireLogisticsRead() {
-  await requirePermission('logistics:read');
+  await requireAnyPermission([...LOGISTICS_READ_PERMISSION_KEYS]);
 }
 
 export async function requireLogisticsWrite() {

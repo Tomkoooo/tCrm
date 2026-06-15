@@ -2,30 +2,23 @@
 
 import { revalidatePath } from 'next/cache';
 import mongoose from 'mongoose';
-import { requireAuth } from '@crm/auth';
-import {
-  getEmployeeByUserId,
-  submitHrRequest,
-  cancelHrRequest,
-  listScheduleEntries,
-} from '@crm/core';
+import { submitHrRequest, cancelHrRequest, listScheduleEntries } from '@crm/core';
 import { hrRequestSchema } from '@crm/lib/validation';
+import { getLinkedEmployeeForSession } from '@/lib/hr/require-linked-employee';
 import { zodToFieldErrors, type HrFormState } from '../_components/form-utils';
 
-async function requireMyEmployee() {
-  const user = await requireAuth();
-  if (!user) throw new Error('Unauthorized');
-  const userId = new mongoose.Types.ObjectId(user.id);
-  const emp = await getEmployeeByUserId(userId);
-  if (!emp) throw new Error('Nincs dolgozói rekord ehhez a fiókhoz.');
-  return { userId, emp };
+async function requireMyEmployee(employeeIdParam?: string | null) {
+  return getLinkedEmployeeForSession({ employeeId: employeeIdParam });
 }
 
 export async function submitMyRequestAction(
   _prev: HrFormState,
   formData: FormData
 ): Promise<HrFormState> {
-  const { userId, emp } = await requireMyEmployee();
+  const employeeIdParam = formData.get('activeEmployeeId');
+  const { userId, employee: emp } = await requireMyEmployee(
+    typeof employeeIdParam === 'string' ? employeeIdParam : null
+  );
 
   const type = formData.get('type') as string;
   let parsed;
@@ -96,8 +89,8 @@ export async function cancelMyRequestAction(requestId: string): Promise<HrFormSt
   }
 }
 
-export async function fetchMyScheduleAction(start: string, end: string) {
-  const { emp } = await requireMyEmployee();
+export async function fetchMyScheduleAction(start: string, end: string, employeeId?: string) {
+  const { employee: emp } = await requireMyEmployee(employeeId ?? null);
 
   const entries = await listScheduleEntries({
     start: new Date(start),

@@ -26,6 +26,11 @@ export default async function SchedulePage({
   const rangeStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const rangeEnd = new Date(now.getFullYear(), now.getMonth() + 2, 0);
 
+  const companyOid =
+    companyId && mongoose.Types.ObjectId.isValid(companyId)
+      ? new mongoose.Types.ObjectId(companyId)
+      : undefined;
+
   const [entries, companies] = await Promise.all([
     listScheduleEntries({
       start: rangeStart,
@@ -34,21 +39,35 @@ export default async function SchedulePage({
         employeeId && mongoose.Types.ObjectId.isValid(employeeId)
           ? new mongoose.Types.ObjectId(employeeId)
           : undefined,
-      companyId:
-        companyId && mongoose.Types.ObjectId.isValid(companyId)
-          ? new mongoose.Types.ObjectId(companyId)
-          : undefined,
+      companyId: companyOid,
       allowedCompanyIds,
     }),
     listActiveCompanies(allowedCompanyIds),
   ]);
 
-  const empFilter = buildCompanyFilter(allowedCompanyIds);
-  const employees = await Employee.find({ ...empFilter, isActive: true })
-    .sort({ name: 1 })
-    .select({ name: 1 })
+  const companyNameById = new Map(companies.map((c) => [String(c._id), c.name]));
+
+  const empFilter: Record<string, unknown> = {
+    ...buildCompanyFilter(allowedCompanyIds),
+    isActive: true,
+  };
+  if (companyOid) empFilter.companyId = companyOid;
+
+  const employeeDocs = await Employee.find(empFilter)
+    .sort({ name: 1, companyId: 1 })
+    .select({ name: 1, companyId: 1 })
     .lean()
     .exec();
+
+  const employees = employeeDocs.map((e) => {
+    const coName = companyNameById.get(String(e.companyId)) ?? '—';
+    return {
+      _id: String(e._id),
+      name: e.name,
+      companyId: String(e.companyId),
+      label: companyOid ? e.name : `${e.name} · ${coName}`,
+    };
+  });
 
   const initialEvents: CalendarEvent[] = entries.map((e) => ({
     id: e._id.toString(),
@@ -64,12 +83,14 @@ export default async function SchedulePage({
     <Container className="flex max-w-6xl flex-col gap-4">
       <div>
         <h1 className="text-2xl font-bold">Beosztás</h1>
-        <p className="text-muted-foreground text-sm">Heti és havi naptár nézet.</p>
+        <p className="text-muted-foreground text-sm">
+          Cégenként külön naptár — egy személy több cégnél külön dolgozói rekord.
+        </p>
       </div>
       <SchedulePageClient
         editable={canWrite}
         companies={companies.map((c) => ({ _id: String(c._id), name: c.name }))}
-        employees={employees.map((e) => ({ _id: String(e._id), name: e.name }))}
+        employees={employees}
         initialEvents={initialEvents}
         initialEmployeeId={employeeId}
         initialCompanyId={companyId}

@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import { createTestMongo } from '../test/mongo-memory';
 import {
   Company,
   Employee,
@@ -20,7 +21,7 @@ let employeeId: mongoose.Types.ObjectId;
 let reviewerId: mongoose.Types.ObjectId;
 
 beforeAll(async () => {
-  mongo = await MongoMemoryServer.create();
+  mongo = await createTestMongo();
   process.env.MONGODB_URI = mongo.getUri();
   await connectDB();
   await ensureBaselineRbac();

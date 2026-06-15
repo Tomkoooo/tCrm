@@ -4,7 +4,6 @@ import { SessionProvider } from 'next-auth/react';
 import { auth } from '@crm/auth';
 import { getBranding } from '@crm/db';
 import './globals.css';
-import DvhVarSetter from '@/components/dvh-var-setter';
 import { ThemeProvider } from '@/components/theme-provider';
 import { BrandingProvider } from '@/components/branding-provider';
 
@@ -44,7 +43,6 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <DvhVarSetter />
       <body
         className={`${geistSans.variable} ${geistMono.variable} smart-min-dvh flex flex-col antialiased`}
       >

@@ -1,7 +1,12 @@
-import { connectDB, Employee, MonthlyWorkSummary, type IMonthlyWorkSummary } from '@crm/db';
+import {
+  connectDB,
+  Employee,
+  monthlyWorkSummaryRepository,
+  type IMonthlyWorkSummary,
+} from '@crm/db';
 import type { Types } from 'mongoose';
 import { assertCompanyInScope } from './company-scope';
-import { suggestWorkedHoursFromSchedule } from './schedules';
+import { suggestMonthlyFromSchedule } from './kimutatasok';
 
 export async function upsertMonthlyWorkSummary(
   data: {
@@ -22,11 +27,11 @@ export async function upsertMonthlyWorkSummary(
   if (!emp) throw new Error('Dolgozó nem található.');
   await assertCompanyInScope(emp.companyId, actorUserId, permissions);
 
-  const existing = await MonthlyWorkSummary.findOne({
-    employeeId: data.employeeId,
-    year: data.year,
-    month: data.month,
-  }).exec();
+  const existing = await monthlyWorkSummaryRepository.findByEmployeeMonth(
+    data.employeeId,
+    data.year,
+    data.month
+  );
 
   if (existing) {
     existing.workedHours = data.workedHours;
@@ -39,7 +44,7 @@ export async function upsertMonthlyWorkSummary(
     return existing;
   }
 
-  return MonthlyWorkSummary.create({
+  return monthlyWorkSummaryRepository.create({
     ...data,
     companyId: emp.companyId,
     updatedBy: actorUserId,
@@ -53,16 +58,17 @@ export async function listMonthlySummaries(params: {
   allowedCompanyIds: Types.ObjectId[] | null;
 }): Promise<IMonthlyWorkSummary[]> {
   await connectDB();
-  const filter: Record<string, unknown> = {
-    year: params.year,
-    month: params.month,
-  };
-  if (params.companyId) filter.companyId = params.companyId;
-  else if (params.allowedCompanyIds !== null) {
-    if (!params.allowedCompanyIds.length) return [];
-    filter.companyId = { $in: params.allowedCompanyIds };
-  }
-  return MonthlyWorkSummary.find(filter).sort({ employeeId: 1 }).exec();
+  return monthlyWorkSummaryRepository.findForPeriod(params);
 }
 
-export { suggestWorkedHoursFromSchedule };
+/** @deprecated Use suggestMonthlyFromSchedule from kimutatasok */
+export async function suggestWorkedHoursFromSchedule(
+  employeeId: Types.ObjectId,
+  year: number,
+  month: number
+): Promise<number> {
+  const stats = await suggestMonthlyFromSchedule(employeeId, year, month);
+  return stats.workedHours;
+}
+
+export { suggestMonthlyFromSchedule };

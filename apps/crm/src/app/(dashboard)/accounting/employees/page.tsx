@@ -64,6 +64,13 @@ export default async function EmployeesPage({
       filterable: true,
     },
     {
+      key: 'accountLabel',
+      label: 'CRM fiók',
+      type: 'string',
+      sortable: false,
+      filterable: false,
+    },
+    {
       key: 'isActive',
       label: 'Aktív',
       type: 'boolean',
@@ -90,6 +97,7 @@ export default async function EmployeesPage({
     employmentType: e.employmentType === 'guest' ? 'Vendég' : 'Dolgozó',
     isActive: e.isActive,
     hasUser: Boolean(e.userId),
+    accountLabel: e.userId ? 'Összekötve' : 'Nincs fiók',
   }));
 
   const companyOptions = companies.map((c) => ({
@@ -102,7 +110,8 @@ export default async function EmployeesPage({
       <div>
         <h1 className="text-2xl font-bold">Dolgozók</h1>
         <p className="text-muted-foreground text-sm">
-          Vendég rekordok és meghívott dolgozók; cég szerinti szűrés.
+          Dolgozói rekordok cégenként — egy személy több cégnél külön beosztás, szabadság és
+          kimutatás. CRM fiók összekötés és másik céghez adás a részleteknél.
         </p>
       </div>
       <EmployeesTable

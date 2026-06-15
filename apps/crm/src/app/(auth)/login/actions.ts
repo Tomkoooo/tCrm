@@ -29,27 +29,19 @@ export async function loginAction(
   }
 
   try {
-    const redirectUrl = await signIn('credentials', {
+    // Full server redirect so the session cookie is committed before navigation
+    // (client-side router.replace misses cookies in Safari after server actions).
+    await signIn('credentials', {
       email: parsed.data.email,
       password: parsed.data.password,
-      redirect: false,
       redirectTo: '/',
     });
-
-    if (
-      typeof redirectUrl === 'string' &&
-      (redirectUrl.includes('error=') ||
-        redirectUrl.includes('/login') ||
-        redirectUrl.includes('/signin'))
-    ) {
-      return { success: false, message: 'Invalid email or password.' };
-    }
-
-    return { success: true };
   } catch (error) {
     if (error instanceof AuthError) {
       return { success: false, message: 'Invalid email or password.' };
     }
     throw error;
   }
+
+  return { success: true };
 }

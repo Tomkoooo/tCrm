@@ -1,10 +1,13 @@
 import mongoose, { Schema, type Document, type Types } from 'mongoose';
 
+export type UserInvitationKind = 'new_user' | 'company_join';
+
 export interface IUserInvitation extends Document {
   _id: Types.ObjectId;
   email: string;
   name: string;
   token: string;
+  kind: UserInvitationKind;
   roleIds: Types.ObjectId[];
   directPermissionKeys: string[];
   companyId?: Types.ObjectId;
@@ -25,6 +28,11 @@ const UserInvitationSchema = new Schema<IUserInvitation>(
     email: { type: String, required: true, index: true },
     name: { type: String, required: true },
     token: { type: String, required: true, unique: true, index: true },
+    kind: {
+      type: String,
+      enum: ['new_user', 'company_join'],
+      default: 'new_user',
+    },
     roleIds: [{ type: Schema.Types.ObjectId, ref: 'Role' }],
     directPermissionKeys: [{ type: String }],
     companyId: { type: Schema.Types.ObjectId, ref: 'Company' },

@@ -9,10 +9,8 @@ import { Label } from '@/components/ui/label';
 import { MediaSelector } from '@/components/media/media-selector';
 import type { SelectedMedia } from '@/lib/media-types';
 import { updateVehicleAction, type VehicleFormState } from '../actions';
-import { VehicleStaffSelect } from './vehicle-staff-select';
 
 type CompanyOption = { _id: string; name: string };
-type RoleOption = { id: string; name: string };
 
 function mediaFromIds(ids: string[], labelPrefix: string): SelectedMedia[] {
   return ids.map((id, index) => ({
@@ -45,7 +43,6 @@ function formatDateInput(value?: string): string {
 export function EditVehicleForm({
   vehicle,
   companies,
-  roles,
 }: {
   vehicle: {
     _id: string;
@@ -64,11 +61,8 @@ export function EditVehicleForm({
     licenseFileId?: string;
     registrationFileId?: string;
     insuranceFileId?: string;
-    allowedUserIds: string[];
-    allowedRoleIds: string[];
   };
   companies: CompanyOption[];
-  roles: RoleOption[];
 }) {
   const router = useRouter();
   const bound = updateVehicleAction.bind(null, vehicle._id);
@@ -242,33 +236,6 @@ export function EditVehicleForm({
           multiple={false}
           maxCount={1}
         />
-      </section>
-
-      <section className="grid gap-4 md:grid-cols-2">
-        <VehicleStaffSelect initialSelected={vehicle.allowedUserIds} />
-        <div className="flex flex-col gap-2">
-          <Label>Jogosult szerepkörök</Label>
-          <p className="text-muted-foreground text-xs">
-            A kiválasztott szerepkörök tagjai incidenseket jelenthetnek be.
-          </p>
-          <div className="flex max-h-48 flex-col gap-2 overflow-y-auto rounded-md border p-3">
-            {roles.map((role) => (
-              <label key={role.id} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  name="allowedRoleIds"
-                  value={role.id}
-                  defaultChecked={vehicle.allowedRoleIds.includes(role.id)}
-                  className="size-4"
-                />
-                {role.name}
-              </label>
-            ))}
-            {roles.length === 0 && (
-              <p className="text-muted-foreground text-sm">Nincs elérhető szerepkör.</p>
-            )}
-          </div>
-        </div>
       </section>
 
       <Button type="submit" loading={pending} disabled={pending} className="w-fit">

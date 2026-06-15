@@ -17,4 +17,4 @@ export {
   type InvitationStatus,
 } from './invitations';
 export { issuePasswordReset, findUserByResetToken, completePasswordReset } from './password-reset';
-export { acceptInvitation } from './accept-invitation';
+export { acceptInvitation, acceptCompanyJoinForLoggedInUser } from './accept-invitation';

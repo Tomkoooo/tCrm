@@ -53,11 +53,11 @@ export default async function AccountingOverviewPage() {
               <p className="text-muted-foreground text-sm">Lista és meghívás</p>
             </Link>
             <Link
-              href="/accounting/reports"
+              href="/accounting/leave-summary"
               className="border-border hover:bg-muted/50 rounded-lg border p-4 transition-colors"
             >
               <p className="font-medium">Kimutatások</p>
-              <p className="text-muted-foreground text-sm">Havi órák, export</p>
+              <p className="text-muted-foreground text-sm">Szabadság, órák, export</p>
             </Link>
           </>
         )}

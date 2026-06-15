@@ -6,3 +6,8 @@ export * from './schedules';
 export * from './requests';
 export * from './work-summaries';
 export * from './export';
+export * from './leave-years';
+export * from './leave-summary';
+export * from './leave-export';
+export * from './attendance';
+export * from './kimutatasok';

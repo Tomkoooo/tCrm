@@ -1,13 +1,14 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import { createTestMongo } from './test/mongo-memory';
 import { Permission, Role, User, connectDB, ensureBaselineRbac } from '@crm/db';
 import { getEffectivePermissionKeys, userHasAnyPermission, userHasPermission } from './permissions';
 
 let mongo: MongoMemoryServer;
 
 beforeAll(async () => {
-  mongo = await MongoMemoryServer.create();
+  mongo = await createTestMongo();
   process.env.MONGODB_URI = mongo.getUri();
   await connectDB();
   await ensureBaselineRbac();

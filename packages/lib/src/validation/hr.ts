@@ -44,6 +44,19 @@ export const employeeSchema = z.object({
   department: z.string().optional(),
   phone: z.string().optional(),
   employmentType: z.enum(['employee', 'guest']).default('guest'),
+  workerCategory: z.enum(['regular', 'occasional']).default('regular'),
+  workScheduleType: z.enum(['full_time', 'part_time']).default('full_time'),
+  contractedWeeklyHours: z.coerce.number().min(0).optional().or(z.literal('')),
+  contractedDailyHours: z.coerce.number().min(0).optional().or(z.literal('')),
+  payType: z.enum(['monthly', 'hourly']).optional().or(z.literal('')),
+  monthlySalaryHuf: z.coerce.number().min(0).optional().or(z.literal('')),
+  hourlyRateHuf: z.coerce.number().min(0).optional().or(z.literal('')),
+  birthName: z.string().optional(),
+  birthPlaceDate: z.string().optional(),
+  mothersName: z.string().optional(),
+  address: z.string().optional(),
+  taj: z.string().optional(),
+  taxId: z.string().optional(),
   isActive: z.boolean().default(true),
   hrNotes: z.string().optional(),
 });
@@ -89,10 +102,35 @@ export function employeeProfileFromForm(
   };
 }
 
-export const inviteEmployeeSchema = z.object({
-  employeeId: z.string().min(1),
-  password: z.string().min(8, 'A jelszó legalább 8 karakter'),
+export const addEmployeeToCompanySchema = z.object({
+  sourceEmployeeId: z.string().min(1),
+  targetCompanyId: z.string().min(1),
 });
+
+export const linkExistingUserSchema = z.object({
+  employeeId: z.string().min(1),
+  userId: z.string().min(1),
+});
+
+export const searchUsersSchema = z.object({
+  q: z.string().min(2),
+});
+
+export const inviteEmployeeSchema = z
+  .object({
+    employeeId: z.string().min(1),
+    password: z.string().min(8, 'A jelszó legalább 8 karakter').optional(),
+    mode: z.enum(['password', 'link_existing', 'email_invite']).default('password'),
+    linkUserId: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.mode === 'password' && !data.password) {
+      ctx.addIssue({ code: 'custom', message: 'A jelszó kötelező', path: ['password'] });
+    }
+    if (data.mode === 'link_existing' && !data.linkUserId) {
+      ctx.addIssue({ code: 'custom', message: 'Válasszon felhasználót', path: ['linkUserId'] });
+    }
+  });
 
 export const scheduleEntrySchema = z
   .object({
@@ -154,6 +192,33 @@ export const monthlyWorkSummarySchema = z.object({
   sickDays: z.coerce.number().min(0),
   sickPayAmount: z.coerce.number().min(0).optional(),
   notes: z.string().optional(),
+});
+
+export const employeeLeaveYearSchema = z.object({
+  employeeId: z.string().min(1),
+  year: z.coerce.number().int().min(2000).max(2100),
+  entitlementDays: z.coerce.number().min(0),
+  notes: z.string().optional(),
+});
+
+export const employeePersonalDataSchema = z.object({
+  birthName: z.string().optional(),
+  birthPlaceDate: z.string().optional(),
+  mothersName: z.string().optional(),
+  address: z.string().optional(),
+  taj: z.string().optional(),
+  taxId: z.string().optional(),
+});
+
+export const bulkScheduleSchema = z.object({
+  employeeIds: z.array(z.string().min(1)).min(1),
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date(),
+  shiftStartTime: z.string().regex(/^\d{2}:\d{2}$/),
+  shiftEndTime: z.string().regex(/^\d{2}:\d{2}$/),
+  mode: z.enum(['workdays', 'selected_dates']),
+  selectedDates: z.array(z.string()).optional(),
+  skipExisting: z.coerce.boolean().default(true),
 });
 
 export type CompanyInput = z.infer<typeof companySchema>;

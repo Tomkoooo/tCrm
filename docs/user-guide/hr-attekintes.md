@@ -15,7 +15,7 @@ permissions:
 
 ## Mire való
 
-HR és könyvelési törzsadatok: cégek, dolgozók, műszakbeosztás, szabadság/beteg kérelmek, havi kimutatás export.
+HR és könyvelési törzsadatok: cégek, dolgozók (cégenkénti rekordok), műszakbeosztás, szabadság/beteg kérelmek, szabadság- és bérkimutatások exporttal.
 
 ## Hol találod
 
@@ -28,14 +28,33 @@ HR és könyvelési törzsadatok: cégek, dolgozók, műszakbeosztás, szabadsá
 | Dolgozók | `/accounting/employees` | `hr:read` |
 | Beosztás | `/accounting/schedule` | `hr:read` |
 | Kérelmek | `/accounting/requests` | `hr:read` |
-| Kimutatások | `/accounting/reports` | `hr:reports` |
+| Kimutatások | `/accounting/leave-summary` | `hr:reports` |
 
-**Saját beosztás:** Beállítások → Saját beosztás (`/accounting/my`)
+**Dolgozói önkiszolgálás:** Beállítások → **Saját beosztás** (`/accounting/my`) — nem a **Fiók** oldal (`/account`).
+
+A régi külön „Kimutatások” és „Szabadság összesítő” menüpontok egy helyen vannak: **Kimutatások**, két füllel (szabadság / havi bér és órák).
+
+## Fontos fogalmak
+
+- **Dolgozói rekord** = egy személy **egy cégnél** (külön beosztás, szabadságkeret, kimutatás).
+- **CRM fiók** = belépés; egy fiók **több céghez** is tartozhat (több dolgozói rekord, ugyanaz a bejelentkezés).
+- **Vendég dolgozó** = HR rögzíti, nincs (még) összekötött belépés.
+
+## Tipikus HR folyamat
+
+1. **Cég** létrehozása (ha kell).
+2. **Dolgozó** felvétele a céghez — e-mail cím megadása ajánlott.
+3. **Fiók összekötése** vagy **Meghívó / új fiók** — hogy a dolgozó lássa a **Saját beosztás** oldalt.
+4. **Beosztás** rögzítése (cég szűrővel).
+5. **Kimutatások** — éves szabadság, havi óra/bér ellenőrzés, export.
+
+Több cég ugyanannál a személynél: [Dolgozók](/help/dolgozok) → **Másik céghez adás** vagy ugyanazon fiók összekötése mindkét rekordnál.
 
 ## Kapcsolódó fejezetek
 
+- [Dolgozók](/help/dolgozok) — fiók összekötés, több cég, bérezés
 - [Beosztás és kérelmek](/help/beosztas-es-kerelemek)
-- [Saját beosztás](/help/sajat-beosztas)
-- [Havi kimutatások](/help/kimutatasok)
+- [Kimutatások](/help/kimutatasok)
+- [Saját beosztás](/help/sajat-beosztas) — dolgozói nézet
 
 *Utolsó frissítés: 2026-06*

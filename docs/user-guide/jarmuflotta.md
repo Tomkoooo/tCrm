@@ -5,6 +5,7 @@ order: 34
 section: Logisztika
 permissions:
   - logistics:read
+  - logistics:vehicles:read
 ---
 
 ## Mire való
@@ -15,11 +16,12 @@ Szállításhoz használt járművek nyilvántartása: méretek, dokumentumok, b
 
 - **Logisztika → Járműflotta** (`/logistics/vehicles`)
 - Részletek: `/logistics/vehicles/{id}`
-- Figyelmeztetések: **Logisztika → Áttekintés** dashboard (30 napon belüli lejárat)
+- Figyelmeztetések: **Logisztika → Áttekintés** dashboard (30 napon belüli lejárat) — teljes logisztika jog kell
 
 ## Szükséges jogosultság
 
-- Megtekintés: `logistics:read`
+- Flotta megtekintés: `logistics:read` (teljes logisztika) **vagy** `logistics:vehicles:read` (csak járműflotta a menüben)
+- Incidens bejelentés (leírás + fotó): `logistics:vehicles:report`
 - Szerkesztés, incidens lezárás: `logistics:write`
 - Cég párosítás: `hr:write` (cég adatok)
 
@@ -35,9 +37,10 @@ Szállításhoz használt járművek nyilvántartása: méretek, dokumentumok, b
 
 ### Incidens bejelentés
 
-1. Ha jogosult vagy (user vagy szerepkör párosítás), nyisd meg a jármű **Incidensek** fülét.
-2. **Új incidens** — leírás + fotók.
-3. Logisztika `logistics:write` joggal **lezárhatja** az incidenst.
+1. Nyisd meg a jármű **Incidensek** fülét (flotta megtekintési jog kell).
+2. Ha van **Report vehicle incidents** jogosultságod, töltsd ki a **Leírás** mezőt és csatolj **Fotók (opcionális)** elemet a Médiatárból.
+3. Kattints a **Bejelentés küldése** gombra.
+4. A logisztika `logistics:write` joggal **Lezárva** gombbal zárhatja az incidenst.
 
 ## Kapcsolódó fejezetek
 

@@ -3,7 +3,11 @@
 import { revalidatePath } from 'next/cache';
 import mongoose from 'mongoose';
 import { requirePermission } from '@crm/auth';
-import { upsertMonthlyWorkSummary, suggestWorkedHoursFromSchedule } from '@crm/core';
+import {
+  upsertMonthlyWorkSummary,
+  suggestMonthlyFromSchedule,
+  suggestWorkedHoursFromSchedule,
+} from '@crm/core';
 import { monthlyWorkSummarySchema } from '@crm/lib/validation';
 import { zodToFieldErrors, type HrFormState } from '../_components/form-utils';
 import { getHrSessionScope } from '@/lib/hr/session-scope';
@@ -44,6 +48,7 @@ export async function saveMonthlySummaryAction(
       userId,
       permissions
     );
+    revalidatePath('/accounting/leave-summary');
     revalidatePath('/accounting/reports');
     return { success: true, message: 'Kimutatás mentve.' };
   } catch (e) {
@@ -66,4 +71,25 @@ export async function suggestHoursAction(
     month
   );
   return { hours };
+}
+
+export async function suggestMonthlyFromScheduleAction(
+  employeeId: string,
+  year: number,
+  month: number
+): Promise<
+  | {
+      workedHours: number;
+      holidayDays: number;
+      sickDays: number;
+      holidayDatesLabel: string;
+      sickDatesLabel: string;
+    }
+  | { error: string }
+> {
+  await requirePermission('hr:reports');
+  if (!mongoose.Types.ObjectId.isValid(employeeId)) {
+    return { error: 'Érvénytelen dolgozó.' };
+  }
+  return suggestMonthlyFromSchedule(new mongoose.Types.ObjectId(employeeId), year, month);
 }

@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { MediaSelector } from '@/components/media/media-selector';
 import type { SelectedMedia } from '@/lib/media-types';
+import { LOGISTICS_VEHICLES_REPORT_PERMISSION_KEYS, MEDIA_UPLOAD_PERMISSION_KEYS } from '@crm/lib';
 import { reportVehicleIncidentAction, type VehicleFormState } from '../actions';
 
 export function VehicleIncidentReportForm({ vehicleId }: { vehicleId: string }) {
@@ -48,6 +49,10 @@ export function VehicleIncidentReportForm({ vehicleId }: { vehicleId: string }) 
         multiple
         maxCount={5}
         name="incidentPhotoId"
+        uploadPermissionKeys={[
+          ...LOGISTICS_VEHICLES_REPORT_PERMISSION_KEYS,
+          ...MEDIA_UPLOAD_PERMISSION_KEYS,
+        ]}
       />
       <Button type="submit" loading={pending} disabled={pending} className="w-fit">
         {pending ? 'Küldés…' : 'Bejelentés küldése'}

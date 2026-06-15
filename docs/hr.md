@@ -18,15 +18,31 @@ Szerepkörök: `hr` (teljes HR), `employee` (`hr:self`).
 ## Modellek (`@crm/db`)
 
 - **Company** — `name`, `slug`, `parentCompanyId?`
-- **Employee** — `companyId`, opcionális `userId`, `employmentType` (`guest` | `employee`)
+- **Employee** — `companyId`, opcionális `userId` (több cég / felhasználó: `{ userId, companyId }` egyedi), `employmentType`, `workerCategory` (`regular` | `occasional`), `workScheduleType` (`full_time` | `part_time`), `payType` (`monthly` | `hourly`), `monthlySalaryHuf`, `hourlyRateHuf`, `personalData?` (TAJ, adóazonosító, …)
+- **EmployeeLeaveYear** — éves szabadságkeret (`employeeId`, `year`, `entitlementDays`)
 - **HrCompanyScope** — `userId` → `companyIds[]` (ha nincs `hr:scope_all`)
 - **ScheduleEntry** — naptár események (`shift`, `off`, …)
 - **HrRequest** — szabadság / beteg / beosztás módosítás, jóváhagyási workflow
 - **MonthlyWorkSummary** — havi óra, szabadság, betegnap, táppénz (HUF)
 
+## Több cég / egy személy
+
+Egy CRM felhasználó több **Employee** rekordot kaphat (egy cégenként). Minden rekord saját `ScheduleEntry`, `EmployeeLeaveYear`, `HrRequest`, `MonthlyWorkSummary`. A beosztás oldalon a cég szűrő korlátozza a dolgozó listát. Új céghez adás: `addEmployeeToAnotherCompany()` (`@crm/core`).
+
 ## Export oszlopok
 
-`hr-{év}-{hónap}.xlsx`: Cég, Cég slug, Dolgozó, Dolgozói szám, Osztály, Év, Hónap, Ledolgozott óra, Szabadság nap, Beteg nap, Táppénz (HUF), Megjegyzés.
+`hr-{év}-{hónap}.xlsx`: Cég, Cég slug, Dolgozó, Dolgozói szám, Osztály, Év, Hónap, Éves szabadság keret, Maradék szabadság, Bér típus, Ledolgozott óra, Szabadság nap, Beteg nap, Táppénz (HUF), Bruttó bér (HUF), Megjegyzés.
+
+## Kimutatások számítás
+
+- **Szabadság / betegnap:** jóváhagyott `HrRequest` + beosztás `off` bejegyzések (cím alapján).
+- **Ledolgozott óra:** `shift` bejegyzések a hónapban (részmunkaidőnél heti óra plafon).
+- **Bruttó:** `hourly` → ledolgozott óra × órabér + táppénz; `monthly` → havi bruttó + táppénz.
+- Mentett `MonthlyWorkSummary` felülírja a beosztásból javasolt havi értékeket.
+
+## Repository
+
+HR lekérdezések: `MonthlyWorkSummaryRepository`, `EmployeeLeaveYearRepository` (`packages/db/src/repositories/hr.ts`). Aggregáció: `buildMonthlyKimutatasRows` (`@crm/core`).
 
 ## Útvonalak
 
@@ -38,7 +54,9 @@ Szerepkörök: `hr` (teljes HR), `employee` (`hr:self`).
 | `/accounting/schedule` | `hr:read` |
 | `/accounting/requests` | `hr:read` |
 | `/accounting/reports` | `hr:reports` |
-| `/accounting/my` | Bejelentkezés + linked `Employee.userId` (nincs külön jog kell) |
+| `/accounting/leave-summary` | `hr:reports` — szabadság összesítő + export |
+| `/accounting/onboarding` | Meghívott dolgozó profil kitöltése |
+| `/accounting/my` | Bejelentkezés + linked `Employee` (több cég: váltó) |
 
 ## Fiók + dolgozó egy lépésben
 

@@ -2,7 +2,8 @@
 
 import mongoose from 'mongoose';
 import { revalidatePath } from 'next/cache';
-import { getCurrentUser, requirePermission } from '@crm/auth';
+import { getCurrentUser, requireAnyPermission, requirePermission } from '@crm/auth';
+import { LOGISTICS_READ_PERMISSION_KEYS } from '@crm/lib';
 import { connectDB, Vehicle, Warehouse } from '@crm/db';
 import {
   buildLogisticsPickupDocument,
@@ -378,7 +379,7 @@ export async function getPickupDocumentPayloadAction(
   pickupId: string,
   documentType: 'packing_list' | 'pickup_slip' | 'return_slip'
 ) {
-  await requirePermission('logistics:read');
+  await requireAnyPermission([...LOGISTICS_READ_PERMISSION_KEYS]);
   try {
     const payload = await buildLogisticsPickupDocument(
       new mongoose.Types.ObjectId(jobId),
@@ -397,7 +398,7 @@ export async function getPickupDocumentPayloadAction(
 export async function enrichPickupLinesDisplayAction(
   lines: Array<{ productId: string; quantity: number }>
 ) {
-  await requirePermission('logistics:read');
+  await requireAnyPermission([...LOGISTICS_READ_PERMISSION_KEYS]);
   try {
     const enriched = await enrichPickupLinesDisplay(
       lines.map((l) => ({
@@ -415,7 +416,7 @@ export async function enrichPickupLinesDisplayAction(
 }
 
 export async function suggestVehiclesAction(linesJson: string) {
-  await requirePermission('logistics:read');
+  await requireAnyPermission([...LOGISTICS_READ_PERMISSION_KEYS]);
 
   const parsed = suggestVehiclesSchema.safeParse({ linesJson });
   if (!parsed.success) {
@@ -450,7 +451,7 @@ export async function suggestVehiclesAction(linesJson: string) {
 }
 
 export async function loadJobFormOptionsAction() {
-  await requirePermission('logistics:read');
+  await requireAnyPermission([...LOGISTICS_READ_PERMISSION_KEYS]);
   await connectDB();
 
   const user = await getCurrentUser();

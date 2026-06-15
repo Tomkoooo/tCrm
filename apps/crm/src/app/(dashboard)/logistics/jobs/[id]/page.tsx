@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import mongoose from 'mongoose';
 import { notFound } from 'next/navigation';
-import { getCurrentUser, hasPermission, requirePermission } from '@crm/auth';
+import { getCurrentUser, hasPermission, requireAnyPermission } from '@crm/auth';
+import { LOGISTICS_READ_PERMISSION_KEYS } from '@crm/lib';
 import { connectDB, LogisticsJob, Product, User, Vehicle, Warehouse } from '@crm/db';
 import {
   canAccessPickupWarehouse,
@@ -25,7 +26,7 @@ export default async function LogisticsJobDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requirePermission('logistics:read');
+  await requireAnyPermission([...LOGISTICS_READ_PERMISSION_KEYS]);
   const canWrite = await hasPermission('logistics:write');
   const { id } = await params;
   await connectDB();

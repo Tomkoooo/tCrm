@@ -1,10 +1,12 @@
 import { requireAuth } from '@crm/auth';
-import { getEmployeeByUserId } from '@crm/core';
+import { getActiveEmployeeOrThrow } from '@/lib/hr/active-employee';
 import type { IEmployee } from '@crm/db';
 import mongoose from 'mongoose';
 
-/** Authenticated user with an active Employee profile linked by userId. */
-export async function getLinkedEmployeeForSession(): Promise<{
+/** Authenticated user with an active Employee profile (supports multi-company). */
+export async function getLinkedEmployeeForSession(options?: {
+  employeeId?: string | null;
+}): Promise<{
   user: NonNullable<Awaited<ReturnType<typeof requireAuth>>>;
   userId: mongoose.Types.ObjectId;
   employee: IEmployee;
@@ -13,10 +15,6 @@ export async function getLinkedEmployeeForSession(): Promise<{
   if (!user) throw new Error('Unauthorized');
 
   const userId = new mongoose.Types.ObjectId(user.id);
-  const employee = await getEmployeeByUserId(userId);
-  if (!employee) {
-    throw new Error('NO_LINKED_EMPLOYEE');
-  }
-
+  const employee = await getActiveEmployeeOrThrow(userId, options?.employeeId);
   return { user, userId, employee };
 }

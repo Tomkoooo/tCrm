@@ -45,6 +45,7 @@
 /* TODO: Replace --primary and --secondary with tCrm brand colors */
 :root {
   --radius: 0.625rem;
+  --dvh: 1vh;
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
   --card: oklch(1 0 0);
@@ -76,6 +77,12 @@
   --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.705 0.015 286.067);
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --dvh: 1dvh;
+  }
 }
 
 .dark {
@@ -143,4 +150,18 @@ body {
 
 span[data-slot='avatar-fallback'] {
   user-select: none !important;
+}
+
+/* Safari: native date/time inputs ignore h-9 without an explicit min-height */
+input[type='date'],
+input[type='datetime-local'],
+input[type='time'],
+input[type='month'],
+input[type='week'] {
+  min-height: 2.25rem;
+}
+
+/* Safari: backdrop-filter needs the webkit prefix on older versions */
+.backdrop-blur-sm {
+  -webkit-backdrop-filter: blur(4px);
 }

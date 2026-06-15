@@ -64,3 +64,24 @@ export const HR_REPORTS_PERMISSION_KEYS = ['hr:reports', 'hr:write'] as const;
 
 /** Employee self-service. */
 export const HR_SELF_PERMISSION_KEYS = ['hr:self'] as const;
+
+/** View logistics overview, movements, reservations, and jobs. */
+export const LOGISTICS_READ_PERMISSION_KEYS = [
+  'logistics:read',
+  'logistics:write',
+  'logistics:scope_all',
+] as const;
+
+/** View vehicle fleet list and detail. */
+export const LOGISTICS_VEHICLES_READ_PERMISSION_KEYS = [
+  'logistics:read',
+  'logistics:write',
+  'logistics:vehicles:read',
+] as const;
+
+/** Report vehicle incidents (description + photos). */
+export const LOGISTICS_VEHICLES_REPORT_PERMISSION_KEYS = ['logistics:vehicles:report'] as const;
+
+export function hasAnyPermission(userKeys: string[], keys: readonly string[]): boolean {
+  return keys.some((key) => userKeys.includes(key));
+}

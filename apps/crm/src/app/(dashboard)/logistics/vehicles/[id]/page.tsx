@@ -1,18 +1,19 @@
 import { notFound } from 'next/navigation';
 import mongoose from 'mongoose';
-import { getCurrentUser, hasPermission, requirePermission } from '@crm/auth';
+import { getCurrentUser, hasPermission, requireAnyPermission } from '@crm/auth';
 import {
   canUserReportVehicleIncident,
   getVehicleComplianceWarnings,
   listVehicleIncidents,
 } from '@crm/core';
-import { connectDB, Company, Role, User, Vehicle } from '@crm/db';
+import { connectDB, Company, Vehicle } from '@crm/db';
+import { LOGISTICS_VEHICLES_READ_PERMISSION_KEYS } from '@crm/lib';
 import { companyDataToEntries } from '@crm/lib/validation';
 import { Container } from '@crm/ui';
 import { VehicleDetailClient } from '../_components/vehicle-detail-client';
 
 export default async function VehicleDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  await requirePermission('logistics:read');
+  await requireAnyPermission([...LOGISTICS_VEHICLES_READ_PERMISSION_KEYS]);
   const { id } = await params;
   if (!mongoose.Types.ObjectId.isValid(id)) notFound();
 
@@ -21,46 +22,18 @@ export default async function VehicleDetailPage({ params }: { params: Promise<{ 
   const vehicle = await Vehicle.findById(id).lean().exec();
   if (!vehicle) notFound();
 
-  const [
-    canWrite,
-    currentUser,
-    companies,
-    roles,
-    company,
-    allowedUsers,
-    allowedRoles,
-    incidents,
-    allWarnings,
-  ] = await Promise.all([
+  const [canWrite, currentUser, companies, company, incidents, allWarnings] = await Promise.all([
     hasPermission('logistics:write'),
     getCurrentUser(),
     Company.find({ isActive: true }).sort({ name: 1 }).select('name').lean().exec(),
-    Role.find().sort({ name: 1 }).select('name').lean().exec(),
     vehicle.companyId ? Company.findById(vehicle.companyId).lean().exec() : Promise.resolve(null),
-    vehicle.allowedUserIds?.length
-      ? User.find({ _id: { $in: vehicle.allowedUserIds } })
-          .select('name email')
-          .lean()
-          .exec()
-      : Promise.resolve([]),
-    vehicle.allowedRoleIds?.length
-      ? Role.find({ _id: { $in: vehicle.allowedRoleIds } })
-          .select('name')
-          .lean()
-          .exec()
-      : Promise.resolve([]),
     listVehicleIncidents(id),
     getVehicleComplianceWarnings(30),
   ]);
 
-  const dbUser = currentUser
-    ? await User.findById(currentUser.id).select('roleIds').lean().exec()
-    : null;
-
-  const canReportIncident =
-    currentUser && dbUser
-      ? await canUserReportVehicleIncident(vehicle, currentUser.id, dbUser.roleIds ?? [])
-      : false;
+  const canReportIncident = currentUser
+    ? canUserReportVehicleIncident(currentUser.permissions)
+    : false;
 
   const vehicleWarnings = allWarnings.filter((warning) => warning.vehicleId === id);
 
@@ -81,8 +54,6 @@ export default async function VehicleDetailPage({ params }: { params: Promise<{ 
     licenseFileId: vehicle.licenseFileId ? String(vehicle.licenseFileId) : undefined,
     registrationFileId: vehicle.registrationFileId ? String(vehicle.registrationFileId) : undefined,
     insuranceFileId: vehicle.insuranceFileId ? String(vehicle.insuranceFileId) : undefined,
-    allowedUserIds: (vehicle.allowedUserIds ?? []).map((uid) => String(uid)),
-    allowedRoleIds: (vehicle.allowedRoleIds ?? []).map((rid) => String(rid)),
   };
 
   return (
@@ -100,15 +71,6 @@ export default async function VehicleDetailPage({ params }: { params: Promise<{ 
             : undefined
         }
         companies={companies.map((c) => ({ _id: String(c._id), name: c.name }))}
-        roles={roles.map((role) => ({ id: String(role._id), name: role.name }))}
-        allowedUsers={allowedUsers.map((user) => ({
-          id: String(user._id),
-          name: user.name || user.email || String(user._id),
-        }))}
-        allowedRoles={allowedRoles.map((role) => ({
-          id: String(role._id),
-          name: role.name,
-        }))}
         incidents={incidents}
         warnings={vehicleWarnings}
         canWrite={canWrite}

@@ -1,4 +1,5 @@
-import { hasPermission, requirePermission } from '@crm/auth';
+import { hasPermission, requireAnyPermission } from '@crm/auth';
+import { LOGISTICS_VEHICLES_READ_PERMISSION_KEYS } from '@crm/lib';
 import { connectDB, Vehicle } from '@crm/db';
 import { Container, buildDataTableMongoQuery, parseDataTableQuery } from '@crm/ui';
 import type { ColumnDef } from '@crm/ui';
@@ -9,7 +10,7 @@ export default async function LogisticsVehiclesPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requirePermission('logistics:read');
+  await requireAnyPermission([...LOGISTICS_VEHICLES_READ_PERMISSION_KEYS]);
   await connectDB();
 
   const canWrite = await hasPermission('logistics:write');

@@ -4,6 +4,8 @@ export * from './env';
 export * from './mail-env';
 export * from './media-upload';
 export * from './utils';
+export * from './hr-calendar';
+export * from './hr-payroll';
 export * from './validation';
 export * from './suppliers/contacts';
 export {
@@ -22,5 +24,9 @@ export {
   HR_APPROVE_PERMISSION_KEYS,
   HR_REPORTS_PERMISSION_KEYS,
   HR_SELF_PERMISSION_KEYS,
+  LOGISTICS_READ_PERMISSION_KEYS,
+  LOGISTICS_VEHICLES_READ_PERMISSION_KEYS,
+  LOGISTICS_VEHICLES_REPORT_PERMISSION_KEYS,
+  hasAnyPermission,
 } from './permissions';
 export { z } from 'zod';

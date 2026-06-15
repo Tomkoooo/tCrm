@@ -2,21 +2,20 @@
 
 import { revalidatePath } from 'next/cache';
 import mongoose from 'mongoose';
-import { getCurrentUser, requirePermission } from '@crm/auth';
+import { requireAnyPermission, requirePermission } from '@crm/auth';
 import {
   canUserReportVehicleIncident,
   createVehicleIncident,
   markVehicleIncidentFixed,
-  syncVehicleIncidentPhotos,
   syncVehicleMedia,
 } from '@crm/core';
-import { connectDB, User, Vehicle, VehicleIncident } from '@crm/db';
+import { connectDB, Vehicle, VehicleIncident } from '@crm/db';
 import {
-  parseCheckboxIdsFromForm,
-  parseMediaIdsFromForm,
-  vehicleIncidentSchema,
-  vehicleSchema,
-} from '@crm/lib/validation';
+  LOGISTICS_VEHICLES_READ_PERMISSION_KEYS,
+  LOGISTICS_VEHICLES_REPORT_PERMISSION_KEYS,
+  hasAnyPermission,
+} from '@crm/lib';
+import { parseMediaIdsFromForm, vehicleIncidentSchema, vehicleSchema } from '@crm/lib/validation';
 
 export type VehicleFormState =
   | { success: false; fieldErrors?: Record<string, string[]>; message?: string }
@@ -61,8 +60,6 @@ function vehiclePayloadFromParsed(
   formData: FormData
 ) {
   const imageIds = parseMediaIdsFromForm(formData, 'imageId');
-  const allowedUserIds = parseCheckboxIdsFromForm(formData, 'allowedUserIds');
-  const allowedRoleIds = parseCheckboxIdsFromForm(formData, 'allowedRoleIds');
 
   return {
     ...parsed,
@@ -71,8 +68,6 @@ function vehiclePayloadFromParsed(
     registrationFileId: toOptionalObjectId(parsed.registrationFileId),
     insuranceFileId: toOptionalObjectId(parsed.insuranceFileId),
     imageIds: imageIds.map((id) => new mongoose.Types.ObjectId(id)),
-    allowedUserIds: allowedUserIds.map((id) => new mongoose.Types.ObjectId(id)),
-    allowedRoleIds: allowedRoleIds.map((id) => new mongoose.Types.ObjectId(id)),
   };
 }
 
@@ -150,8 +145,6 @@ export async function updateVehicleAction(
     registrationFileId: payload.registrationFileId,
     insuranceFileId: payload.insuranceFileId,
     imageIds: payload.imageIds,
-    allowedUserIds: payload.allowedUserIds,
-    allowedRoleIds: payload.allowedRoleIds,
   });
   await vehicle.save();
 
@@ -187,23 +180,19 @@ export async function reportVehicleIncidentAction(
   _prev: VehicleFormState,
   formData: FormData
 ): Promise<VehicleFormState> {
-  const user = await getCurrentUser();
-  if (!user) return { success: false, message: 'Bejelentkezés szükséges.' };
+  const user = await requireAnyPermission([...LOGISTICS_VEHICLES_REPORT_PERMISSION_KEYS]);
+
+  if (!hasAnyPermission(user.permissions, LOGISTICS_VEHICLES_READ_PERMISSION_KEYS)) {
+    return { success: false, message: 'Nincs jogosultság a jármű megtekintéséhez.' };
+  }
+
+  if (!canUserReportVehicleIncident(user.permissions)) {
+    return { success: false, message: 'Nincs jogosultság incidens bejelentésére.' };
+  }
 
   await connectDB();
   const vehicle = await Vehicle.findById(vehicleId).exec();
   if (!vehicle) return { success: false, message: 'Jármű nem található.' };
-
-  const dbUser = await User.findById(user.id).select('roleIds').lean().exec();
-  if (!dbUser) return { success: false, message: 'Felhasználó nem található.' };
-
-  const canReport = await canUserReportVehicleIncident(vehicle, user.id, dbUser.roleIds ?? []);
-  if (!canReport) {
-    return {
-      success: false,
-      message: 'Nincs jogosultság incidens bejelentésére ehhez a járműhöz.',
-    };
-  }
 
   const parsed = vehicleIncidentSchema.safeParse({
     description: formData.get('description'),

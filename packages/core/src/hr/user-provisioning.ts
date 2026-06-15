@@ -3,6 +3,16 @@ import { connectDB, Employee, Role, User, type IEmployee, type IUser } from '@cr
 import type { Types } from 'mongoose';
 import { assertCompanyInScope } from './company-scope';
 
+async function ensureEmployeeRoleForUser(user: IUser): Promise<void> {
+  const employeeRole = await Role.findOne({ key: 'employee' }).exec();
+  if (!employeeRole) return;
+  const hasRole = user.roleIds.some((id) => id.equals(employeeRole._id));
+  if (!hasRole) {
+    user.roleIds.push(employeeRole._id);
+    await user.save();
+  }
+}
+
 export type EmployeeProfileInput = {
   companyId: Types.ObjectId;
   employeeNumber?: string;
@@ -40,7 +50,7 @@ export async function provisionUserWithEmployee(
   const email = input.email.toLowerCase().trim();
   const existing = await User.findOne({ email }).exec();
   if (existing) {
-    throw new Error('Ez az e-mail cím már foglalt.');
+    throw new Error('Ez az e-mail c?m m?r foglalt.');
   }
 
   if (input.employee && !input.skipCompanyScope && input.actorUserId && input.actorPermissions) {
@@ -64,9 +74,12 @@ export async function provisionUserWithEmployee(
 
   let employee: IEmployee | undefined;
   if (input.employee) {
-    const existingEmp = await Employee.findOne({ userId: user._id }).exec();
+    const existingEmp = await Employee.findOne({
+      userId: user._id,
+      companyId: input.employee.companyId,
+    }).exec();
     if (existingEmp) {
-      throw new Error('A felhasználóhoz már tartozik dolgozói rekord.');
+      throw new Error('A felhaszn?l?hoz m?r tartozik dolgoz?i rekord ebben a c?gben.');
     }
 
     employee = await Employee.create({
@@ -86,7 +99,7 @@ export async function provisionUserWithEmployee(
   return { user, employee };
 }
 
-export async function upsertEmployeeForUser(
+export async function linkUserToCompanyEmployee(
   userId: Types.ObjectId,
   data: {
     name: string;
@@ -111,20 +124,12 @@ export async function upsertEmployeeForUser(
   }
 
   const user = await User.findById(userId).exec();
-  if (!user) throw new Error('Felhasználó nem található.');
+  if (!user) throw new Error('Felhaszn?l? nem tal?lhat?.');
 
-  const employeeRole = await Role.findOne({ key: 'employee' }).exec();
-  if (employeeRole) {
-    const hasRole = user.roleIds.some((id) => id.equals(employeeRole._id));
-    if (!hasRole) {
-      user.roleIds.push(employeeRole._id);
-      await user.save();
-    }
-  }
+  await ensureEmployeeRoleForUser(user);
 
-  const existing = await Employee.findOne({ userId }).exec();
+  const existing = await Employee.findOne({ userId, companyId: data.companyId }).exec();
   if (existing) {
-    existing.companyId = data.companyId;
     existing.name = data.name;
     existing.email = data.email.toLowerCase();
     existing.employeeNumber = data.employeeNumber;
@@ -135,14 +140,6 @@ export async function upsertEmployeeForUser(
     existing.employmentType = 'employee';
     await existing.save();
     return existing;
-  }
-
-  const duplicateUser = await Employee.findOne({
-    userId: { $ne: userId },
-    email: data.email.toLowerCase(),
-  }).exec();
-  if (duplicateUser) {
-    throw new Error('Ez az e-mail már más dolgozóhoz van rendelve.');
   }
 
   return Employee.create({
@@ -159,11 +156,40 @@ export async function upsertEmployeeForUser(
   });
 }
 
-export async function removeEmployeeLinkForUser(userId: Types.ObjectId): Promise<void> {
+/** @deprecated Prefer linkUserToCompanyEmployee for multi-company; updates first employee or creates at company. */
+export async function upsertEmployeeForUser(
+  userId: Types.ObjectId,
+  data: {
+    name: string;
+    email: string;
+    companyId: Types.ObjectId;
+    employeeNumber?: string;
+    department?: string;
+    phone?: string;
+    hrNotes?: string;
+    isActive?: boolean;
+  },
+  options?: {
+    skipCompanyScope?: boolean;
+    actorUserId?: Types.ObjectId;
+    actorPermissions?: string[];
+  }
+): Promise<IEmployee> {
+  return linkUserToCompanyEmployee(userId, data, options);
+}
+
+export async function removeEmployeeLinkForUser(
+  userId: Types.ObjectId,
+  companyId?: Types.ObjectId
+): Promise<void> {
   await connectDB();
-  const emp = await Employee.findOne({ userId }).exec();
-  if (!emp) return;
-  emp.userId = undefined;
-  emp.employmentType = 'guest';
-  await emp.save();
+  const filter: { userId: Types.ObjectId; companyId?: Types.ObjectId } = { userId };
+  if (companyId) filter.companyId = companyId;
+
+  const emps = await Employee.find(filter).exec();
+  for (const emp of emps) {
+    emp.userId = undefined;
+    emp.employmentType = 'guest';
+    await emp.save();
+  }
 }

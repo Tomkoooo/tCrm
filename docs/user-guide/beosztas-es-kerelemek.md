@@ -1,6 +1,6 @@
 ---
 title: Beosztás és kérelmek
-description: HR naptár, műszakok, szabadság és jóváhagyási workflow.
+description: HR naptár, műszakok, tömeges beosztás, szabadság és jóváhagyás.
 order: 41
 section: Könyvelés és HR
 permissions:
@@ -11,9 +11,11 @@ permissions:
   - hr:self
 ---
 
+# Beosztás és kérelmek
+
 ## Mire való
 
-Dolgozók műszakbeosztása és HR kérelmek (szabadság, betegszabadság, beosztás módosítás) kezelése és jóváhagyása.
+Dolgozók műszakbeosztása és HR kérelmek (szabadság, betegszabadság, beosztás módosítás) kezelése és jóváhagyása. A beosztás adatai beleszámítanak a **Kimutatások** számításába is.
 
 ## Hol találod
 
@@ -22,40 +24,61 @@ Dolgozók műszakbeosztása és HR kérelmek (szabadság, betegszabadság, beosz
 
 ## Szükséges jogosultság
 
-- Naptár megtekintés (HR): `hr:read`
-- Beosztás szerkesztés: `hr:write`
-- Kérelem jóváhagyás: `hr:approve` vagy `hr:write`
-- Saját kérelem: `hr:self` — lásd [Saját beosztás](/help/sajat-beosztas)
+| Tevékenység | Jog |
+|-------------|-----|
+| Naptár megtekintés | `hr:read` |
+| Műszak rögzítés, tömeges beosztás | `hr:write` |
+| Kérelem jóváhagyás / elutasítás | `hr:approve` vagy `hr:write` |
+| Saját kérelem, saját naptár | `hr:self` — [Saját beosztás](/help/sajat-beosztas) |
 
-## Lépésről lépésre — beosztás (HR)
+---
 
-1. Nyisd meg a **Beosztás** naptárat.
-2. Válaszd ki a céget (scope szerint).
-3. Kattints egy napra vagy húzd az időszakot — új **műszak** vagy **szabad** esemény.
-4. Mentsd a változtatásokat.
+## Beosztás (HR) — lépésről lépésre
 
-## Lépésről lépésre — kérelmek
+1. Nyissa meg a **Beosztás** oldalt.
+2. Válassza ki a **céget** — **kötelező ajánlott**: a **Dolgozó** lista csak az adott cég rekordjait mutatja. Egy személy több cégnél **külön dolgozói rekord**; a név mellett a cég is látszik, ha nincs cég szűrő.
+3. Opcionálisan válasszon **egy dolgozót** — csak az ő eseményei.
+4. Új esemény: **Új beosztás** — műszak vagy szabad nap (pl. szabadság).
+5. Naptárban kattintás / húzás az időszakra — szerkesztés.
 
-### Dolgozó
+### Tömeges beosztás
 
-1. **Saját beosztás** oldalon vagy a kérelmek felületen indíts új kérelmet.
-2. Válaszd a típust (szabadság, beteg, stb.) és az időszakot.
-3. Küldd be — **függőben** állapot.
+**Tömeges beosztás** gomb (`hr:write`) — panel a naptár felett:
 
-### Jóváhagyó
+1. **Dolgozók** — több kijelölés (Cmd/Ctrl + kattintás); csak a kiválasztott **cég** dolgozói érhetők el.
+2. **Dátumtól** / **Dátumig**, **Műszak kezdete** / **Műszak vége**.
+3. **Alkalmazás módja:** minden munkanap (hétköznap, ünnepnélkül), vagy **Kiválasztott napok** (vesszővel felsorolva).
+4. **Meglévő műszak / szabadság napok kihagyása** — bejelölve nem írja felül a már rögzített napokat.
+5. **Tömeges beosztás alkalmazása**.
 
-1. **Kérelmek** lista — szűrd a függő elemekre.
-2. Nyisd meg a részleteket → **Jóváhagyás** vagy **Elutasítás**.
-3. Jóváhagyáskor a naptár frissül (pl. `off` esemény).
+---
+
+## Kérelmek
+
+### Dolgozó (Saját beosztás)
+
+1. **Saját beosztás** → **Új kérelem**.
+2. Típus (szabadság, beteg, …), dátumok, beküldés.
+3. Több cégnél: előbb **Aktív cég** választás — a kérelem a kiválasztott cég rekordjához tartozik.
+
+### HR jóváhagyó
+
+1. **Kérelmek** lista — szűrés státusz / típus szerint.
+2. Sor megnyitása → **Jóváhagyás** vagy **Elutasítás**.
+3. Jóváhagyáskor a beosztás naptár frissül (pl. szabad nap).
+
+---
 
 ## Gyakori tippek
 
-- **Vendég dolgozó** — nincs belépése; HR rögzíti a `/accounting/employees` oldalon.
-- Cég scope: ha nincs `hr:scope_all`, csak a hozzárendelt cégeket látod.
+- **Vendég dolgozó** — nincs belépés, amíg nincs **Fiók összekötése** ([Dolgozók](/help/dolgozok)).
+- **Cég scope:** `hr:scope_all` nélkül csak a hozzárendelt cégek látszanak.
+- Kimutatások **ledolgozott óra** és **szabadság** számítása ehhez a naptárhoz és a jóváhagyott kérelmekhez kapcsolódik.
 
 ## Kapcsolódó fejezetek
 
+- [Dolgozók](/help/dolgozok)
 - [Saját beosztás](/help/sajat-beosztas)
-- [Havi kimutatások](/help/kimutatasok)
+- [Kimutatások](/help/kimutatasok)
 
 *Utolsó frissítés: 2026-06*

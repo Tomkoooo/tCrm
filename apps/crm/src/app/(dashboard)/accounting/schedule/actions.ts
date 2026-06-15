@@ -8,8 +8,9 @@ import {
   updateScheduleEntry,
   deleteScheduleEntry,
   listScheduleEntries,
+  bulkCreateScheduleEntries,
 } from '@crm/core';
-import { scheduleEntrySchema } from '@crm/lib/validation';
+import { scheduleEntrySchema, bulkScheduleSchema } from '@crm/lib/validation';
 import { HR_READ_PERMISSION_KEYS } from '@crm/lib';
 import { zodToFieldErrors, type HrFormState } from '../_components/form-utils';
 import { getHrSessionScope } from '@/lib/hr/session-scope';
@@ -126,6 +127,60 @@ export async function deleteScheduleEntryAction(id: string): Promise<HrFormState
     await deleteScheduleEntry(new mongoose.Types.ObjectId(id), userId, permissions);
     revalidatePath('/accounting/schedule');
     return { success: true };
+  } catch (e) {
+    return { success: false, message: e instanceof Error ? e.message : 'Hiba történt.' };
+  }
+}
+
+export async function bulkScheduleAction(
+  _prev: HrFormState,
+  formData: FormData
+): Promise<HrFormState> {
+  await requirePermission('hr:write');
+  const { userId, permissions } = await getHrSessionScope();
+
+  const employeeIds = formData.getAll('employeeIds').map(String);
+  const selectedRaw = String(formData.get('selectedDates') ?? '');
+  const selectedDates = selectedRaw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const parsed = bulkScheduleSchema.safeParse({
+    employeeIds,
+    startDate: formData.get('startDate'),
+    endDate: formData.get('endDate'),
+    shiftStartTime: String(formData.get('shiftStartTime') ?? '09:00').slice(0, 5),
+    shiftEndTime: String(formData.get('shiftEndTime') ?? '17:00').slice(0, 5),
+    mode: formData.get('mode') || 'workdays',
+    selectedDates: selectedDates.length ? selectedDates : undefined,
+    skipExisting: formData.get('skipExisting') === 'true',
+  });
+
+  if (!parsed.success) {
+    return { success: false, fieldErrors: zodToFieldErrors(parsed.error.issues) };
+  }
+
+  try {
+    const result = await bulkCreateScheduleEntries(
+      {
+        employeeIds: parsed.data.employeeIds.map((id: string) => new mongoose.Types.ObjectId(id)),
+        startDate: parsed.data.startDate,
+        endDate: parsed.data.endDate,
+        shiftStartTime: parsed.data.shiftStartTime,
+        shiftEndTime: parsed.data.shiftEndTime,
+        mode: parsed.data.mode,
+        selectedDates: parsed.data.selectedDates,
+        skipExisting: parsed.data.skipExisting,
+      },
+      userId,
+      permissions
+    );
+    revalidatePath('/accounting/schedule');
+    return {
+      success: true,
+      message: `${result.created} műszak létrehozva, ${result.skipped} kihagyva.`,
+    };
   } catch (e) {
     return { success: false, message: e instanceof Error ? e.message : 'Hiba történt.' };
   }

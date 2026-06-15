@@ -1,3 +1,4 @@
+import { eachDayInRange, isWorkday } from '@crm/lib';
 import { connectDB, Employee, ScheduleEntry, type IScheduleEntry } from '@crm/db';
 import type { Types } from 'mongoose';
 import { assertCompanyInScope } from './company-scope';
@@ -82,26 +83,98 @@ export async function deleteScheduleEntry(
   await ScheduleEntry.deleteOne({ _id: id }).exec();
 }
 
-export async function suggestWorkedHoursFromSchedule(
-  employeeId: Types.ObjectId,
-  year: number,
-  month: number
-): Promise<number> {
+function parseTimeOnDate(date: Date, time: string): Date {
+  const [h, m] = time.split(':').map(Number);
+  const d = new Date(date);
+  d.setHours(h ?? 0, m ?? 0, 0, 0);
+  return d;
+}
+
+function hasOverlap(
+  existing: Array<{ start: Date; end: Date; kind: string }>,
+  dayStart: Date,
+  dayEnd: Date
+): boolean {
+  return existing.some(
+    (e) => e.start < dayEnd && e.end > dayStart && (e.kind === 'off' || e.kind === 'shift')
+  );
+}
+
+export async function bulkCreateScheduleEntries(
+  data: {
+    employeeIds: Types.ObjectId[];
+    startDate: Date;
+    endDate: Date;
+    shiftStartTime: string;
+    shiftEndTime: string;
+    mode: 'workdays' | 'selected_dates';
+    selectedDates?: string[];
+    skipExisting?: boolean;
+  },
+  actorUserId: Types.ObjectId,
+  permissions: string[]
+): Promise<{ created: number; skipped: number }> {
   await connectDB();
-  const start = new Date(year, month - 1, 1);
-  const end = new Date(year, month, 1);
-  const entries = await ScheduleEntry.find({
-    employeeId,
-    kind: 'shift',
-    start: { $gte: start, $lt: end },
-  })
-    .lean()
-    .exec();
-  let totalMs = 0;
-  for (const e of entries) {
-    const s = new Date(e.start).getTime();
-    const en = new Date(e.end).getTime();
-    if (en > s) totalMs += en - s;
+  let created = 0;
+  let skipped = 0;
+
+  const targetDays: Date[] =
+    data.mode === 'selected_dates' && data.selectedDates?.length
+      ? data.selectedDates.map((d) => {
+          const parsed = new Date(d);
+          parsed.setHours(0, 0, 0, 0);
+          return parsed;
+        })
+      : eachDayInRange(data.startDate, data.endDate).filter((d) => isWorkday(d));
+
+  for (const employeeId of data.employeeIds) {
+    const emp = await Employee.findById(employeeId).exec();
+    if (!emp) continue;
+    await assertCompanyInScope(emp.companyId, actorUserId, permissions);
+
+    const rangeStart = targetDays[0] ?? data.startDate;
+    const rangeEnd = targetDays[targetDays.length - 1] ?? data.endDate;
+    const existing = await ScheduleEntry.find({
+      employeeId,
+      start: { $lt: new Date(rangeEnd.getTime() + 86400000) },
+      end: { $gt: rangeStart },
+    })
+      .lean()
+      .exec();
+
+    const existingEntries = existing.map((e) => ({
+      start: new Date(e.start),
+      end: new Date(e.end),
+      kind: e.kind,
+    }));
+
+    for (const day of targetDays) {
+      const start = parseTimeOnDate(day, data.shiftStartTime);
+      const end = parseTimeOnDate(day, data.shiftEndTime);
+      if (end <= start) {
+        skipped++;
+        continue;
+      }
+
+      if (data.skipExisting !== false && hasOverlap(existingEntries, start, end)) {
+        skipped++;
+        continue;
+      }
+
+      await ScheduleEntry.create({
+        employeeId,
+        companyId: emp.companyId,
+        start,
+        end,
+        kind: 'shift',
+        title: 'Műszak',
+        createdBy: actorUserId,
+        updatedBy: actorUserId,
+      });
+      existingEntries.push({ start, end, kind: 'shift' });
+      created++;
+    }
   }
-  return Math.round((totalMs / (1000 * 60 * 60)) * 100) / 100;
+
+  return { created, skipped };
 }

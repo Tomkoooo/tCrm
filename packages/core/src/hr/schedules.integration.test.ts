@@ -1,14 +1,15 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import { createTestMongo } from '../test/mongo-memory';
 import { Company, Employee, ScheduleEntry, User, connectDB } from '@crm/db';
-import { suggestWorkedHoursFromSchedule } from './schedules';
+import { suggestWorkedHoursFromSchedule } from './work-summaries';
 
 let mongo: MongoMemoryServer;
 let employeeId: mongoose.Types.ObjectId;
 
 beforeAll(async () => {
-  mongo = await MongoMemoryServer.create();
+  mongo = await createTestMongo();
   process.env.MONGODB_URI = mongo.getUri();
   await connectDB();
 

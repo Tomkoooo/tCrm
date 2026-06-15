@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { auth } from '@crm/auth';
 import { findValidInvitationByToken } from '@crm/core';
 import { InviteAcceptForm } from './invite-accept-form';
 
@@ -25,5 +26,18 @@ export default async function RegisterInvitePage({
     );
   }
 
-  return <InviteAcceptForm token={token} name={invitation.name} email={invitation.email} />;
+  const session = await auth();
+  const sessionEmail = session?.user?.email?.toLowerCase() ?? '';
+  const inviteEmail = invitation.email.toLowerCase();
+
+  return (
+    <InviteAcceptForm
+      token={token}
+      name={invitation.name}
+      email={invitation.email}
+      kind={invitation.kind ?? 'new_user'}
+      isLoggedIn={Boolean(session?.user)}
+      loggedInEmailMatches={Boolean(sessionEmail && sessionEmail === inviteEmail)}
+    />
+  );
 }

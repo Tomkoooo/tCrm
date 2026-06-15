@@ -9,6 +9,7 @@ import {
   ListIcon,
 } from 'lucide-react';
 import { getCurrentUser } from '@crm/auth';
+import { LOGISTICS_READ_PERMISSION_KEYS, hasAnyPermission } from '@crm/lib';
 import { Container } from '@crm/ui';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,11 +19,17 @@ export default async function DashboardPage() {
   const permissions = user?.permissions ?? [];
 
   const has = (key: string) => permissions.includes(key);
+  const hasAny = (keys: readonly string[]) => hasAnyPermission(permissions, keys);
 
   const stats = [
     { label: 'Termékek', value: '—', icon: PackageIcon, show: has('inventory:read') },
     { label: 'Nyitott ajánlatok', value: '—', icon: FileTextIcon, show: has('offers:read') },
-    { label: 'Szállítások', value: '—', icon: TruckIcon, show: has('logistics:read') },
+    {
+      label: 'Szállítások',
+      value: '—',
+      icon: TruckIcon,
+      show: hasAny(LOGISTICS_READ_PERMISSION_KEYS),
+    },
     { label: 'Felhasználók', value: '—', icon: UsersIcon, show: has('users:read') },
   ].filter((s) => s.show);
 

@@ -55,7 +55,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isAuthPage) {
-    if (isLoggedIn) {
+    if (isLoggedIn && !isInviteRegisterPage) {
       return redirectTo('/');
     }
     return NextResponse.next();

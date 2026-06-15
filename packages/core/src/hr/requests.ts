@@ -9,14 +9,7 @@ import {
 } from '@crm/db';
 import type { Types } from 'mongoose';
 import { assertCompanyInScope } from './company-scope';
-
-function daysBetween(start: Date, end: Date): number {
-  const s = new Date(start);
-  s.setHours(0, 0, 0, 0);
-  const e = new Date(end);
-  e.setHours(0, 0, 0, 0);
-  return Math.round((e.getTime() - s.getTime()) / (24 * 60 * 60 * 1000)) + 1;
-}
+import { splitDayCountByMonth } from '@crm/lib';
 
 export async function submitHrRequest(
   employeeId: Types.ObjectId,
@@ -122,51 +115,51 @@ async function applyApprovedRequest(
         updatedBy: reviewerUserId,
       });
 
-      const year = start.getFullYear();
-      const month = start.getMonth() + 1;
-      const dayCount = daysBetween(start, end);
-      const summary = await MonthlyWorkSummary.findOne({
-        employeeId,
-        year,
-        month,
-      }).exec();
+      const daySplits = splitDayCountByMonth(start, end);
+      for (const split of daySplits) {
+        const summary = await MonthlyWorkSummary.findOne({
+          employeeId,
+          year: split.year,
+          month: split.month,
+        }).exec();
 
-      if (type === 'holiday') {
-        if (summary) {
-          summary.holidayDays += dayCount;
-          summary.updatedBy = reviewerUserId;
-          await summary.save();
+        if (type === 'holiday') {
+          if (summary) {
+            summary.holidayDays += split.days;
+            summary.updatedBy = reviewerUserId;
+            await summary.save();
+          } else {
+            await MonthlyWorkSummary.create({
+              employeeId,
+              companyId,
+              year: split.year,
+              month: split.month,
+              workedHours: 0,
+              holidayDays: split.days,
+              sickDays: 0,
+              updatedBy: reviewerUserId,
+            });
+          }
         } else {
-          await MonthlyWorkSummary.create({
-            employeeId,
-            companyId,
-            year,
-            month,
-            workedHours: 0,
-            holidayDays: dayCount,
-            sickDays: 0,
-            updatedBy: reviewerUserId,
-          });
-        }
-      } else {
-        const sickPay = payload.sickPayAmount;
-        if (summary) {
-          summary.sickDays += dayCount;
-          if (sickPay != null) summary.sickPayAmount = (summary.sickPayAmount ?? 0) + sickPay;
-          summary.updatedBy = reviewerUserId;
-          await summary.save();
-        } else {
-          await MonthlyWorkSummary.create({
-            employeeId,
-            companyId,
-            year,
-            month,
-            workedHours: 0,
-            holidayDays: 0,
-            sickDays: dayCount,
-            sickPayAmount: sickPay,
-            updatedBy: reviewerUserId,
-          });
+          const sickPay = split.month === start.getMonth() + 1 ? payload.sickPayAmount : undefined;
+          if (summary) {
+            summary.sickDays += split.days;
+            if (sickPay != null) summary.sickPayAmount = (summary.sickPayAmount ?? 0) + sickPay;
+            summary.updatedBy = reviewerUserId;
+            await summary.save();
+          } else {
+            await MonthlyWorkSummary.create({
+              employeeId,
+              companyId,
+              year: split.year,
+              month: split.month,
+              workedHours: 0,
+              holidayDays: 0,
+              sickDays: split.days,
+              sickPayAmount: sickPay,
+              updatedBy: reviewerUserId,
+            });
+          }
         }
       }
     }

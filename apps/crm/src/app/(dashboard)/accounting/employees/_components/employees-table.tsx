@@ -5,6 +5,7 @@ import { DataTable, EntitySheet } from '@crm/ui';
 import type { ColumnDef, DataTableQuery } from '@crm/ui';
 import { Button } from '@/components/ui/button';
 import { CreateEmployeeForm } from './employee-form';
+import { BulkLinkByEmailButton } from './link-account-sheet-client';
 
 export type EmployeeRow = {
   _id: string;
@@ -15,6 +16,7 @@ export type EmployeeRow = {
   employmentType: string;
   isActive: boolean;
   hasUser: boolean;
+  accountLabel: string;
 };
 
 export function EmployeesTable({
@@ -48,9 +50,12 @@ export function EmployeesTable({
         emptyMessage="Még nincs dolgozó."
         toolbarExtra={
           canWrite ? (
-            <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
-              Új dolgozó
-            </Button>
+            <div className="flex gap-2">
+              <BulkLinkByEmailButton />
+              <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+                Új dolgozó
+              </Button>
+            </div>
           ) : undefined
         }
       />

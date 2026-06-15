@@ -1,9 +1,12 @@
+import { redirect } from 'next/navigation';
 import { requireAuth } from '@crm/auth';
-import { connectDB, Company, HrRequest } from '@crm/db';
-import { getEmployeeByUserId, listScheduleEntries } from '@crm/core';
+import { connectDB, Company } from '@crm/db';
+import { listScheduleEntries, userNeedsEmployeeOnboarding } from '@crm/core';
 import { Container } from '@crm/ui';
 import { format } from 'date-fns';
 import mongoose from 'mongoose';
+import { HrRequest } from '@crm/db';
+import { listEmployeeMemberships, resolveActiveEmployee } from '@/lib/hr/active-employee';
 import { MyHrClient } from './_components/my-hr-client';
 import { MyNoEmployee } from './_components/my-no-employee';
 import type { CalendarEvent } from '../_components/hr-schedule-calendar';
@@ -21,18 +24,46 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: 'Visszavonva',
 };
 
-export default async function MyHrPage() {
+export default async function MyHrPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ employeeId?: string }>;
+}) {
   const user = await requireAuth();
   if (!user) return null;
   await connectDB();
 
   const userId = new mongoose.Types.ObjectId(user.id);
-  const emp = await getEmployeeByUserId(userId);
+  const { employeeId: employeeIdParam } = await searchParams;
+
+  const needsOnboarding = await userNeedsEmployeeOnboarding(userId);
+  if (needsOnboarding) {
+    redirect('/accounting/onboarding');
+  }
+
+  const memberships = await listEmployeeMemberships(userId);
+  if (memberships.length === 0) {
+    return <MyNoEmployee />;
+  }
+
+  const emp = await resolveActiveEmployee(userId, employeeIdParam);
   if (!emp) {
     return <MyNoEmployee />;
   }
 
-  const company = await Company.findById(emp.companyId).lean().exec();
+  const companyIds = [...new Set(memberships.map((m) => m.companyId))];
+  const companies = await Company.find({ _id: { $in: companyIds } })
+    .select({ name: 1 })
+    .lean()
+    .exec();
+  const companyMap = new Map(companies.map((c) => [c._id.toString(), c.name]));
+  const companyName = companyMap.get(emp.companyId.toString()) ?? '—';
+
+  const membershipOptions = memberships.map((m) => ({
+    employeeId: m._id,
+    label: `${m.name} — ${companyMap.get(m.companyId) ?? '—'}`,
+  }));
+
   const now = new Date();
   const rangeStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const rangeEnd = new Date(now.getFullYear(), now.getMonth() + 2, 0);
@@ -77,8 +108,10 @@ export default async function MyHrPage() {
         </p>
       </div>
       <MyHrClient
+        employeeId={emp._id.toString()}
         employeeName={emp.name}
-        companyName={company?.name ?? '—'}
+        companyName={companyName}
+        memberships={membershipOptions}
         initialEvents={initialEvents}
         requests={requestRows}
       />

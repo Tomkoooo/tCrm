@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { hasPermission, requirePermission } from '@crm/auth';
+import { hasPermission, requireAnyPermission } from '@crm/auth';
+import { LOGISTICS_READ_PERMISSION_KEYS } from '@crm/lib';
 import { connectDB, Product, Reservation, Warehouse } from '@crm/db';
 import { Container } from '@crm/ui';
 import { Button } from '@/components/ui/button';
@@ -7,7 +8,7 @@ import { ReservationsPageClient } from './_components/reservations-page-client';
 import type { ReservationLineRow } from './_components/reservations-lines-table';
 
 export default async function ReservationsPage() {
-  await requirePermission('logistics:read');
+  await requireAnyPermission([...LOGISTICS_READ_PERMISSION_KEYS]);
   await connectDB();
 
   const [reservations, warehouses] = await Promise.all([

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { useActionState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -10,7 +10,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { HrScheduleCalendar, type CalendarEvent } from '../../_components/hr-schedule-calendar';
 import { submitMyRequestAction, cancelMyRequestAction } from '../actions';
+import { setActiveEmployeeAction } from '../../onboarding/actions';
 import type { HrFormState } from '../../_components/form-utils';
+
+type Membership = { employeeId: string; label: string };
 
 type MyRequest = {
   _id: string;
@@ -21,26 +24,64 @@ type MyRequest = {
 };
 
 export function MyHrClient({
+  employeeId,
   employeeName,
   companyName,
+  memberships,
   initialEvents,
   requests,
 }: {
+  employeeId: string;
   employeeName: string;
   companyName: string;
+  memberships: Membership[];
   initialEvents: CalendarEvent[];
   requests: MyRequest[];
 }) {
+  const router = useRouter();
+  const [pendingSwitch, startSwitch] = useTransition();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [requestType, setRequestType] = useState<'holiday' | 'sick_leave' | 'schedule_change'>(
     'holiday'
   );
 
+  const onSwitchCompany = (nextEmployeeId: string) => {
+    if (nextEmployeeId === employeeId) return;
+    startSwitch(async () => {
+      const res = await setActiveEmployeeAction(nextEmployeeId);
+      if (res.success) {
+        router.push(`/accounting/my?employeeId=${nextEmployeeId}`);
+        router.refresh();
+      } else {
+        toast.error(res.message);
+      }
+    });
+  };
+
   return (
     <div className="flex flex-col gap-6" data-testid="my-hr-schedule">
-      <p className="text-muted-foreground text-sm">
-        {employeeName} · {companyName}
-      </p>
+      <div className="flex flex-wrap items-end gap-3">
+        <p className="text-muted-foreground text-sm">
+          {employeeName} · {companyName}
+        </p>
+        {memberships.length > 1 && (
+          <label className="ml-auto flex flex-col gap-1 text-sm">
+            Aktív cég
+            <select
+              className="border-input bg-background h-9 min-w-[200px] rounded-md border px-2"
+              value={employeeId}
+              disabled={pendingSwitch}
+              onChange={(e) => onSwitchCompany(e.target.value)}
+            >
+              {memberships.map((m) => (
+                <option key={m.employeeId} value={m.employeeId}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
 
       <div className="flex gap-2">
         <Button size="sm" onClick={() => setSheetOpen(true)}>
@@ -73,6 +114,7 @@ export function MyHrClient({
         mode="create"
       >
         <RequestForm
+          employeeId={employeeId}
           requestType={requestType}
           onTypeChange={setRequestType}
           onSuccess={() => setSheetOpen(false)}
@@ -83,10 +125,12 @@ export function MyHrClient({
 }
 
 function RequestForm({
+  employeeId,
   requestType,
   onTypeChange,
   onSuccess,
 }: {
+  employeeId: string;
   requestType: 'holiday' | 'sick_leave' | 'schedule_change';
   onTypeChange: (t: 'holiday' | 'sick_leave' | 'schedule_change') => void;
   onSuccess?: () => void;
@@ -106,6 +150,7 @@ function RequestForm({
 
   return (
     <form action={action} className="flex flex-col gap-4">
+      <input type="hidden" name="activeEmployeeId" value={employeeId} />
       <div className="space-y-2">
         <Label>Típus</Label>
         <select

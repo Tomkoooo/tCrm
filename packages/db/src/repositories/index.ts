@@ -41,4 +41,11 @@ export class UserRepository extends AbstractRepository<IUser> {
   }
 }
 
+export {
+  MonthlyWorkSummaryRepository,
+  EmployeeLeaveYearRepository,
+  monthlyWorkSummaryRepository,
+  employeeLeaveYearRepository,
+} from './hr';
+
 export { AbstractRepository };

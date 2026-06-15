@@ -1,9 +1,7 @@
 'use client';
 
-import { useActionState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import { useActionState } from 'react';
 import { loginAction, type LoginFormState } from './actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,19 +12,8 @@ import { useBranding } from '@/components/branding-provider';
 const initialState: LoginFormState = { success: false };
 
 export function LoginForm({ showRegisterLink = false }: { showRegisterLink?: boolean }) {
-  const router = useRouter();
-  const { update } = useSession();
   const branding = useBranding();
   const [state, formAction, pending] = useActionState(loginAction, initialState);
-
-  useEffect(() => {
-    if (!state.success) return;
-    void (async () => {
-      await update();
-      router.refresh();
-      router.replace('/');
-    })();
-  }, [state.success, update, router]);
 
   return (
     <>

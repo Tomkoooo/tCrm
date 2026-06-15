@@ -4,7 +4,11 @@ import { useState } from 'react';
 import { ChevronLeft, ChevronRight, ImagePlus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { MEDIA_DELETE_PERMISSION_KEYS, MEDIA_UPLOAD_PERMISSION_KEYS } from '@crm/lib';
+import {
+  MEDIA_DELETE_PERMISSION_KEYS,
+  MEDIA_UPLOAD_PERMISSION_KEYS,
+  hasAnyPermission,
+} from '@crm/lib';
 import { useAuth } from '@/hooks/use-auth';
 import type { SelectedMedia } from '@/lib/media-types';
 import { MediaManagerModal } from './media-manager-modal';
@@ -18,6 +22,7 @@ export function MediaSelector({
   multiple = true,
   maxCount = 5,
   name = 'imageId',
+  uploadPermissionKeys,
 }: {
   label?: string;
   description?: string;
@@ -27,10 +32,15 @@ export function MediaSelector({
   maxCount?: number;
   /** Hidden input name for form submission */
   name?: string;
+  /** Extra keys that grant upload in this context (merged with default upload keys). */
+  uploadPermissionKeys?: readonly string[];
 }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
-  const canUpload = MEDIA_UPLOAD_PERMISSION_KEYS.some((k) => user?.permissions.includes(k));
+  const uploadKeys = uploadPermissionKeys
+    ? [...MEDIA_UPLOAD_PERMISSION_KEYS, ...uploadPermissionKeys]
+    : MEDIA_UPLOAD_PERMISSION_KEYS;
+  const canUpload = hasAnyPermission(user?.permissions ?? [], uploadKeys);
   const canDelete = MEDIA_DELETE_PERMISSION_KEYS.some((k) => user?.permissions.includes(k));
 
   const move = (index: number, dir: -1 | 1) => {

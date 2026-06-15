@@ -8,10 +8,14 @@ export type HrExportRow = {
   department: string;
   year: number;
   month: number;
+  entitlementDays?: number;
+  remainingDays?: number;
+  payTypeLabel?: string;
   workedHours: number;
   holidayDays: number;
   sickDays: number;
   sickPayAmount: number | '';
+  grossPayHuf?: number | '';
   notes: string;
 };
 
@@ -24,10 +28,14 @@ export function exportHrMonthlyXlsx(rows: HrExportRow[]): ArrayBuffer {
     Osztály: r.department,
     Év: r.year,
     Hónap: r.month,
+    'Éves szabadság keret': r.entitlementDays ?? '',
+    'Maradék szabadság': r.remainingDays ?? '',
+    'Bér típus': r.payTypeLabel ?? '',
     'Ledolgozott óra': r.workedHours,
     'Szabadság nap': r.holidayDays,
     'Beteg nap': r.sickDays,
     'Táppénz (HUF)': r.sickPayAmount,
+    'Bruttó bér (HUF)': r.grossPayHuf ?? '',
     Megjegyzés: r.notes,
   }));
 

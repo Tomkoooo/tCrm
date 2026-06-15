@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { hu } from 'date-fns/locale';
-import { requirePermission } from '@crm/auth';
+import { requireAnyPermission } from '@crm/auth';
+import { LOGISTICS_READ_PERMISSION_KEYS } from '@crm/lib';
 import { connectDB, Reservation, StockMovement, User } from '@crm/db';
 import { getLogisticsKpiSummary, getVehicleComplianceWarnings } from '@crm/core';
 import { Container } from '@crm/ui';
@@ -21,7 +22,7 @@ function formatHuf(n: number) {
 }
 
 export default async function LogisticsPage() {
-  await requirePermission('logistics:read');
+  await requireAnyPermission([...LOGISTICS_READ_PERMISSION_KEYS]);
   await connectDB();
 
   const [recentMovements, activeReservations, draftCount, confirmedToday, kpi, complianceWarnings] =

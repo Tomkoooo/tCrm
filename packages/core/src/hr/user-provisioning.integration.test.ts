@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import { createTestMongo } from '../test/mongo-memory';
 import {
   Company,
   Employee,
@@ -18,7 +19,7 @@ let otherCompanyId: mongoose.Types.ObjectId;
 let employeeRoleId: mongoose.Types.ObjectId;
 
 beforeAll(async () => {
-  mongo = await MongoMemoryServer.create();
+  mongo = await createTestMongo();
   process.env.MONGODB_URI = mongo.getUri();
   await connectDB();
   await ensureBaselineRbac();
@@ -95,8 +96,8 @@ describe('provisionUserWithEmployee', () => {
   });
 });
 
-describe('upsertEmployeeForUser', () => {
-  it('creates then updates employee profile', async () => {
+describe('upsertEmployeeForUser / multi-company', () => {
+  it('creates then updates employee profile at same company', async () => {
     const user = await User.create({
       email: 'upsert@test.local',
       name: 'Upsert User',
@@ -130,5 +131,40 @@ describe('upsertEmployeeForUser', () => {
     );
     expect(updated.department).toBe('IT');
     expect(await Employee.countDocuments({ userId: user._id })).toBe(1);
+  });
+
+  it('allows same user at two companies', async () => {
+    const user = await User.create({
+      email: 'multi-co@test.local',
+      name: 'Multi Co User',
+      passwordHash: 'hash',
+      roleIds: [],
+      directPermissionKeys: [],
+      isActive: true,
+    });
+
+    await upsertEmployeeForUser(
+      user._id,
+      {
+        name: 'Multi Co User',
+        email: 'multi-co@test.local',
+        companyId,
+        department: 'A',
+      },
+      { skipCompanyScope: true }
+    );
+
+    await upsertEmployeeForUser(
+      user._id,
+      {
+        name: 'Multi Co User',
+        email: 'multi-co@test.local',
+        companyId: otherCompanyId,
+        department: 'B',
+      },
+      { skipCompanyScope: true }
+    );
+
+    expect(await Employee.countDocuments({ userId: user._id })).toBe(2);
   });
 });

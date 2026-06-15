@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import mongoose from 'mongoose';
-import { getCurrentUser, hasPermission, requirePermission } from '@crm/auth';
+import { getCurrentUser, hasPermission, requireAnyPermission } from '@crm/auth';
+import { LOGISTICS_READ_PERMISSION_KEYS } from '@crm/lib';
 import { connectDB, LogisticsJob, type ILogisticsJob } from '@crm/db';
 import {
   buildLogisticsJobWarehouseFilter,
@@ -18,7 +19,7 @@ export default async function LogisticsJobsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requirePermission('logistics:read');
+  await requireAnyPermission([...LOGISTICS_READ_PERMISSION_KEYS]);
   await connectDB();
 
   const canWrite = await hasPermission('logistics:write');

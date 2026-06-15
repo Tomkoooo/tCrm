@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { hasPermission, requirePermission } from '@crm/auth';
+import { hasPermission, requireAnyPermission } from '@crm/auth';
+import { LOGISTICS_READ_PERMISSION_KEYS } from '@crm/lib';
 import { connectDB, Product, StockMovement, Warehouse } from '@crm/db';
 import { Container } from '@crm/ui';
 import { Button } from '@/components/ui/button';
@@ -18,7 +19,7 @@ import { MovementActions } from '../../_components/movement-actions';
 import { MovementStatusLabel, MovementTypeLabel } from '../../_components/movement-labels';
 
 export default async function MovementDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  await requirePermission('logistics:read');
+  await requireAnyPermission([...LOGISTICS_READ_PERMISSION_KEYS]);
   await connectDB();
 
   const { id } = await params;

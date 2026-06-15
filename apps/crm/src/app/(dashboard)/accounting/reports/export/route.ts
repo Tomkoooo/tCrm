@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { requirePermission } from '@crm/auth';
-import { connectDB, Employee, Company, MonthlyWorkSummary } from '@crm/db';
-import { exportHrMonthlyXlsx, buildCompanyFilter } from '@crm/core';
+import { connectDB, Employee, Company } from '@crm/db';
+import { exportHrMonthlyXlsx, buildMonthlyKimutatasRows } from '@crm/core';
+import { payTypeLabel } from '@crm/lib';
 import { getHrSessionScope } from '@/lib/hr/session-scope';
+import mongoose from 'mongoose';
 
 export async function GET(request: Request) {
   await requirePermission('hr:reports');
@@ -13,17 +15,20 @@ export async function GET(request: Request) {
   const year = Number(url.searchParams.get('year') ?? new Date().getFullYear());
   const month = Number(url.searchParams.get('month') ?? new Date().getMonth() + 1);
   const companyId = url.searchParams.get('companyId');
+  const companyOid =
+    companyId && mongoose.Types.ObjectId.isValid(companyId)
+      ? new mongoose.Types.ObjectId(companyId)
+      : undefined;
 
-  const filter: Record<string, unknown> = {
+  const kimutatasRows = await buildMonthlyKimutatasRows({
     year,
     month,
-    ...buildCompanyFilter(allowedCompanyIds),
-  };
-  if (companyId) filter.companyId = companyId;
+    companyId: companyOid,
+    allowedCompanyIds,
+  });
 
-  const summaries = await MonthlyWorkSummary.find(filter).lean().exec();
-  const employeeIds = summaries.map((s) => s.employeeId);
-  const companyIds = summaries.map((s) => s.companyId);
+  const employeeIds = kimutatasRows.map((r) => r.employeeId);
+  const companyIds = [...new Set(kimutatasRows.map((r) => r.companyId))];
 
   const [employees, companies] = await Promise.all([
     Employee.find({ _id: { $in: employeeIds } })
@@ -37,22 +42,26 @@ export async function GET(request: Request) {
   const empById = new Map(employees.map((e) => [String(e._id), e]));
   const coById = new Map(companies.map((c) => [String(c._id), c]));
 
-  const rows = summaries.map((s) => {
-    const emp = empById.get(String(s.employeeId));
-    const co = coById.get(String(s.companyId));
+  const rows = kimutatasRows.map((r) => {
+    const emp = empById.get(r.employeeId);
+    const co = coById.get(r.companyId);
     return {
-      companyName: co?.name ?? '',
+      companyName: co?.name ?? r.companyName,
       companySlug: co?.slug ?? '',
-      employeeName: emp?.name ?? '',
+      employeeName: r.employeeName,
       employeeNumber: emp?.employeeNumber ?? '',
       department: emp?.department ?? '',
-      year: s.year,
-      month: s.month,
-      workedHours: s.workedHours,
-      holidayDays: s.holidayDays,
-      sickDays: s.sickDays,
-      sickPayAmount: s.sickPayAmount ?? ('' as const),
-      notes: s.notes ?? '',
+      year,
+      month,
+      entitlementDays: r.entitlementDays,
+      remainingDays: r.remainingDays,
+      payTypeLabel: payTypeLabel(r.payType),
+      workedHours: r.workedHours,
+      holidayDays: r.holidayDays,
+      sickDays: r.sickDays,
+      sickPayAmount: r.sickPayAmount ?? ('' as const),
+      grossPayHuf: r.grossPayHuf ?? ('' as const),
+      notes: r.notes ?? '',
     };
   });
 
