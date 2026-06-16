@@ -1,6 +1,33 @@
 import { connectDB } from './connection';
 import { Employee } from './models/Employee';
 
+const DEFAULTS_SYNCED = Symbol.for('crm.employeeDefaultFieldsSynced');
+
+/**
+ * Backfill schema defaults on legacy/imported employee rows (no workerCategory field).
+ */
+export async function migrateEmployeeDefaultFields(): Promise<number> {
+  await connectDB();
+  const [cat, sched] = await Promise.all([
+    Employee.updateMany(
+      { $or: [{ workerCategory: { $exists: false } }, { workerCategory: null }] },
+      { $set: { workerCategory: 'regular' } }
+    ).exec(),
+    Employee.updateMany(
+      { $or: [{ workScheduleType: { $exists: false } }, { workScheduleType: null }] },
+      { $set: { workScheduleType: 'full_time' } }
+    ).exec(),
+  ]);
+  return cat.modifiedCount + sched.modifiedCount;
+}
+
+export async function ensureEmployeeDefaultFieldsOnce(): Promise<void> {
+  const g = globalThis as typeof globalThis & { [DEFAULTS_SYNCED]?: boolean };
+  if (g[DEFAULTS_SYNCED]) return;
+  await migrateEmployeeDefaultFields();
+  g[DEFAULTS_SYNCED] = true;
+}
+
 const SYNCED = Symbol.for('crm.employeeMultiCompanyIndexesSynced');
 
 /**
@@ -28,5 +55,6 @@ export async function ensureEmployeeMultiCompanyIndexesOnce(): Promise<void> {
   const g = globalThis as typeof globalThis & { [SYNCED]?: boolean };
   if (g[SYNCED]) return;
   await migrateEmployeeMultiCompanyIndexes();
+  await migrateEmployeeDefaultFields();
   g[SYNCED] = true;
 }

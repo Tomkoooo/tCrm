@@ -11,6 +11,7 @@ export type { SeedMailTemplatesOptions } from './seed';
 export { ensureBaselineRbacOnce } from './rbac-sync';
 export {
   migrateEmployeeMultiCompanyIndexes,
+  migrateEmployeeDefaultFields,
   ensureEmployeeMultiCompanyIndexesOnce,
 } from './employee-index-sync';
 export { hasAnyAdminUser } from './system';

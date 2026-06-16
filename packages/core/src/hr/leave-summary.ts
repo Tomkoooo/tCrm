@@ -7,7 +7,7 @@ import {
   employeeLeaveYearRepository,
   type IEmployee,
 } from '@crm/db';
-import { eachDayInRange } from '@crm/lib';
+import { eachDayInRange, employeeWorkerCategoryMongoFilter } from '@crm/lib';
 import type { Types } from 'mongoose';
 import {
   collectOffDaysFromEntries,
@@ -62,7 +62,9 @@ export async function buildLeaveSummary(options: {
   const { year, companyId, workerCategory, allowedCompanyIds } = options;
 
   const empFilter: Record<string, unknown> = { isActive: true };
-  if (workerCategory) empFilter.workerCategory = workerCategory;
+  if (workerCategory) {
+    Object.assign(empFilter, employeeWorkerCategoryMongoFilter(workerCategory));
+  }
   if (companyId) {
     empFilter.companyId = companyId;
   } else if (allowedCompanyIds !== null) {
