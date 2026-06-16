@@ -61,14 +61,16 @@ A naptár **Outlook-szerű**: átfedő műszakok oszlopokban, szöveg a blokkokb
 ### Dolgozó (Saját beosztás)
 
 1. **Saját beosztás** → **Új kérelem**.
-2. Típus (szabadság, beteg, …), dátumok, beküldés.
-3. Több cégnél: előbb **Aktív cég** választás — a kérelem a kiválasztott cég rekordjához tartozik.
+2. Típus: szabadság, betegszabadság, vagy **Beosztás módosítás**.
+3. Beosztás módosításnál: válassza ki a **módosítandó műszakot** a listából (a naptárban látható műszakok), majd állítsa be a **javasolt** kezdő és záró időpontot.
+4. Több cégnél: előbb **Aktív cég** választás — a kérelem a kiválasztott cég rekordjához tartozik.
 
 ### HR jóváhagyó
 
-1. **Kérelmek** lista — szűrés státusz / típus szerint.
-2. Sor megnyitása → **Jóváhagyás** vagy **Elutasítás**.
-3. Jóváhagyáskor a beosztás naptár frissül (pl. szabad nap).
+1. **Kérelmek** lista — szűrés státusz / típus szerint; beosztás módosításnál az **Időszak / módosítás** oszlop mutatja: „jelenlegi → javasolt".
+2. **Kattintson a sorra** — a panelen külön látszik a **Jelenlegi műszak** és a **Javasolt műszak**.
+3. Függő kérelemnél: **Jóváhagyás** vagy **Elutasítás** (opcionális megjegyzéssel).
+4. Jóváhagyáskor a kiválasztott műszak időpontja frissül a javasolt értékre.
 
 ---
 

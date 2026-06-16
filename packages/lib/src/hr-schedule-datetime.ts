@@ -98,6 +98,31 @@ export function formatHrDateTimeLocal(date: Date): string {
   return `${parts.year}-${pad(parts.month)}-${pad(parts.day)}T${pad(parts.hour)}:${pad(parts.minute)}`;
 }
 
+/** Egy műszak megjelenítése: „2026.06.15 08:00–16:00" vagy egész nap. */
+export function formatScheduleRange(start: Date, end: Date, allDay = false): string {
+  const day = formatHrDateKey(start);
+  if (allDay) return `${day} (egész nap)`;
+  const dayEnd = formatHrDateKey(end);
+  if (day === dayEnd) {
+    return `${day} ${formatHrTime(start)}–${formatHrTime(end)}`;
+  }
+  return `${day} ${formatHrTime(start)} – ${dayEnd} ${formatHrTime(end)}`;
+}
+
+/** Beosztás módosítás összefoglaló: „jelenlegi → javasolt". */
+export function formatScheduleChangeSummary(
+  originalStart?: Date,
+  originalEnd?: Date,
+  proposedStart?: Date,
+  proposedEnd?: Date,
+  allDay = false
+): string {
+  if (!proposedStart || !proposedEnd) return '—';
+  const proposed = formatScheduleRange(proposedStart, proposedEnd, allDay);
+  if (!originalStart || !originalEnd) return proposed;
+  return `${formatScheduleRange(originalStart, originalEnd, allDay)} → ${proposed}`;
+}
+
 /** ISO / Date → naptár Date (hydration). */
 export function toCalendarDate(value: Date | string): Date {
   return value instanceof Date ? value : new Date(value);

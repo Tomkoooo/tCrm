@@ -78,6 +78,36 @@ export const employeeSchema = z.object({
   hrNotes: z.string().optional(),
 });
 
+/** Shared profile across all company records for one person. */
+export const employeePersonSchema = employeeSchema.pick({
+  name: true,
+  email: true,
+  phone: true,
+  workerCategory: true,
+  workScheduleType: true,
+  contractedWeeklyHours: true,
+  contractedDailyHours: true,
+  calendarColor: true,
+  birthName: true,
+  birthPlaceDate: true,
+  mothersName: true,
+  address: true,
+  taj: true,
+  taxId: true,
+  hrNotes: true,
+});
+
+/** Per-company fields on a single employee record. */
+export const employeeMembershipSchema = employeeSchema.pick({
+  department: true,
+  employeeNumber: true,
+  payType: true,
+  monthlySalaryHuf: true,
+  hourlyRateHuf: true,
+  isActive: true,
+  employmentType: true,
+});
+
 /** Optional employee block on user create / register (company required when enabled). */
 export const userEmployeeProfileSchema = z.object({
   linkEmployee: z.coerce.boolean().optional(),
@@ -198,13 +228,18 @@ export const hrRequestSickSchema = z
     path: ['endDate'],
   });
 
-export const hrRequestScheduleChangeSchema = z.object({
-  type: z.literal('schedule_change'),
-  scheduleEntryId: z.string().optional(),
-  proposedStart: z.coerce.date(),
-  proposedEnd: z.coerce.date(),
-  reason: z.string().optional(),
-});
+export const hrRequestScheduleChangeSchema = z
+  .object({
+    type: z.literal('schedule_change'),
+    scheduleEntryId: z.string().min(1, 'Válasszon módosítandó műszakot'),
+    proposedStart: z.coerce.date(),
+    proposedEnd: z.coerce.date(),
+    reason: z.string().optional(),
+  })
+  .refine((d) => d.proposedEnd >= d.proposedStart, {
+    message: 'A javasolt befejezés nem lehet korábbi',
+    path: ['proposedEnd'],
+  });
 
 export const hrRequestSchema = z.discriminatedUnion('type', [
   hrRequestHolidaySchema,

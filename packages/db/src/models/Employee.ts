@@ -47,7 +47,7 @@ const EmployeeSchema = new Schema<IEmployee>(
     employeeNumber: { type: String },
     department: { type: String },
     phone: { type: String },
-    userId: { type: Schema.Types.ObjectId, ref: 'User', sparse: true, index: true },
+    userId: { type: Schema.Types.ObjectId, ref: 'User', sparse: true },
     employmentType: {
       type: String,
       enum: ['employee', 'guest'],

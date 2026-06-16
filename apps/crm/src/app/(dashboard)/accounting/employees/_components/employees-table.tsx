@@ -10,7 +10,8 @@ import { BulkLinkByEmailButton } from './link-account-sheet-client';
 export type EmployeeRow = {
   _id: string;
   name: string;
-  companyName: string;
+  companiesLabel: string;
+  companyCount: number;
   email?: string;
   department?: string;
   employmentType: string;

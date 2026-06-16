@@ -7,6 +7,8 @@ import { format } from 'date-fns';
 import mongoose from 'mongoose';
 import { HrRequest } from '@crm/db';
 import { resolveEmployeeScheduleColor } from '@crm/lib';
+import { buildShiftOptions } from './_lib/shift-options';
+import { formatScheduleChangeSummary } from '@crm/lib';
 import { listEmployeeMemberships, resolveActiveEmployee } from '@/lib/hr/active-employee';
 import { MyHrClient } from './_components/my-hr-client';
 import { MyNoEmployee } from './_components/my-no-employee';
@@ -91,15 +93,36 @@ export default async function MyHrPage({
     color: resolveEmployeeScheduleColor(emp._id.toString(), emp.calendarColor),
   }));
 
+  const shiftOptions = buildShiftOptions(entries);
+
   const requestRows = requests.map((r) => {
     const start = r.payload?.startDate ?? r.payload?.proposedStart;
     const end = r.payload?.endDate ?? r.payload?.proposedEnd;
+    const originalStart = r.payload?.originalStart;
+    const originalEnd = r.payload?.originalEnd;
+
+    let periodLabel: string;
+    if (r.type === 'schedule_change') {
+      periodLabel = formatScheduleChangeSummary(
+        originalStart ? new Date(originalStart) : undefined,
+        originalEnd ? new Date(originalEnd) : undefined,
+        start ? new Date(start) : undefined,
+        end ? new Date(end) : undefined
+      );
+    } else {
+      periodLabel =
+        start && end
+          ? `${format(new Date(start), 'yyyy.MM.dd')} – ${format(new Date(end), 'yyyy.MM.dd')}`
+          : '—';
+    }
+
     return {
       _id: String(r._id),
       type: TYPE_LABELS[r.type] ?? r.type,
       status: STATUS_LABELS[r.status] ?? r.status,
       startLabel: start ? format(new Date(start), 'yyyy.MM.dd') : '—',
       endLabel: end ? format(new Date(end), 'yyyy.MM.dd') : '—',
+      periodLabel,
     };
   });
 
@@ -116,6 +139,7 @@ export default async function MyHrPage({
         employeeName={emp.name}
         companyName={companyName}
         memberships={membershipOptions}
+        shiftOptions={shiftOptions}
         initialEvents={initialEvents}
         requests={requestRows}
       />

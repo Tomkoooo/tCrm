@@ -12,6 +12,7 @@ import { HrScheduleCalendar, type CalendarEvent } from '../../_components/hr-sch
 import { submitMyRequestAction, cancelMyRequestAction } from '../actions';
 import { setActiveEmployeeAction } from '../../onboarding/actions';
 import type { HrFormState } from '../../_components/form-utils';
+import type { ShiftOption } from '../_lib/shift-options';
 
 type Membership = { employeeId: string; label: string };
 
@@ -21,6 +22,7 @@ type MyRequest = {
   status: string;
   startLabel: string;
   endLabel: string;
+  periodLabel: string;
 };
 
 export function MyHrClient({
@@ -29,6 +31,7 @@ export function MyHrClient({
   companyName,
   memberships,
   initialEvents,
+  shiftOptions,
   requests,
 }: {
   employeeId: string;
@@ -36,6 +39,7 @@ export function MyHrClient({
   companyName: string;
   memberships: Membership[];
   initialEvents: CalendarEvent[];
+  shiftOptions: ShiftOption[];
   requests: MyRequest[];
 }) {
   const router = useRouter();
@@ -97,7 +101,8 @@ export function MyHrClient({
           {requests.map((r) => (
             <li key={r._id} className="flex items-center justify-between py-2">
               <span>
-                {r.type} — {r.status} ({r.startLabel} – {r.endLabel})
+                {r.type} — {r.status}
+                {r.periodLabel !== '—' ? ` (${r.periodLabel})` : ''}
               </span>
               {r.status === 'Függő' && <CancelRequestButton requestId={r._id} />}
             </li>
@@ -116,6 +121,7 @@ export function MyHrClient({
         <RequestForm
           employeeId={employeeId}
           requestType={requestType}
+          shiftOptions={shiftOptions}
           onTypeChange={setRequestType}
           onSuccess={() => setSheetOpen(false)}
         />
@@ -127,11 +133,13 @@ export function MyHrClient({
 function RequestForm({
   employeeId,
   requestType,
+  shiftOptions,
   onTypeChange,
   onSuccess,
 }: {
   employeeId: string;
   requestType: 'holiday' | 'sick_leave' | 'schedule_change';
+  shiftOptions: ShiftOption[];
   onTypeChange: (t: 'holiday' | 'sick_leave' | 'schedule_change') => void;
   onSuccess?: () => void;
 }) {
@@ -139,6 +147,21 @@ function RequestForm({
   const [state, action, pending] = useActionState(submitMyRequestAction, {
     success: false,
   } as HrFormState);
+  const [selectedShiftId, setSelectedShiftId] = useState('');
+  const [proposedStart, setProposedStart] = useState('');
+  const [proposedEnd, setProposedEnd] = useState('');
+
+  const onShiftChange = (shiftId: string) => {
+    setSelectedShiftId(shiftId);
+    const shift = shiftOptions.find((s) => s.id === shiftId);
+    if (shift) {
+      setProposedStart(shift.proposedStart);
+      setProposedEnd(shift.proposedEnd);
+    } else {
+      setProposedStart('');
+      setProposedEnd('');
+    }
+  };
 
   useEffect(() => {
     if (state.success) {
@@ -188,14 +211,60 @@ function RequestForm({
 
       {requestType === 'schedule_change' && (
         <>
-          <div className="space-y-2">
-            <Label htmlFor="proposedStart">Javasolt kezdet</Label>
-            <Input id="proposedStart" name="proposedStart" type="datetime-local" required />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="proposedEnd">Javasolt vége</Label>
-            <Input id="proposedEnd" name="proposedEnd" type="datetime-local" required />
-          </div>
+          {shiftOptions.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              Nincs módosítható műszak a naptárban — kérjen HR-től beosztást, vagy válasszon másik
+              hónapot a naptárban.
+            </p>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="scheduleEntryId">Módosítandó műszak</Label>
+                <select
+                  id="scheduleEntryId"
+                  name="scheduleEntryId"
+                  className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+                  value={selectedShiftId}
+                  onChange={(e) => onShiftChange(e.target.value)}
+                  required
+                >
+                  <option value="" disabled>
+                    Válasszon műszakot…
+                  </option>
+                  {shiftOptions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-muted-foreground text-xs">
+                  A jelenlegi időpont alapértelmezés — módosítsa, ha más időre szeretné.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="proposedStart">Javasolt kezdet</Label>
+                <Input
+                  id="proposedStart"
+                  name="proposedStart"
+                  type="datetime-local"
+                  value={proposedStart}
+                  onChange={(e) => setProposedStart(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="proposedEnd">Javasolt vége</Label>
+                <Input
+                  id="proposedEnd"
+                  name="proposedEnd"
+                  type="datetime-local"
+                  value={proposedEnd}
+                  onChange={(e) => setProposedEnd(e.target.value)}
+                  required
+                />
+              </div>
+            </>
+          )}
         </>
       )}
 
@@ -204,7 +273,11 @@ function RequestForm({
         <Input id="reason" name="reason" />
       </div>
 
-      <Button type="submit" loading={pending} disabled={pending}>
+      <Button
+        type="submit"
+        loading={pending}
+        disabled={pending || (requestType === 'schedule_change' && shiftOptions.length === 0)}
+      >
         Beküldés
       </Button>
     </form>

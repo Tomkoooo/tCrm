@@ -31,21 +31,43 @@ export async function submitHrRequest(
   if (!emp.userId?.equals(requestedByUserId)) {
     throw new Error('Csak saját kérelmet adhat be.');
   }
+
+  let payload: IHrRequest['payload'] = {
+    startDate: data.startDate,
+    endDate: data.endDate,
+    reason: data.reason,
+    sickPayAmount: data.sickPayAmount,
+    scheduleEntryId: data.scheduleEntryId,
+    proposedStart: data.proposedStart,
+    proposedEnd: data.proposedEnd,
+  };
+
+  if (data.type === 'schedule_change') {
+    if (!data.scheduleEntryId) {
+      throw new Error('Válasszon módosítandó műszakot.');
+    }
+    if (!data.proposedStart || !data.proposedEnd) {
+      throw new Error('Adja meg a javasolt időpontokat.');
+    }
+    const entry = await ScheduleEntry.findById(data.scheduleEntryId).exec();
+    if (!entry || !entry.employeeId.equals(employeeId)) {
+      throw new Error('A kiválasztott műszak nem található.');
+    }
+    payload = {
+      ...payload,
+      originalStart: entry.start,
+      originalEnd: entry.end,
+      originalTitle: entry.title,
+    };
+  }
+
   return HrRequest.create({
     employeeId,
     companyId: emp.companyId,
     type: data.type,
     status: 'pending',
     requestedByUserId,
-    payload: {
-      startDate: data.startDate,
-      endDate: data.endDate,
-      reason: data.reason,
-      sickPayAmount: data.sickPayAmount,
-      scheduleEntryId: data.scheduleEntryId,
-      proposedStart: data.proposedStart,
-      proposedEnd: data.proposedEnd,
-    },
+    payload,
   });
 }
 

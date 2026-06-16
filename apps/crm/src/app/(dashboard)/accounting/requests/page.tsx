@@ -1,7 +1,12 @@
 import { requireAnyPermission, hasAnyPermission } from '@crm/auth';
 import { connectDB, HrRequest, Employee, Company } from '@crm/db';
 import { buildCompanyFilter } from '@crm/core';
-import { HR_READ_PERMISSION_KEYS, HR_APPROVE_PERMISSION_KEYS } from '@crm/lib';
+import {
+  HR_READ_PERMISSION_KEYS,
+  HR_APPROVE_PERMISSION_KEYS,
+  formatScheduleChangeSummary,
+  formatScheduleRange,
+} from '@crm/lib';
 import { Container, parseDataTableQuery, buildDataTableMongoQuery } from '@crm/ui';
 import type { ColumnDef } from '@crm/ui';
 import { format } from 'date-fns';
@@ -20,6 +25,22 @@ const STATUS_LABELS: Record<string, string> = {
   rejected: 'Elutasítva',
   cancelled: 'Visszavonva',
 };
+
+function formatPeriod(
+  typeKey: string,
+  start: Date | undefined,
+  end: Date | undefined,
+  originalStart?: Date,
+  originalEnd?: Date
+): string {
+  if (typeKey === 'schedule_change') {
+    return formatScheduleChangeSummary(originalStart, originalEnd, start, end);
+  }
+  if (!start && !end) return '—';
+  const startStr = start ? format(start, 'yyyy.MM.dd') : '—';
+  const endStr = end ? format(end, 'yyyy.MM.dd') : '—';
+  return `${startStr} – ${endStr}`;
+}
 
 export default async function RequestsPage({
   searchParams,
@@ -56,12 +77,25 @@ export default async function RequestsPage({
       mongoKey: 'type',
     },
     {
+      key: 'periodLabel',
+      label: 'Időszak / módosítás',
+      type: 'string',
+      sortable: false,
+      filterable: false,
+    },
+    {
       key: 'status',
       label: 'Státusz',
-      type: 'string',
+      type: 'enum',
       sortable: true,
       filterable: true,
       mongoKey: 'status',
+      enumValues: [
+        { value: 'pending', label: 'Függő' },
+        { value: 'approved', label: 'Jóváhagyva' },
+        { value: 'rejected', label: 'Elutasítva' },
+        { value: 'cancelled', label: 'Visszavonva' },
+      ],
     },
   ];
 
@@ -90,18 +124,37 @@ export default async function RequestsPage({
   const coName = new Map(companies.map((c) => [String(c._id), c.name]));
 
   const data: RequestRow[] = items.map((r) => {
-    const start = r.payload?.startDate ?? r.payload?.proposedStart;
-    const end = r.payload?.endDate ?? r.payload?.proposedEnd;
+    const startRaw = r.payload?.startDate ?? r.payload?.proposedStart;
+    const endRaw = r.payload?.endDate ?? r.payload?.proposedEnd;
+    const originalStartRaw = r.payload?.originalStart;
+    const originalEndRaw = r.payload?.originalEnd;
+    const start = startRaw ? new Date(startRaw) : undefined;
+    const end = endRaw ? new Date(endRaw) : undefined;
+    const originalStart = originalStartRaw ? new Date(originalStartRaw) : undefined;
+    const originalEnd = originalEndRaw ? new Date(originalEndRaw) : undefined;
+
     return {
       _id: String(r._id),
       employeeName: empName.get(String(r.employeeId)) ?? '—',
       companyName: coName.get(String(r.companyId)) ?? '—',
       typeKey: r.type,
       type: TYPE_LABELS[r.type] ?? r.type,
+      statusKey: r.status,
       status: STATUS_LABELS[r.status] ?? r.status,
-      startLabel: start ? format(new Date(start), 'yyyy.MM.dd') : '—',
-      endLabel: end ? format(new Date(end), 'yyyy.MM.dd') : '—',
+      periodLabel: formatPeriod(r.type, start, end, originalStart, originalEnd),
+      originalScheduleLabel:
+        originalStart && originalEnd ? formatScheduleRange(originalStart, originalEnd) : undefined,
+      proposedScheduleLabel: start && end ? formatScheduleRange(start, end) : undefined,
+      originalTitle: r.payload?.originalTitle,
+      startLabel: start ? format(start, 'yyyy.MM.dd') : '—',
+      endLabel: end ? format(end, 'yyyy.MM.dd') : '—',
       reason: r.payload?.reason,
+      sickPayAmount: r.payload?.sickPayAmount,
+      submittedAtLabel: format(new Date(r.createdAt), 'yyyy.MM.dd HH:mm'),
+      reviewNote: r.reviewNote,
+      reviewedAtLabel: r.reviewedAt
+        ? format(new Date(r.reviewedAt), 'yyyy.MM.dd HH:mm')
+        : undefined,
     };
   });
 
@@ -110,7 +163,8 @@ export default async function RequestsPage({
       <div>
         <h1 className="text-2xl font-bold">HR kérelmek</h1>
         <p className="text-muted-foreground text-sm">
-          Szabadság, betegség és beosztás módosítások.
+          Szabadság, betegség és beosztás módosítások. Kattintson egy sorra a részletekért és
+          elbíráláshoz.
         </p>
       </div>
       <RequestsTable

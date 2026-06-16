@@ -101,6 +101,8 @@ export {
   parseCompanyDataJson,
   companyDataToEntries,
   employeeSchema,
+  employeePersonSchema,
+  employeeMembershipSchema,
   inviteEmployeeSchema,
   linkExistingUserSchema,
   addEmployeeToCompanySchema,

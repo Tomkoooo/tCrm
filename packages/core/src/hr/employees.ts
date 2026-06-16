@@ -11,7 +11,7 @@ import {
   type IEmployee,
   type EmploymentType,
 } from '@crm/db';
-import type { Types } from 'mongoose';
+import type { Types, PipelineStage } from 'mongoose';
 import { assertCompanyInScope, resolveAllowedCompanyIds } from './company-scope';
 
 export async function listEmployeesForUser(userId: Types.ObjectId): Promise<IEmployee[]> {
@@ -219,17 +219,250 @@ export async function listEmployeeRecordsForSamePerson(
   if (!emp) return [];
 
   if (emp.userId) {
-    return Employee.find({ userId: emp.userId, isActive: true }).sort({ companyId: 1 }).exec();
+    return Employee.find({ userId: emp.userId }).sort({ companyId: 1 }).exec();
   }
   if (emp.email?.trim()) {
-    return Employee.find({
-      email: emp.email.toLowerCase().trim(),
-      isActive: true,
-    })
-      .sort({ companyId: 1 })
-      .exec();
+    const email = emp.email.toLowerCase().trim();
+    return Employee.find({ email }).sort({ companyId: 1 }).exec();
   }
   return [emp as IEmployee];
+}
+
+export type EmployeePersonMembership = {
+  employeeId: string;
+  companyId: string;
+  department?: string;
+  isActive: boolean;
+};
+
+export type EmployeePersonGroup = {
+  personKey: string;
+  primaryEmployeeId: string;
+  name: string;
+  email?: string;
+  department?: string;
+  employmentType: EmploymentType;
+  hasUser: boolean;
+  isActive: boolean;
+  companyIds: string[];
+  memberships: EmployeePersonMembership[];
+};
+
+/** Mongo $addFields stage — group key for one person across company records. */
+export function employeePersonKeyAddFields(): PipelineStage {
+  return {
+    $addFields: {
+      personKey: {
+        $cond: [
+          { $ne: [{ $ifNull: ['$userId', null] }, null] },
+          { $concat: ['u:', { $toString: '$userId' }] },
+          {
+            $cond: [
+              {
+                $gt: [
+                  {
+                    $strLenCP: {
+                      $trim: { input: { $ifNull: ['$email', ''] } },
+                    },
+                  },
+                  0,
+                ],
+              },
+              {
+                $concat: ['e:', { $toLower: { $trim: { input: '$email' } } }],
+              },
+              { $concat: ['i:', { $toString: '$_id' }] },
+            ],
+          },
+        ],
+      },
+    },
+  };
+}
+
+export async function listEmployeePersonGroups(params: {
+  scopeFilter: Record<string, unknown>;
+  matchFilter?: Record<string, unknown>;
+  sort?: Record<string, 1 | -1>;
+  skip?: number;
+  limit?: number;
+}): Promise<{ groups: EmployeePersonGroup[]; total: number }> {
+  await connectDB();
+
+  const preMatch = { ...params.scopeFilter, ...(params.matchFilter ?? {}) };
+  const skip = params.skip ?? 0;
+  const limit = params.limit ?? 10;
+
+  const groupSort: Record<string, 1 | -1> = {};
+  if (params.sort) {
+    for (const [key, dir] of Object.entries(params.sort)) {
+      groupSort[key] = dir;
+    }
+  }
+  if (Object.keys(groupSort).length === 0) {
+    groupSort.name = 1;
+  }
+
+  type AggGroup = {
+    _id: string;
+    primaryEmployeeId: Types.ObjectId;
+    name: string;
+    email?: string;
+    department?: string;
+    employmentType: EmploymentType;
+    userId?: Types.ObjectId;
+    isActive: boolean;
+    companyIds: Types.ObjectId[];
+    memberships: Array<{
+      employeeId: Types.ObjectId;
+      companyId: Types.ObjectId;
+      department?: string;
+      isActive: boolean;
+    }>;
+  };
+
+  const pipeline: PipelineStage[] = [
+    { $match: preMatch },
+    { $sort: { createdAt: 1 } },
+    employeePersonKeyAddFields(),
+    {
+      $group: {
+        _id: '$personKey',
+        primaryEmployeeId: { $first: '$_id' },
+        name: { $first: '$name' },
+        email: { $first: '$email' },
+        department: { $first: '$department' },
+        employmentType: { $first: '$employmentType' },
+        userId: { $first: '$userId' },
+        isActive: { $max: '$isActive' },
+        companyIds: { $addToSet: '$companyId' },
+        memberships: {
+          $push: {
+            employeeId: '$_id',
+            companyId: '$companyId',
+            department: '$department',
+            isActive: '$isActive',
+          },
+        },
+      },
+    },
+    { $sort: groupSort },
+    { $skip: skip },
+    { $limit: limit },
+  ];
+
+  const countPipeline: PipelineStage[] = [
+    { $match: preMatch },
+    employeePersonKeyAddFields(),
+    { $group: { _id: '$personKey' } },
+    { $count: 'total' },
+  ];
+
+  const [rawGroups, countResult] = await Promise.all([
+    Employee.aggregate<AggGroup>(pipeline).exec(),
+    Employee.aggregate<{ total: number }>(countPipeline).exec(),
+  ]);
+
+  const groups: EmployeePersonGroup[] = rawGroups.map((g) => ({
+    personKey: g._id,
+    primaryEmployeeId: String(g.primaryEmployeeId),
+    name: g.name,
+    email: g.email,
+    department: g.department,
+    employmentType: g.employmentType,
+    hasUser: Boolean(g.userId),
+    isActive: g.isActive,
+    companyIds: g.companyIds.map((id) => String(id)),
+    memberships: g.memberships.map((m) => ({
+      employeeId: String(m.employeeId),
+      companyId: String(m.companyId),
+      department: m.department,
+      isActive: m.isActive,
+    })),
+  }));
+
+  return { groups, total: countResult[0]?.total ?? 0 };
+}
+
+export type EmployeePersonSharedProfile = {
+  name: string;
+  email?: string;
+  phone?: string;
+  hrNotes?: string;
+  calendarColor?: string;
+  workerCategory?: 'regular' | 'occasional';
+  workScheduleType?: 'full_time' | 'part_time';
+  contractedWeeklyHours?: number;
+  contractedDailyHours?: number;
+  personalData?: IEmployee['personalData'];
+};
+
+export type EmployeeCompanyMembershipProfile = {
+  department?: string;
+  employeeNumber?: string;
+  payType?: 'monthly' | 'hourly';
+  monthlySalaryHuf?: number;
+  hourlyRateHuf?: number;
+  isActive: boolean;
+  employmentType: EmploymentType;
+};
+
+/** Sync shared profile fields to every company record for the same person. */
+export async function updateEmployeePersonProfile(
+  anchorEmployeeId: Types.ObjectId,
+  data: EmployeePersonSharedProfile,
+  actorUserId: Types.ObjectId,
+  permissions: string[]
+): Promise<number> {
+  await connectDB();
+  const records = await listEmployeeRecordsForSamePerson(anchorEmployeeId);
+  if (!records.length) throw new Error('Dolgozó nem található.');
+
+  let updated = 0;
+  for (const emp of records) {
+    await assertCompanyInScope(emp.companyId, actorUserId, permissions);
+    emp.name = data.name.trim();
+    if (data.email !== undefined) emp.email = data.email?.toLowerCase().trim() || undefined;
+    if (data.phone !== undefined) emp.phone = data.phone;
+    if (data.hrNotes !== undefined) emp.hrNotes = data.hrNotes;
+    if (data.calendarColor !== undefined) emp.calendarColor = data.calendarColor || undefined;
+    if (data.workerCategory !== undefined) emp.workerCategory = data.workerCategory;
+    if (data.workScheduleType !== undefined) emp.workScheduleType = data.workScheduleType;
+    if (data.contractedWeeklyHours !== undefined) {
+      emp.contractedWeeklyHours = data.contractedWeeklyHours;
+    }
+    if (data.contractedDailyHours !== undefined) {
+      emp.contractedDailyHours = data.contractedDailyHours;
+    }
+    if (data.personalData !== undefined) {
+      emp.personalData = data.personalData;
+    }
+    await emp.save();
+    updated++;
+  }
+  return updated;
+}
+
+export async function updateEmployeeCompanyMembership(
+  employeeId: Types.ObjectId,
+  data: EmployeeCompanyMembershipProfile,
+  actorUserId: Types.ObjectId,
+  permissions: string[]
+): Promise<IEmployee> {
+  await connectDB();
+  const emp = await Employee.findById(employeeId).exec();
+  if (!emp) throw new Error('Dolgozó nem található.');
+  await assertCompanyInScope(emp.companyId, actorUserId, permissions);
+
+  if (data.department !== undefined) emp.department = data.department;
+  if (data.employeeNumber !== undefined) emp.employeeNumber = data.employeeNumber;
+  if (data.payType !== undefined) emp.payType = data.payType;
+  if (data.monthlySalaryHuf !== undefined) emp.monthlySalaryHuf = data.monthlySalaryHuf;
+  if (data.hourlyRateHuf !== undefined) emp.hourlyRateHuf = data.hourlyRateHuf;
+  emp.isActive = data.isActive;
+  emp.employmentType = data.employmentType;
+  await emp.save();
+  return emp;
 }
 
 export type EmployeeLinkResult = {
@@ -553,13 +786,19 @@ export async function unlinkEmployeeUser(
   permissions: string[]
 ): Promise<IEmployee> {
   await connectDB();
-  const emp = await Employee.findById(employeeId).exec();
-  if (!emp) throw new Error('Dolgozó nem található.');
-  await assertCompanyInScope(emp.companyId, actorUserId, permissions);
-  emp.userId = undefined;
-  emp.employmentType = 'guest';
-  await emp.save();
-  return emp;
+  const anchor = await Employee.findById(employeeId).exec();
+  if (!anchor) throw new Error('Dolgozó nem található.');
+
+  const records = anchor.userId ? await Employee.find({ userId: anchor.userId }).exec() : [anchor];
+
+  for (const emp of records) {
+    await assertCompanyInScope(emp.companyId, actorUserId, permissions);
+    emp.userId = undefined;
+    emp.employmentType = 'guest';
+    await emp.save();
+  }
+
+  return anchor;
 }
 
 export async function completeEmployeeOnboarding(

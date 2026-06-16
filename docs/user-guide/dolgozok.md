@@ -20,6 +20,11 @@ Könyvelés → **Dolgozók** (`/accounting/employees`).
 | Lista, részletek | `hr:read` |
 | Új dolgozó, szerkesztés, fiók összekötés, másik céghez adás | `hr:write` |
 
+### Lista
+
+- **Egy sor = egy személy** — ha több cégnél dolgozik, a **Cégek** oszlopban mindegyik felsorolva (pl. „Cég A · Cég B").
+- Kattintás → közös adatlap; beosztás és kimutatás továbbra is **cégenként** külön rekord.
+
 ## Új dolgozó
 
 1. A listán: **Új dolgozó**.
@@ -120,9 +125,9 @@ Ezek a **Kimutatások → Havi bér és órák** fül bruttó oszlopához kellen
 
 ## Lista oszlopok
 
+- **Cégek:** minden cég, ahol van rekord (egy sorban)
 - **CRM fiók:** „Összekötve" vagy „Nincs fiók"
 - **Státusz:** „Alkalmazott" vagy „Külsős"
-- **Cég:** melyik céghez tartozik a rekord
 
 ## Kapcsolódó
 

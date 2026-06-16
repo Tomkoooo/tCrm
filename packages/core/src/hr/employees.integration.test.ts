@@ -3,7 +3,12 @@ import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { createTestMongo } from '../test/mongo-memory';
 import { Company, Employee, Role, User, connectDB, ensureBaselineRbac } from '@crm/db';
-import { linkGuestEmployeeToExistingUser, inviteEmployeeToUser, deleteEmployee } from './employees';
+import {
+  linkGuestEmployeeToExistingUser,
+  inviteEmployeeToUser,
+  deleteEmployee,
+  listEmployeePersonGroups,
+} from './employees';
 
 let mongo: MongoMemoryServer;
 let companyA: mongoose.Types.ObjectId;
@@ -115,6 +120,35 @@ describe('multi-company employee account linking', () => {
     expect(user).toBeTruthy();
     const employeeRole = await Role.findOne({ key: 'employee' }).exec();
     expect(user?.roleIds.some((id) => id.equals(employeeRole!._id))).toBe(true);
+  });
+});
+
+describe('listEmployeePersonGroups', () => {
+  it('groups same e-mail across companies into one row', async () => {
+    await Employee.create([
+      {
+        companyId: companyA,
+        name: 'Grouped Worker',
+        email: 'grouped@test.local',
+        employmentType: 'guest',
+        isActive: true,
+      },
+      {
+        companyId: companyB,
+        name: 'Grouped Worker',
+        email: 'grouped@test.local',
+        employmentType: 'guest',
+        isActive: true,
+      },
+    ]);
+
+    const { groups, total } = await listEmployeePersonGroups({
+      scopeFilter: {},
+      matchFilter: { email: 'grouped@test.local' },
+    });
+
+    expect(total).toBe(1);
+    expect(groups[0]?.companyIds).toHaveLength(2);
   });
 });
 

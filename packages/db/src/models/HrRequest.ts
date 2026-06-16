@@ -11,6 +11,10 @@ export interface IHrRequestPayload {
   scheduleEntryId?: Types.ObjectId;
   proposedStart?: Date;
   proposedEnd?: Date;
+  /** Snapshot at submit — HR can compare even if the shift is later edited. */
+  originalStart?: Date;
+  originalEnd?: Date;
+  originalTitle?: string;
 }
 
 export interface IHrRequest extends Document {
@@ -55,6 +59,9 @@ const HrRequestSchema = new Schema<IHrRequest>(
       scheduleEntryId: { type: Schema.Types.ObjectId, ref: 'ScheduleEntry' },
       proposedStart: { type: Date },
       proposedEnd: { type: Date },
+      originalStart: { type: Date },
+      originalEnd: { type: Date },
+      originalTitle: { type: String },
     },
   },
   { timestamps: true }

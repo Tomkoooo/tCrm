@@ -3,6 +3,7 @@ import {
   combineHrDayAndTime,
   formatHrDateTimeLocal,
   formatHrTime,
+  formatScheduleChangeSummary,
   parseHrDateOnly,
   parseHrDateTime,
 } from './hr-schedule-datetime';
@@ -36,5 +37,16 @@ describe('hr-schedule-datetime', () => {
   it('formatHrDateTimeLocal round-trips for datetime-local inputs', () => {
     const d = parseHrDateTime('2026-06-15T09:30:00');
     expect(formatHrDateTimeLocal(d)).toBe('2026-06-15T09:30');
+  });
+
+  it('formatScheduleChangeSummary shows from → to', () => {
+    const fromStart = parseHrDateTime('2026-06-15T08:00:00');
+    const fromEnd = parseHrDateTime('2026-06-15T16:00:00');
+    const toStart = parseHrDateTime('2026-06-15T10:00:00');
+    const toEnd = parseHrDateTime('2026-06-15T18:00:00');
+    const summary = formatScheduleChangeSummary(fromStart, fromEnd, toStart, toEnd);
+    expect(summary).toContain('→');
+    expect(summary).toContain('08:00');
+    expect(summary).toContain('18:00');
   });
 });

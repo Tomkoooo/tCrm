@@ -1,11 +1,10 @@
 import { requireAnyPermission } from '@crm/auth';
-import { connectDB, Employee } from '@crm/db';
-import { buildCompanyFilter } from '@crm/core';
+import { connectDB } from '@crm/db';
+import { buildCompanyFilter, listEmployeePersonGroups, listActiveCompanies } from '@crm/core';
 import { HR_READ_PERMISSION_KEYS } from '@crm/lib';
 import { Container, parseDataTableQuery, buildDataTableMongoQuery } from '@crm/ui';
 import type { ColumnDef } from '@crm/ui';
 import { hasPermission } from '@crm/auth';
-import { listActiveCompanies } from '@crm/core';
 import { getHrSessionScope } from '@/lib/hr/session-scope';
 import { EmployeesTable, type EmployeeRow } from './_components/employees-table';
 
@@ -34,8 +33,8 @@ export default async function EmployeesPage({
       mongoKey: 'name',
     },
     {
-      key: 'companyName',
-      label: 'Cég',
+      key: 'companiesLabel',
+      label: 'Cégek',
       type: 'string',
       sortable: false,
       filterable: false,
@@ -81,24 +80,42 @@ export default async function EmployeesPage({
 
   const scopeFilter = buildCompanyFilter(allowedCompanyIds);
   const { filter, sort, skip, limit } = buildDataTableMongoQuery(query, columns);
-  const mergedFilter = { ...filter, ...scopeFilter };
 
-  const [items, total] = await Promise.all([
-    Employee.find(mergedFilter).sort(sort).skip(skip).limit(limit).lean().exec(),
-    Employee.countDocuments(mergedFilter).exec(),
-  ]);
+  const employmentFilter = filter.employmentType as { $regex?: string } | string | undefined;
+  if (employmentFilter && typeof employmentFilter === 'object' && employmentFilter.$regex) {
+    const label = employmentFilter.$regex.toLowerCase();
+    if (label.includes('küls') || label.includes('vendég')) {
+      filter.employmentType = 'guest';
+    } else if (label.includes('alkalm')) {
+      filter.employmentType = 'employee';
+    }
+  }
 
-  const data: EmployeeRow[] = items.map((e) => ({
-    _id: String(e._id),
-    name: e.name,
-    companyName: companyNameById.get(String(e.companyId)) ?? '—',
-    email: e.email,
-    department: e.department,
-    employmentType: e.employmentType === 'guest' ? 'Külsős' : 'Alkalmazott',
-    isActive: e.isActive,
-    hasUser: Boolean(e.userId),
-    accountLabel: e.userId ? 'Összekötve' : 'Nincs fiók',
-  }));
+  const { groups, total } = await listEmployeePersonGroups({
+    scopeFilter,
+    matchFilter: filter,
+    sort,
+    skip,
+    limit,
+  });
+
+  const data: EmployeeRow[] = groups.map((g) => {
+    const companyNames = g.companyIds
+      .map((id) => companyNameById.get(id))
+      .filter(Boolean) as string[];
+    return {
+      _id: g.primaryEmployeeId,
+      name: g.name,
+      companiesLabel: companyNames.join(' · ') || '—',
+      companyCount: companyNames.length,
+      email: g.email,
+      department: g.department,
+      employmentType: g.employmentType === 'guest' ? 'Külsős' : 'Alkalmazott',
+      isActive: g.isActive,
+      hasUser: g.hasUser,
+      accountLabel: g.hasUser ? 'Összekötve' : 'Nincs fiók',
+    };
+  });
 
   const companyOptions = companies.map((c) => ({
     _id: String(c._id),
@@ -110,8 +127,8 @@ export default async function EmployeesPage({
       <div>
         <h1 className="text-2xl font-bold">Dolgozók</h1>
         <p className="text-muted-foreground text-sm">
-          Dolgozói rekordok cégenként — egy személy több cégnél külön beosztás, szabadság és
-          kimutatás. CRM fiók összekötés és másik céghez adás a részleteknél.
+          Egy sor = egy személy. Több cégnél a cégek felsorolva — beosztás és kimutatás továbbra is
+          cégenként külön rekord. Részletek és fiók összekötés a közös adatlapon.
         </p>
       </div>
       <EmployeesTable

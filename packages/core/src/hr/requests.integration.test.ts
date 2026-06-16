@@ -160,4 +160,32 @@ describe('reviewHrRequest', () => {
       reviewHrRequest(req._id, true, employeeUserId, ['hr:approve', 'hr:scope_all'])
     ).rejects.toThrow(/Saját/);
   });
+
+  it('approves schedule change and updates the linked shift', async () => {
+    const entry = await ScheduleEntry.create({
+      employeeId,
+      companyId,
+      start: new Date('2026-12-01T08:00:00+01:00'),
+      end: new Date('2026-12-01T16:00:00+01:00'),
+      kind: 'shift',
+      title: 'Reggel',
+      createdBy: reviewerId,
+      updatedBy: reviewerId,
+    });
+
+    const req = await submitHrRequest(employeeId, employeeUserId, {
+      type: 'schedule_change',
+      scheduleEntryId: entry._id,
+      proposedStart: new Date('2026-12-01T10:00:00+01:00'),
+      proposedEnd: new Date('2026-12-01T18:00:00+01:00'),
+    });
+
+    expect(req.payload.originalStart).toBeTruthy();
+    expect(req.payload.originalEnd).toBeTruthy();
+
+    await reviewHrRequest(req._id, true, reviewerId, ['hr:approve', 'hr:scope_all']);
+
+    const updated = await ScheduleEntry.findById(entry._id).exec();
+    expect(updated?.start.getTime()).toBe(new Date('2026-12-01T10:00:00+01:00').getTime());
+  });
 });

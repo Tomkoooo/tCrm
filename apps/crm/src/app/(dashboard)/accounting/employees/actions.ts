@@ -14,6 +14,8 @@ import {
   linkAllGuestEmployeesByEmailMatch,
   addEmployeeToAnotherCompany,
   deleteEmployee,
+  updateEmployeePersonProfile,
+  updateEmployeeCompanyMembership,
 } from '@crm/core';
 import { createAndSendInvitation } from '@crm/core';
 import { connectDB, Employee, Role } from '@crm/db';
@@ -22,10 +24,18 @@ import {
   inviteEmployeeSchema,
   searchUsersSchema,
   addEmployeeToCompanySchema,
+  employeePersonSchema,
+  employeeMembershipSchema,
 } from '@crm/lib/validation';
-import { zodToFieldErrors, type HrFormState } from '../_components/form-utils';
 import { getHrSessionScope } from '@/lib/hr/session-scope';
 import { employeePayloadFromInput, parseEmployeeFormData } from './_lib/employee-form-data';
+import {
+  parseEmployeePersonFormData,
+  personPayloadFromInput,
+  parseEmployeeMembershipFormData,
+  membershipPayloadFromInput,
+} from './_lib/person-form-data';
+import { zodToFieldErrors, type HrFormState } from '../_components/form-utils';
 
 function linkSuccessMessage(alsoLinkedCount: number, mode: 'link' | 'invite' | 'email'): string {
   const suffix =
@@ -101,6 +111,74 @@ export async function updateEmployeeAction(
     revalidatePath('/accounting/employees');
     revalidatePath(`/accounting/employees/${id}`);
     return { success: true, message: 'Dolgozó mentve.' };
+  } catch (e) {
+    return { success: false, message: e instanceof Error ? e.message : 'Hiba történt.' };
+  }
+}
+
+export async function updateEmployeePersonAction(
+  anchorEmployeeId: string,
+  _prev: HrFormState,
+  formData: FormData
+): Promise<HrFormState> {
+  await requirePermission('hr:write');
+  const { userId, permissions } = await getHrSessionScope();
+
+  const parsed = employeePersonSchema.safeParse(parseEmployeePersonFormData(formData));
+  if (!parsed.success) {
+    return { success: false, fieldErrors: zodToFieldErrors(parsed.error.issues) };
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(anchorEmployeeId)) {
+    return { success: false, message: 'Érvénytelen azonosító.' };
+  }
+
+  try {
+    const count = await updateEmployeePersonProfile(
+      new mongoose.Types.ObjectId(anchorEmployeeId),
+      personPayloadFromInput(parsed.data),
+      userId,
+      permissions
+    );
+    revalidatePath('/accounting/employees');
+    revalidatePath(`/accounting/employees/${anchorEmployeeId}`);
+    return {
+      success: true,
+      message: count > 1 ? `Közös adatok mentve (${count} cég rekord).` : 'Közös adatok mentve.',
+    };
+  } catch (e) {
+    return { success: false, message: e instanceof Error ? e.message : 'Hiba történt.' };
+  }
+}
+
+export async function updateEmployeeMembershipAction(
+  employeeId: string,
+  _prev: HrFormState,
+  formData: FormData
+): Promise<HrFormState> {
+  await requirePermission('hr:write');
+  const { userId, permissions } = await getHrSessionScope();
+
+  const raw = parseEmployeeMembershipFormData(formData);
+  const parsed = employeeMembershipSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { success: false, fieldErrors: zodToFieldErrors(parsed.error.issues) };
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(employeeId)) {
+    return { success: false, message: 'Érvénytelen azonosító.' };
+  }
+
+  try {
+    await updateEmployeeCompanyMembership(
+      new mongoose.Types.ObjectId(employeeId),
+      membershipPayloadFromInput(raw),
+      userId,
+      permissions
+    );
+    revalidatePath('/accounting/employees');
+    revalidatePath(`/accounting/employees/${employeeId}`);
+    return { success: true, message: 'Cég adatok mentve.' };
   } catch (e) {
     return { success: false, message: e instanceof Error ? e.message : 'Hiba történt.' };
   }
