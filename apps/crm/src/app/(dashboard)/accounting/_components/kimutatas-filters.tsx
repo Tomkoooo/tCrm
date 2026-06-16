@@ -37,7 +37,7 @@ export function KimutatasFilters({
         Év
         <Input
           type="number"
-          className="w-24"
+          className="h-9 w-24"
           defaultValue={year}
           onBlur={(e) => updateParam('year', e.target.value)}
         />
@@ -48,7 +48,7 @@ export function KimutatasFilters({
           type="number"
           min={1}
           max={12}
-          className="w-20"
+          className="h-9 w-20"
           defaultValue={month}
           onBlur={(e) => updateParam('month', e.target.value)}
         />

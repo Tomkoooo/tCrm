@@ -30,6 +30,7 @@ type MonthCell = { days: number; datesLabel: string; sickLabel?: string };
 export type LeaveSummaryRow = Record<string, unknown> & {
   employeeId: string;
   employeeName: string;
+  companyId?: string;
   companyName: string;
   entitlementDays: number;
   usedHolidayDays: number;
@@ -53,21 +54,32 @@ function EntitlementCell({ row, year }: { row: LeaveSummaryRow; year: number }) 
     else if (state.message && !state.fieldErrors) toast.error(state.message);
   }, [state]);
 
+  const missingEntitlement = row.entitlementDays === 0;
+
   return (
-    <form action={action} className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-      <input type="hidden" name="employeeId" value={row.employeeId} />
-      <input type="hidden" name="year" value={year} />
-      <Input
-        name="entitlementDays"
-        type="number"
-        min={0}
-        className="h-8 w-16"
-        defaultValue={row.entitlementDays}
-      />
-      <Button type="submit" size="sm" variant="ghost" loading={pending} disabled={pending}>
-        ✓
-      </Button>
-    </form>
+    <div className="flex flex-col gap-1">
+      <form
+        action={action}
+        className="flex items-center gap-1"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <input type="hidden" name="employeeId" value={row.employeeId} />
+        <input type="hidden" name="year" value={year} />
+        <Input
+          name="entitlementDays"
+          type="number"
+          min={0}
+          className="h-8 w-16"
+          defaultValue={row.entitlementDays}
+        />
+        <Button type="submit" size="sm" variant="ghost" loading={pending} disabled={pending}>
+          ✓
+        </Button>
+      </form>
+      {missingEntitlement ? (
+        <span className="text-xs text-amber-600 dark:text-amber-400">Nincs keret</span>
+      ) : null}
+    </div>
   );
 }
 
@@ -83,7 +95,8 @@ function MonthCell({ cell }: { cell: MonthCell }) {
 
 function buildColumns(
   tab: 'regular' | 'occasional',
-  year: number
+  year: number,
+  hideCompanyColumn: boolean
 ): Array<ColumnDef<LeaveSummaryRow>> {
   const monthColumns: Array<ColumnDef<LeaveSummaryRow>> = MONTH_NAMES.map((label, idx) => {
     const m = idx + 1;
@@ -109,14 +122,18 @@ function buildColumns(
       searchable: true,
       defaultVisible: true,
     },
-    {
-      key: 'companyName',
-      label: 'Cég',
-      type: 'string',
-      sortable: true,
-      filterable: true,
-      defaultVisible: true,
-    },
+    ...(hideCompanyColumn
+      ? []
+      : ([
+          {
+            key: 'companyName',
+            label: 'Cég',
+            type: 'string',
+            sortable: true,
+            filterable: true,
+            defaultVisible: true,
+          },
+        ] satisfies Array<ColumnDef<LeaveSummaryRow>>)),
     ...(tab === 'occasional'
       ? ([
           {
@@ -170,11 +187,26 @@ function buildColumns(
   ];
 }
 
-export function LeaveSummaryTable({
+function mapRowsForTable(rows: LeaveSummaryRow[]): LeaveSummaryRow[] {
+  return rows.map((row) => ({
+    ...row,
+    taj: row.personalData?.taj ?? '',
+    taxId: row.personalData?.taxId ?? '',
+    ...Object.fromEntries(
+      MONTH_NAMES.map((_, idx) => {
+        const m = idx + 1;
+        return [`month${m}`, row.months[m]?.days ?? 0];
+      })
+    ),
+  }));
+}
+
+function LeaveSummaryDataTable({
   rows,
   year,
   tab,
   basePath,
+  hideCompanyColumn,
   toolbarLeading,
   toolbarExtra,
 }: {
@@ -182,31 +214,20 @@ export function LeaveSummaryTable({
   year: number;
   tab: 'regular' | 'occasional';
   basePath: string;
+  hideCompanyColumn?: boolean;
   toolbarLeading?: React.ReactNode;
   toolbarExtra?: React.ReactNode;
 }) {
-  const columns = useMemo(() => buildColumns(tab, year), [tab, year]);
-
-  const data = useMemo(
-    () =>
-      rows.map((row) => ({
-        ...row,
-        taj: row.personalData?.taj ?? '',
-        taxId: row.personalData?.taxId ?? '',
-        ...Object.fromEntries(
-          MONTH_NAMES.map((_, idx) => {
-            const m = idx + 1;
-            return [`month${m}`, row.months[m]?.days ?? 0];
-          })
-        ),
-      })),
-    [rows]
+  const columns = useMemo(
+    () => buildColumns(tab, year, hideCompanyColumn ?? false),
+    [tab, year, hideCompanyColumn]
   );
+  const data = useMemo(() => mapRowsForTable(rows), [rows]);
 
   return (
     <DataTable<LeaveSummaryRow>
       mode="client"
-      tableId="accounting-leave-summary"
+      tableId={hideCompanyColumn ? 'accounting-leave-summary-group' : 'accounting-leave-summary'}
       data={data}
       columns={columns}
       query={defaultQuery}
@@ -218,5 +239,76 @@ export function LeaveSummaryTable({
       toolbarLeading={toolbarLeading}
       toolbarExtra={toolbarExtra}
     />
+  );
+}
+
+export function LeaveSummaryTable({
+  rows,
+  year,
+  tab,
+  basePath,
+  companyId,
+  toolbarLeading,
+  toolbarExtra,
+}: {
+  rows: LeaveSummaryRow[];
+  year: number;
+  tab: 'regular' | 'occasional';
+  basePath: string;
+  companyId?: string;
+  toolbarLeading?: React.ReactNode;
+  toolbarExtra?: React.ReactNode;
+}) {
+  const groupedByCompany = useMemo(() => {
+    const groups = new Map<string, LeaveSummaryRow[]>();
+    for (const row of rows) {
+      const key = row.companyName || '—';
+      const list = groups.get(key) ?? [];
+      list.push(row);
+      groups.set(key, list);
+    }
+    return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b, 'hu'));
+  }, [rows]);
+
+  const showGrouped = !companyId && groupedByCompany.length > 1;
+
+  if (!showGrouped) {
+    return (
+      <LeaveSummaryDataTable
+        rows={rows}
+        year={year}
+        tab={tab}
+        basePath={basePath}
+        toolbarLeading={toolbarLeading}
+        toolbarExtra={toolbarExtra}
+      />
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {(toolbarLeading || toolbarExtra) && (
+        <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end lg:justify-between">
+          {toolbarLeading ? <div className="flex flex-wrap gap-2">{toolbarLeading}</div> : null}
+          {toolbarExtra ? (
+            <div className="flex flex-wrap items-end gap-3">{toolbarExtra}</div>
+          ) : null}
+        </div>
+      )}
+      <div className="flex flex-col gap-8">
+        {groupedByCompany.map(([companyName, companyRows], index) => (
+          <section key={companyName} className={index > 0 ? 'border-t pt-8' : ''}>
+            <h3 className="mb-3 text-lg font-semibold">{companyName}</h3>
+            <LeaveSummaryDataTable
+              rows={companyRows}
+              year={year}
+              tab={tab}
+              basePath={basePath}
+              hideCompanyColumn
+            />
+          </section>
+        ))}
+      </div>
+    </div>
   );
 }

@@ -3,10 +3,12 @@ import {
   companySchema,
   employeeSchema,
   employeeProfileFromForm,
+  hrRequestScheduleChangeSchema,
   parseLinkEmployeeFromForm,
   scheduleEntrySchema,
   userEmployeeProfileSchema,
 } from './hr';
+import { formatHrTime } from '../hr-schedule-datetime';
 
 describe('companySchema', () => {
   it('accepts valid company', () => {
@@ -115,5 +117,20 @@ describe('scheduleEntrySchema', () => {
       end: '2026-06-01T08:00:00',
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe('hrRequestScheduleChangeSchema', () => {
+  it('parses datetime-local as Budapest wall clock', () => {
+    const result = hrRequestScheduleChangeSchema.safeParse({
+      type: 'schedule_change',
+      scheduleEntryId: '507f1f77bcf86cd799439011',
+      proposedStart: '2026-06-15T10:00',
+      proposedEnd: '2026-06-15T17:00',
+    });
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(formatHrTime(result.data.proposedStart)).toBe('10:00');
+    expect(formatHrTime(result.data.proposedEnd)).toBe('17:00');
   });
 });

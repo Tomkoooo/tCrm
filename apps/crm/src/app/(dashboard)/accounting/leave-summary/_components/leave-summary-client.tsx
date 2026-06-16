@@ -46,6 +46,7 @@ export function LeaveSummaryClient({
       rows={rows}
       year={year}
       tab={tab}
+      companyId={companyId}
       basePath={basePath}
       toolbarLeading={
         <div className="flex flex-wrap gap-2">
@@ -104,6 +105,9 @@ export function LeaveSummaryClient({
               ))}
             </select>
           </label>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/accounting/leave-summary/import">Excel import</Link>
+          </Button>
           <Button asChild variant="outline" size="sm">
             <Link href={exportMonthHref}>Export hónap (XLSX)</Link>
           </Button>

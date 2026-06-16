@@ -232,8 +232,8 @@ export const hrRequestScheduleChangeSchema = z
   .object({
     type: z.literal('schedule_change'),
     scheduleEntryId: z.string().min(1, 'Válasszon módosítandó műszakot'),
-    proposedStart: z.coerce.date(),
-    proposedEnd: z.coerce.date(),
+    proposedStart: hrDateTimeField,
+    proposedEnd: hrDateTimeField,
     reason: z.string().optional(),
   })
   .refine((d) => d.proposedEnd >= d.proposedStart, {

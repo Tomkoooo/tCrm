@@ -9,5 +9,6 @@ export * from './export';
 export * from './leave-years';
 export * from './leave-summary';
 export * from './leave-export';
+export * from './leave-import';
 export * from './attendance';
 export * from './kimutatasok';

@@ -37,8 +37,11 @@ A lap tetején:
 - **Felhasznált** / **Maradék** napok
 - Alkalmi fülön: TAJ, adóazonosító oszlopok
 - Ugyanaz a személy **több cégnél** külön sorban jelenik meg
+- **Összes cég** nézetben a táblázat **cégenként külön blokkban** jelenik meg (üres sorokkal elválasztva, mint az Excelben)
+- **Nincs keret** figyelmeztetés, ha az éves keret még nincs beállítva — CRM fiók **nem szükséges**, elég a dolgozó rekord
+- **Excel import** — `/accounting/leave-summary/import` — feltöltés, munkalap választás, név alapú párosítás
 
-**Szűrők a táblázat felett:** év, export hónap, cég. **Export hónap (XLSX)** / **Export év (XLSX)**.
+**Szűrők a táblázat felett:** év, export hónap, cég. **Excel import**, **Export hónap (XLSX)** / **Export év (XLSX)**.
 
 Részletes lépések: [Szabadság összesítő](/help/szabadsag-osszesito).
 
@@ -46,12 +49,14 @@ Részletes lépések: [Szabadság összesítő](/help/szabadsag-osszesito).
 
 ## Havi bér és órák fül
 
-- **Éves szabadságkeret** és **maradék** minden sorban
-- **Szabadság / betegnap** — beosztásból és jóváhagyott kérelmekből (dátumokkal a cellában)
+- **Kártyás elrendezés** — dolgozónként egy kártya, összecsukható szerkesztővel
+- **Éves szabadságkeret** és **maradék** minden kártyán
+- **Szabadság / betegnap** — beosztásból és jóváhagyott kérelmekből (dátumokkal)
 - **Ledolgozott óra** — műszakokból; **Mentés** után könyvelői értékre írható
-- **Bér típus** és bruttó — a dolgozó adatlap **Bérezés** mezői alapján
+- **Bér típus** és **bruttó becslés** — a kártya fejlécében, szerkesztés közben is frissül
 - **Táppénz (HUF)** — külön mező
-- **Beosztásból** — javasolt óra / szabadság / betegnap megjelenítése (toast üzenet); ezután szükség esetén kézzel módosít és **Mentés**
+- **Beosztásból** — kitölti az óra / szabadság / betegnap mezőket; ezután **Mentés**
+- **Összes cég** nézetben cégenként csoportos kártyák
 
 **Szűrők:** év, hónap, cég. **XLSX export** — keret, maradék, bér típus, bruttó oszlopokkal.
 
@@ -63,8 +68,8 @@ A bér beállítása: [Dolgozók](/help/dolgozok) → adatlap → **Bérezés (k
 
 1. **Kimutatások** → **Havi bér és órák**.
 2. Év, hónap, cég kiválasztása.
-3. Ellenőrizze a beosztásból jövő értékeket; **Beosztásból** gombbal összevetés.
-4. Szükség esetén módosítás → **Mentés** soronként.
+3. Ellenőrizze a beosztásból jövő értékeket; **Beosztásból** gombbal kitöltés.
+4. Szükség esetén módosítás → **Mentés** kártyánként.
 5. **XLSX export** könyvelőnek.
 
 Szabadság éves ellenőrzéshez: **Szabadság összesítő** fül, év + cég, **Export év**.

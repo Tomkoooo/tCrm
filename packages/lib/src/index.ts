@@ -8,6 +8,8 @@ export * from './hr-calendar';
 export * from './hr-schedule-datetime';
 export * from './employee-schedule-colors';
 export * from './hr-payroll';
+export * from './hr-name-match';
+export * from './hr-leave-date-parse';
 export * from './validation';
 export * from './suppliers/contacts';
 export {

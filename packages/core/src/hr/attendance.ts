@@ -26,7 +26,8 @@ export function collectOffDaysFromEntries(
   for (const e of entries) {
     const title = (e.title ?? '').toLowerCase();
     const isHoliday = title.includes('szabadság') && !title.includes('beteg');
-    const isSick = title.includes('beteg');
+    const isSick =
+      title.includes('beteg') || title.includes('táppénz') || title.includes('tappenz');
     if (kind === 'holiday' && !isHoliday && title !== 'szabadság') continue;
     if (kind === 'sick' && !isSick) continue;
     for (const d of eachDayInRange(e.start, e.end)) {
