@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as XLSX from 'xlsx';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { leaveDatesFromDayNumbers, parseLeaveDateLabel } from '@crm/lib';
+import { leaveDatesFromDayNumbers, parseLeaveDateLabel, formatHrDateKey } from '@crm/lib';
 import {
   matchLeaveImportRows,
   parseLeaveSummaryWorkbook,
@@ -22,13 +22,21 @@ describe('parseLeaveDateLabel', () => {
     const parsed = parseLeaveDateLabel('19-21', 2026, 5);
     const dates = leaveDatesFromDayNumbers(2026, 5, parsed.holidayDayNumbers);
     expect(parsed.sickPayOnly).toBe(false);
-    expect(dates.map((d) => d.getDate())).toEqual([19, 20, 21]);
+    expect(dates.map((d) => formatHrDateKey(d))).toEqual([
+      '2026-05-19',
+      '2026-05-20',
+      '2026-05-21',
+    ]);
   });
 
   it('parses comma-separated days', () => {
     const parsed = parseLeaveDateLabel('5,6,7', 2026, 3);
     const dates = leaveDatesFromDayNumbers(2026, 3, parsed.holidayDayNumbers);
-    expect(dates.map((d) => d.getDate())).toEqual([5, 6, 7]);
+    expect(dates.map((d) => formatHrDateKey(d))).toEqual([
+      '2026-03-05',
+      '2026-03-06',
+      '2026-03-07',
+    ]);
   });
 
   it('detects sick leave labels', () => {

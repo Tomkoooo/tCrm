@@ -2,6 +2,13 @@ import mongoose, { Schema, type Document, type Types } from 'mongoose';
 
 export type ScheduleEntryKind = 'shift' | 'off' | 'training' | 'other' | 'field_work';
 
+export interface IScheduleLocationVisit {
+  label: string;
+  address?: string;
+  start: Date;
+  end: Date;
+}
+
 export type ScheduleEntrySourceRef = {
   type: 'logistics_pickup';
   jobId: Types.ObjectId;
@@ -21,12 +28,23 @@ export interface IScheduleEntry extends Document {
   notes?: string;
   locationLabel?: string;
   locationAddress?: string;
+  locations?: IScheduleLocationVisit[];
   sourceRef?: ScheduleEntrySourceRef;
   createdBy: Types.ObjectId;
   updatedBy: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
+
+const ScheduleLocationVisitSchema = new Schema(
+  {
+    label: { type: String, required: true, maxlength: 200 },
+    address: { type: String, maxlength: 500 },
+    start: { type: Date, required: true },
+    end: { type: Date, required: true },
+  },
+  { _id: false }
+);
 
 const ScheduleEntrySourceRefSchema = new Schema(
   {
@@ -54,6 +72,7 @@ const ScheduleEntrySchema = new Schema<IScheduleEntry>(
     notes: { type: String },
     locationLabel: { type: String, maxlength: 200 },
     locationAddress: { type: String, maxlength: 500 },
+    locations: [ScheduleLocationVisitSchema],
     sourceRef: { type: ScheduleEntrySourceRefSchema },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     updatedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },

@@ -195,6 +195,13 @@ export const teamSchema = z.object({
 
 export const scheduleEntryKindSchema = z.enum(['shift', 'off', 'training', 'other', 'field_work']);
 
+export const scheduleLocationVisitSchema = z.object({
+  label: z.string().min(1, 'A helyszín neve kötelező').max(200),
+  address: z.string().max(500).optional(),
+  start: hrDateTimeField,
+  end: hrDateTimeField,
+});
+
 export const scheduleEntrySchema = z
   .object({
     employeeId: z.string().min(1),
@@ -206,6 +213,7 @@ export const scheduleEntrySchema = z
     notes: z.string().optional(),
     locationLabel: z.string().max(200).optional(),
     locationAddress: z.string().max(500).optional(),
+    locations: z.array(scheduleLocationVisitSchema).optional(),
   })
   .refine((d) => d.end > d.start, { message: 'A befejezés későbbi kell legyen', path: ['end'] });
 
@@ -220,6 +228,7 @@ export const scheduleEntryUpdateSchema = z
     notes: z.string().optional(),
     locationLabel: z.string().max(200).optional(),
     locationAddress: z.string().max(500).optional(),
+    locations: z.array(scheduleLocationVisitSchema).optional(),
   })
   .refine((d) => d.end > d.start, { message: 'A befejezés későbbi kell legyen', path: ['end'] });
 

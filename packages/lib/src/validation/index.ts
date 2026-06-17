@@ -113,6 +113,7 @@ export {
   teamSchema,
   scheduleEntrySchema,
   scheduleEntryUpdateSchema,
+  scheduleLocationVisitSchema,
   hrRequestSchema,
   hrRequestHolidaySchema,
   hrRequestSickSchema,

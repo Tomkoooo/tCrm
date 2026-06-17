@@ -20,6 +20,7 @@ export type ScheduleEntryWriteData = {
   notes?: string;
   locationLabel?: string;
   locationAddress?: string;
+  locations?: Array<{ label: string; address?: string; start: Date; end: Date }>;
   sourceRef?: ScheduleEntrySourceRef;
 };
 

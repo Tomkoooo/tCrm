@@ -18,7 +18,7 @@ import {
   bulkScheduleSchema,
   scheduleEntryUpdateSchema,
 } from '@crm/lib/validation';
-import { HR_READ_PERMISSION_KEYS, resolveEmployeeScheduleColor } from '@crm/lib';
+import { HR_READ_PERMISSION_KEYS, resolveEmployeeScheduleColor, formatHrTime } from '@crm/lib';
 import { connectDB, Employee } from '@crm/db';
 import { zodToFieldErrors, type HrFormState } from '../_components/form-utils';
 import { getHrSessionScope } from '@/lib/hr/session-scope';
@@ -29,11 +29,15 @@ function mapEntryToEvent(
 ) {
   const empId = e.employeeId.toString();
   const emp = employeeById.get(empId);
-  const location = [e.locationLabel, e.locationAddress].filter(Boolean).join(' — ');
+  const locationsList = e.locations?.length
+    ? e.locations
+        .map((loc) => `${loc.label} (${formatHrTime(loc.start)}–${formatHrTime(loc.end)})`)
+        .join(', ')
+    : [e.locationLabel, e.locationAddress].filter(Boolean).join(' — ');
   const baseTitle = e.title ?? (e.kind === 'shift' ? 'Műszak' : e.kind);
   return {
     id: e._id.toString(),
-    title: location ? `${baseTitle} · ${location}` : baseTitle,
+    title: locationsList ? `${baseTitle} · ${locationsList}` : baseTitle,
     start: e.start.toISOString(),
     end: e.end.toISOString(),
     allDay: e.allDay ?? false,
@@ -42,6 +46,12 @@ function mapEntryToEvent(
     employeeName: emp?.name,
     locationLabel: e.locationLabel,
     locationAddress: e.locationAddress,
+    locations: e.locations?.map((loc) => ({
+      label: loc.label,
+      address: loc.address,
+      start: loc.start.toISOString(),
+      end: loc.end.toISOString(),
+    })),
     color: resolveEmployeeScheduleColor(empId, emp?.calendarColor),
   };
 }
@@ -133,6 +143,16 @@ export async function createScheduleEntryAction(
 ): Promise<HrFormState> {
   const { userId, permissions } = await requireScheduleWriteAccess();
 
+  const locationsRaw = formData.get('locationsJson');
+  let locations: any[] | undefined = undefined;
+  if (locationsRaw && typeof locationsRaw === 'string') {
+    try {
+      locations = JSON.parse(locationsRaw);
+    } catch {
+      // ignore
+    }
+  }
+
   const parsed = scheduleEntrySchema.safeParse({
     employeeId: formData.get('employeeId'),
     start: formData.get('start'),
@@ -143,6 +163,7 @@ export async function createScheduleEntryAction(
     notes: formData.get('notes') || undefined,
     locationLabel: formData.get('locationLabel') || undefined,
     locationAddress: formData.get('locationAddress') || undefined,
+    locations,
   });
   if (!parsed.success) {
     return { success: false, fieldErrors: zodToFieldErrors(parsed.error.issues) };
@@ -160,6 +181,7 @@ export async function createScheduleEntryAction(
         notes: parsed.data.notes,
         locationLabel: parsed.data.locationLabel,
         locationAddress: parsed.data.locationAddress,
+        locations: parsed.data.locations,
       },
       userId,
       permissions
@@ -203,6 +225,16 @@ export async function updateScheduleEntryFormAction(
 ): Promise<HrFormState> {
   const { userId, permissions } = await requireScheduleWriteAccess();
 
+  const locationsRaw = formData.get('locationsJson');
+  let locations: any[] | undefined = undefined;
+  if (locationsRaw && typeof locationsRaw === 'string') {
+    try {
+      locations = JSON.parse(locationsRaw);
+    } catch {
+      // ignore
+    }
+  }
+
   const parsed = scheduleEntryUpdateSchema.safeParse({
     id: formData.get('id'),
     start: formData.get('start'),
@@ -213,6 +245,7 @@ export async function updateScheduleEntryFormAction(
     notes: formData.get('notes') || undefined,
     locationLabel: formData.get('locationLabel') || undefined,
     locationAddress: formData.get('locationAddress') || undefined,
+    locations,
   });
   if (!parsed.success) {
     return { success: false, fieldErrors: zodToFieldErrors(parsed.error.issues) };
@@ -234,6 +267,7 @@ export async function updateScheduleEntryFormAction(
         notes: parsed.data.notes,
         locationLabel: parsed.data.locationLabel,
         locationAddress: parsed.data.locationAddress,
+        locations: parsed.data.locations,
       },
       userId,
       permissions
