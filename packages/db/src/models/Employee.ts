@@ -87,7 +87,13 @@ const EmployeeSchema = new Schema<IEmployee>(
   { timestamps: true }
 );
 
-EmployeeSchema.index({ userId: 1, companyId: 1 }, { unique: true, sparse: true });
+EmployeeSchema.index(
+  { userId: 1, companyId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { userId: { $type: 'objectId' } },
+  }
+);
 
 export const Employee =
   (mongoose.models.Employee as mongoose.Model<IEmployee>) ||

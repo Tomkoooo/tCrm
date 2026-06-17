@@ -167,3 +167,32 @@ describe('deleteEmployee', () => {
     expect(gone).toBeNull();
   });
 });
+
+describe('employee index constraints', () => {
+  it('allows multiple employees in the same company with userId set to null or undefined', async () => {
+    // Drop existing indexes to force Mongoose to recreate them with the new partialFilterExpression
+    await Employee.collection.dropIndexes().catch(() => undefined);
+    await Employee.createIndexes();
+
+    const emp1 = await Employee.create({
+      companyId: companyA,
+      name: 'Employee 1',
+      email: 'emp1@test.local',
+      employmentType: 'guest',
+      userId: null,
+      isActive: true,
+    });
+
+    const emp2 = await Employee.create({
+      companyId: companyA,
+      name: 'Employee 2',
+      email: 'emp2@test.local',
+      employmentType: 'guest',
+      userId: undefined,
+      isActive: true,
+    });
+
+    expect(emp1).toBeTruthy();
+    expect(emp2).toBeTruthy();
+  });
+});
