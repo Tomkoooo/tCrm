@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { leaveDatesFromDayNumbers, parseLeaveDateLabel } from './hr-leave-date-parse';
+import { formatHrDateKey } from './hr-schedule-datetime';
 
 describe('parseLeaveDateLabel', () => {
   it('parses day ranges in month context', () => {
@@ -26,6 +27,6 @@ describe('parseLeaveDateLabel', () => {
   it('builds dates from day numbers', () => {
     const dates = leaveDatesFromDayNumbers(2026, 5, [19, 20]);
     expect(dates).toHaveLength(2);
-    expect(dates[0]!.getDate()).toBe(19);
+    expect(formatHrDateKey(dates[0]!)).toBe('2026-05-19');
   });
 });
