@@ -81,17 +81,23 @@ export default async function MyHrPage({
     HrRequest.find({ employeeId: emp._id }).sort({ createdAt: -1 }).limit(20).lean().exec(),
   ]);
 
-  const initialEvents: CalendarEvent[] = entries.map((e) => ({
-    id: e._id.toString(),
-    title: e.title ?? (e.kind === 'shift' ? 'Műszak' : e.kind),
-    start: e.start,
-    end: e.end,
-    allDay: e.allDay,
-    kind: e.kind,
-    employeeId: emp._id.toString(),
-    employeeName: emp.name,
-    color: resolveEmployeeScheduleColor(emp._id.toString(), emp.calendarColor),
-  }));
+  const initialEvents: CalendarEvent[] = entries.map((e) => {
+    const location = [e.locationLabel, e.locationAddress].filter(Boolean).join(' — ');
+    const baseTitle =
+      e.title ??
+      (e.kind === 'shift' ? 'Műszak' : e.kind === 'field_work' ? 'Helyszíni munka' : e.kind);
+    return {
+      id: e._id.toString(),
+      title: location ? `${baseTitle} · ${location}` : baseTitle,
+      start: e.start,
+      end: e.end,
+      allDay: e.allDay,
+      kind: e.kind,
+      employeeId: emp._id.toString(),
+      employeeName: emp.name,
+      color: resolveEmployeeScheduleColor(emp._id.toString(), emp.calendarColor),
+    };
+  });
 
   const shiftOptions = buildShiftOptions(entries);
 

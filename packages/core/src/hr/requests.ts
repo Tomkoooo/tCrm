@@ -61,7 +61,7 @@ export async function submitHrRequest(
     };
   }
 
-  return HrRequest.create({
+  const req = await HrRequest.create({
     employeeId,
     companyId: emp.companyId,
     type: data.type,
@@ -69,6 +69,11 @@ export async function submitHrRequest(
     requestedByUserId,
     payload,
   });
+
+  const { notifyHrRequestSubmitted } = await import('./schedule-mail');
+  await notifyHrRequestSubmitted(req, requestedByUserId).catch(() => undefined);
+
+  return req;
 }
 
 export async function cancelHrRequest(

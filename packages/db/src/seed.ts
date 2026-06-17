@@ -247,6 +247,20 @@ const BASELINE_PERMISSIONS = [
     isSystem: true,
   },
   {
+    key: 'hr:teams:read',
+    label: 'View Teams and Team Schedules',
+    group: 'hr',
+    description: 'View teams and see team schedules',
+    isSystem: true,
+  },
+  {
+    key: 'hr:teams:write',
+    label: 'Manage Teams and Team Schedules',
+    group: 'hr',
+    description: 'Create/edit teams and manage team schedules',
+    isSystem: true,
+  },
+  {
     key: 'mail:manage',
     label: 'Manage Mail Templates',
     group: 'admin',
@@ -318,6 +332,8 @@ const BASELINE_ROLES = [
       'hr:approve',
       'hr:reports',
       'hr:scope_all',
+      'hr:teams:read',
+      'hr:teams:write',
       'users:read',
       'users:write',
       'mail:send',
@@ -329,6 +345,13 @@ const BASELINE_ROLES = [
     name: 'Employee',
     description: 'Self-service schedule and time-off requests',
     permissionKeys: ['hr:self'],
+    isSystem: true,
+  },
+  {
+    key: 'builder_manager',
+    name: 'Builder manager',
+    description: 'Team schedule management for field crews',
+    permissionKeys: ['hr:self', 'hr:read', 'hr:teams:read', 'hr:teams:write'],
     isSystem: true,
   },
   {

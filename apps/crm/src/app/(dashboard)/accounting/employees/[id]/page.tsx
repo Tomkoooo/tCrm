@@ -6,6 +6,7 @@ import {
   assertCompanyInScope,
   listActiveCompanies,
   listEmployeeRecordsForSamePerson,
+  listTeamsForEmployee,
 } from '@crm/core';
 import { HR_READ_PERMISSION_KEYS } from '@crm/lib';
 import { Container } from '@crm/ui';
@@ -36,9 +37,10 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
     notFound();
   }
 
-  const [companies, relatedRecords] = await Promise.all([
+  const [companies, relatedRecords, employeeTeams] = await Promise.all([
     listActiveCompanies(allowedCompanyIds),
     listEmployeeRecordsForSamePerson(emp._id as mongoose.Types.ObjectId),
+    listTeamsForEmployee(emp._id as mongoose.Types.ObjectId),
   ]);
 
   const companyNameById = new Map(companies.map((c) => [String(c._id), c.name]));
@@ -163,6 +165,32 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
           </dl>
         )}
       </section>
+
+      {employeeTeams.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-lg font-semibold">Csapatok</h2>
+          <ul className="flex flex-col gap-2 text-sm">
+            {employeeTeams.map((team) => (
+              <li key={String(team._id)} className="border-border rounded-md border px-3 py-2">
+                <span className="font-medium">{team.name}</span>
+                {team.leaderEmployeeId.equals(emp._id) ? (
+                  <span className="text-muted-foreground ml-2">(vezető)</span>
+                ) : (
+                  <span className="text-muted-foreground ml-2">(tag)</span>
+                )}
+                {canWrite && (
+                  <a
+                    href={`/accounting/teams/${team._id}`}
+                    className="text-primary ml-2 text-xs underline"
+                  >
+                    Szerkesztés
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">Cégek és bérezés</h2>

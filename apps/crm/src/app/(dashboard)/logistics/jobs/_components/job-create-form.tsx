@@ -27,6 +27,8 @@ type PickupDraft = {
   vehicleId: string;
   teamMemberIds: string[];
   contactEmails: string;
+  plannedGatherAt: string;
+  plannedEventAt: string;
   lines: Line[];
 };
 
@@ -45,6 +47,8 @@ function newPickup(warehouseId: string): PickupDraft {
     vehicleId: '',
     teamMemberIds: [],
     contactEmails: '',
+    plannedGatherAt: '',
+    plannedEventAt: '',
     lines: [],
   };
 }
@@ -145,6 +149,8 @@ export function JobCreateForm({
         .split(/[,;]/)
         .map((e) => e.trim())
         .filter(Boolean),
+      plannedGatherAt: p.plannedGatherAt || undefined,
+      plannedEventAt: p.plannedEventAt || undefined,
       lines: p.lines.map((l) => ({ productId: l.productId, requestedQuantity: l.quantity })),
     }))
   );
@@ -169,6 +175,10 @@ export function JobCreateForm({
         <div className="flex flex-col gap-2">
           <Label htmlFor="siteAddress">Helyszín címe</Label>
           <Input id="siteAddress" name="siteAddress" required />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="plannedEventAt">Helyszíni időpont (esemény)</Label>
+          <Input id="plannedEventAt" name="plannedEventAt" type="datetime-local" />
         </div>
         <div className="flex flex-col gap-2 md:col-span-2">
           <Label htmlFor="note">Megjegyzés (esemény)</Label>
@@ -252,6 +262,22 @@ export function JobCreateForm({
                 value={activePickup.contactEmails}
                 onChange={(e) => updatePickup(activePickup.id, { contactEmails: e.target.value })}
                 placeholder="team@example.com"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label>Összeszedés időpontja (raktár)</Label>
+              <Input
+                type="datetime-local"
+                value={activePickup.plannedGatherAt}
+                onChange={(e) => updatePickup(activePickup.id, { plannedGatherAt: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label>Helyszíni időpont (felülírhatja az eseményét)</Label>
+              <Input
+                type="datetime-local"
+                value={activePickup.plannedEventAt}
+                onChange={(e) => updatePickup(activePickup.id, { plannedEventAt: e.target.value })}
               />
             </div>
             <div className="flex flex-col gap-2 md:col-span-2">

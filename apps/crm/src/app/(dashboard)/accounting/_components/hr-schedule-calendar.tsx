@@ -24,7 +24,7 @@ import {
 import { Input } from '@/components/ui/input';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import './hr-schedule-calendar.css';
-import { fetchScheduleEventsAction } from '../schedule/actions';
+import { fetchScheduleEventsAction, fetchTeamScheduleEventsAction } from '../schedule/actions';
 import { fetchMyScheduleAction } from '../my/actions';
 
 const locales = { hu };
@@ -172,7 +172,7 @@ export function HrScheduleCalendar({
   editable = false,
   onSelectEvent,
 }: {
-  mode?: 'hr' | 'self';
+  mode?: 'hr' | 'self' | 'team';
   employeeId?: string;
   companyId?: string;
   initialEvents: CalendarEvent[];
@@ -195,12 +195,18 @@ export function HrScheduleCalendar({
         const fetched =
           mode === 'self'
             ? await fetchMyScheduleAction(range.start.toISOString(), range.end.toISOString())
-            : await fetchScheduleEventsAction({
-                start: range.start.toISOString(),
-                end: range.end.toISOString(),
-                employeeId,
-                companyId,
-              });
+            : mode === 'team'
+              ? await fetchTeamScheduleEventsAction({
+                  start: range.start.toISOString(),
+                  end: range.end.toISOString(),
+                  companyId,
+                })
+              : await fetchScheduleEventsAction({
+                  start: range.start.toISOString(),
+                  end: range.end.toISOString(),
+                  employeeId,
+                  companyId,
+                });
         setEvents(fetched.map(hydrateEvent));
       });
     },

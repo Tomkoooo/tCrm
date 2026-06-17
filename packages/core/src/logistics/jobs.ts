@@ -19,6 +19,7 @@ import {
 } from './job-pickups';
 import { createMovement, confirmMovement } from './movements';
 import { enqueueLogisticsNotification } from './notifications';
+import { syncLogisticsJobToEmployeeSchedules } from './logistics-schedule-sync';
 
 export type JobLineInput = {
   productId: Types.ObjectId;
@@ -32,12 +33,15 @@ export type CreatePickupParams = {
   teamMemberIds?: Types.ObjectId[];
   contactEmails?: string[];
   note?: string;
+  plannedGatherAt?: Date;
+  plannedEventAt?: Date;
   lines: JobLineInput[];
 };
 
 export type CreateJobParams = {
   eventName: string;
   siteAddress: string;
+  plannedEventAt?: Date;
   pickups: CreatePickupParams[];
   note?: string;
   createdBy: Types.ObjectId;
@@ -111,6 +115,8 @@ export async function createLogisticsJob(params: CreateJobParams): Promise<ILogi
     notifications: {},
     documents: {},
     scheduledAt: now,
+    plannedGatherAt: p.plannedGatherAt,
+    plannedEventAt: p.plannedEventAt,
   }));
 
   const [job] = await LogisticsJob.create([
@@ -118,6 +124,7 @@ export async function createLogisticsJob(params: CreateJobParams): Promise<ILogi
       reference,
       eventName: params.eventName,
       siteAddress: params.siteAddress,
+      plannedEventAt: params.plannedEventAt,
       status: publish ? 'scheduled' : 'draft',
       pickups,
       note: params.note,
@@ -137,6 +144,7 @@ export async function createLogisticsJob(params: CreateJobParams): Promise<ILogi
           pickupId: pickup._id,
         });
       }
+      await syncLogisticsJobToEmployeeSchedules(saved, params.createdBy);
     }
   }
 
@@ -167,6 +175,7 @@ export async function scheduleLogisticsJob(id: Types.ObjectId): Promise<ILogisti
   syncJobStatusFromPickups(job);
   job.markModified('pickups');
   await job.save();
+  await syncLogisticsJobToEmployeeSchedules(job, job.createdBy);
   return job;
 }
 

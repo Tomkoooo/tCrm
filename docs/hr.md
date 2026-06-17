@@ -13,15 +13,16 @@
 | `hr:scope_all` | Minden cég (scope nélkül) |
 | `hr:self` | Saját naptár és kérelmek |
 
-Szerepkörök: `hr` (teljes HR), `employee` (`hr:self`).
+Szerepkörök: `hr` (teljes HR), `employee` (`hr:self`), `builder_manager` (`hr:self`, `hr:read` — csapatvezetői beosztás a csapat adatokból).
 
 ## Modellek (`@crm/db`)
 
 - **Company** — `name`, `slug`, `parentCompanyId?`
-- **Employee** — `companyId`, opcionális `userId` (több cég / felhasználó: `{ userId, companyId }` egyedi), `employmentType`, `workerCategory` (`regular` | `occasional`), `workScheduleType` (`full_time` | `part_time`), `payType` (`monthly` | `hourly`), `monthlySalaryHuf`, `hourlyRateHuf`, `personalData?` (TAJ, adóazonosító, …)
+- **Employee** — `companyId`, opcionális `userId`, `supervisorEmployeeId?`, `teamIds[]?`, …
+- **Team** — `companyId`, `name`, `slug`, `leaderEmployeeId`, `memberEmployeeIds[]`, `teamType?` (`builders` | `drivers` | `mixed` | `other`)
 - **EmployeeLeaveYear** — éves szabadságkeret (`employeeId`, `year`, `entitlementDays`)
 - **HrCompanyScope** — `userId` → `companyIds[]` (ha nincs `hr:scope_all`)
-- **ScheduleEntry** — naptár események (`shift`, `off`, …)
+- **ScheduleEntry** — naptár események (`shift`, `off`, `training`, `field_work`, `other`); opcionális `locationLabel`, `locationAddress`, `sourceRef` (logisztika szinkron)
 - **HrRequest** — szabadság / beteg / beosztás módosítás, jóváhagyási workflow
 - **MonthlyWorkSummary** — havi óra, szabadság, betegnap, táppénz (HUF)
 
@@ -50,8 +51,10 @@ HR lekérdezések: `MonthlyWorkSummaryRepository`, `EmployeeLeaveYearRepository`
 |---------|-----|
 | `/accounting` | accounting / hr olvasás |
 | `/accounting/companies` | `hr:write` |
+| `/accounting/teams` | `hr:write` |
 | `/accounting/employees` | `hr:read` |
 | `/accounting/schedule` | `hr:read` |
+| `/accounting/my-team/schedule` | Csapatvezető (linked Employee = `Team.leaderEmployeeId`) |
 | `/accounting/requests` | `hr:read` |
 | `/accounting/reports` | `hr:reports` |
 | `/accounting/leave-summary` | `hr:reports` — szabadság összesítő + export |

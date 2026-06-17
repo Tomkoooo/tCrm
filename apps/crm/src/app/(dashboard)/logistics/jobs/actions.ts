@@ -36,6 +36,7 @@ import {
   returnJobLinesSchema,
   suggestVehiclesSchema,
 } from '@crm/lib/validation';
+import { parseHrDateTime } from '@crm/lib';
 
 export type JobFormState =
   | { success: false; fieldErrors?: Record<string, string[]>; message?: string }
@@ -70,6 +71,11 @@ async function assertWarehouseAccess(warehouseId: string): Promise<void> {
   if (!allowed) throw new Error('Nincs jogosultság ehhez a raktárhoz.');
 }
 
+function parseOptionalDateTime(value?: string): Date | undefined {
+  if (!value?.trim()) return undefined;
+  return parseHrDateTime(value.trim());
+}
+
 export async function createJobAction(
   _prev: JobFormState,
   formData: FormData
@@ -80,6 +86,7 @@ export async function createJobAction(
     eventName: formData.get('eventName'),
     siteAddress: formData.get('siteAddress'),
     note: formData.get('note') || undefined,
+    plannedEventAt: formData.get('plannedEventAt') || undefined,
     pickupsJson: formData.get('pickupsJson'),
     publish: formData.get('publish'),
   });
@@ -111,6 +118,7 @@ export async function createJobAction(
       eventName: parsed.data.eventName,
       siteAddress: parsed.data.siteAddress,
       note: parsed.data.note,
+      plannedEventAt: parseOptionalDateTime(parsed.data.plannedEventAt),
       pickups: pickups.map((p) => ({
         label: p.label,
         warehouseId: new mongoose.Types.ObjectId(p.warehouseId),
@@ -118,6 +126,8 @@ export async function createJobAction(
         teamMemberIds: p.teamMemberIds.map((id) => new mongoose.Types.ObjectId(id)),
         contactEmails: p.contactEmails,
         note: p.note,
+        plannedGatherAt: parseOptionalDateTime(p.plannedGatherAt),
+        plannedEventAt: parseOptionalDateTime(p.plannedEventAt),
         lines: p.lines.map((l) => ({
           productId: new mongoose.Types.ObjectId(l.productId),
           requestedQuantity: l.requestedQuantity,

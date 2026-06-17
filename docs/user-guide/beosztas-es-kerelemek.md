@@ -38,8 +38,10 @@ Dolgozók műszakbeosztása és HR kérelmek (szabadság, betegszabadság, beosz
 1. Nyissa meg a **Beosztás** oldalt.
 2. Válassza ki a **céget** — a **Dolgozó** lista csak az adott cég rekordjait mutatja.
 3. Válasszon **dolgozót** — csak az ő eseményei jelennek meg, és a **Tömeges műszak** gomb aktiválódik. Cég kiválasztása nélkül is szűrhető cég szerint (minden dolgozó helyett csak az adott cég).
-4. Új egyedi esemény: **Új beosztás** — a kiválasztott dolgozó automatikusan kitöltődik (ha van szűrés).
+4. Új egyedi esemény: **Új beosztás** — a kiválasztott dolgozó automatikusan kitöltődik (ha van szűrés). Opcionális **helyszín címke**, **cím**, típus **Helyszíni munka** (`field_work`).
 5. Meglévő esemény: kattintson a naptárban az eseményre — szerkesztés vagy törlés.
+
+**Csapatvezető:** [Csapatom beosztása](/help/csapatok-es-vezetoi-beosztas) — csak a saját csapat tagjai.
 
 A naptár **Outlook-szerű**: átfedő műszakok oszlopokban, szöveg a blokkokban (cím, dolgozó, idő). Dolgozónként **Naptár szín** állítható a dolgozó adatlapon; a **Színjelmagyarázat** gombból kereshető lista nyílik (sok dolgozónál).
 
@@ -82,6 +84,7 @@ A naptár **Outlook-szerű**: átfedő műszakok oszlopokban, szöveg a blokkokb
 
 ## Kapcsolódó fejezetek
 
+- [Csapatok és vezetői beosztás](/help/csapatok-es-vezetoi-beosztas)
 - [Dolgozók](/help/dolgozok)
 - [Saját beosztás](/help/sajat-beosztas)
 - [Kimutatások](/help/kimutatasok)

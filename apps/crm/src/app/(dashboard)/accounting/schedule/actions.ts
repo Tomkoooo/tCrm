@@ -2,13 +2,16 @@
 
 import { revalidatePath } from 'next/cache';
 import mongoose from 'mongoose';
-import { requirePermission, requireAnyPermission } from '@crm/auth';
+import { requirePermission, requireAnyPermission, requireAuth } from '@crm/auth';
 import {
   createScheduleEntry,
   updateScheduleEntry,
   deleteScheduleEntry,
   listScheduleEntries,
   bulkCreateScheduleEntries,
+  listManagedEmployeeIds,
+  userLeadsAnyTeam,
+  assertCanReadTeamSchedule,
 } from '@crm/core';
 import {
   scheduleEntrySchema,
@@ -19,6 +22,51 @@ import { HR_READ_PERMISSION_KEYS, resolveEmployeeScheduleColor } from '@crm/lib'
 import { connectDB, Employee } from '@crm/db';
 import { zodToFieldErrors, type HrFormState } from '../_components/form-utils';
 import { getHrSessionScope } from '@/lib/hr/session-scope';
+
+function mapEntryToEvent(
+  e: Awaited<ReturnType<typeof listScheduleEntries>>[number],
+  employeeById: Map<string, { name?: string; calendarColor?: string | null }>
+) {
+  const empId = e.employeeId.toString();
+  const emp = employeeById.get(empId);
+  const location = [e.locationLabel, e.locationAddress].filter(Boolean).join(' — ');
+  const baseTitle = e.title ?? (e.kind === 'shift' ? 'Műszak' : e.kind);
+  return {
+    id: e._id.toString(),
+    title: location ? `${baseTitle} · ${location}` : baseTitle,
+    start: e.start.toISOString(),
+    end: e.end.toISOString(),
+    allDay: e.allDay ?? false,
+    kind: e.kind,
+    employeeId: empId,
+    employeeName: emp?.name,
+    locationLabel: e.locationLabel,
+    locationAddress: e.locationAddress,
+    color: resolveEmployeeScheduleColor(empId, emp?.calendarColor),
+  };
+}
+
+async function loadEmployeeMap(employeeIds: string[]) {
+  await connectDB();
+  const employees =
+    employeeIds.length > 0
+      ? await Employee.find({ _id: { $in: employeeIds } })
+          .select({ name: 1, calendarColor: 1 })
+          .lean()
+          .exec()
+      : [];
+  return new Map(employees.map((e) => [String(e._id), e]));
+}
+
+async function requireScheduleWriteAccess() {
+  const scope = await getHrSessionScope();
+  if (scope.permissions.includes('hr:write')) return scope;
+  const leads = await userLeadsAnyTeam(scope.userId);
+  if (!leads) {
+    await requirePermission('hr:write');
+  }
+  return scope;
+}
 
 export async function fetchScheduleEventsAction(params: {
   start: string;
@@ -43,40 +91,47 @@ export async function fetchScheduleEventsAction(params: {
     allowedCompanyIds,
   });
 
-  await connectDB();
-  const employeeIds = [...new Set(entries.map((e) => String(e.employeeId)))];
-  const employees =
-    employeeIds.length > 0
-      ? await Employee.find({ _id: { $in: employeeIds } })
-          .select({ name: 1, calendarColor: 1 })
-          .lean()
-          .exec()
-      : [];
-  const employeeById = new Map(employees.map((e) => [String(e._id), e]));
+  const employeeById = await loadEmployeeMap([
+    ...new Set(entries.map((e) => String(e.employeeId))),
+  ]);
+  return entries.map((e) => mapEntryToEvent(e, employeeById));
+}
 
-  return entries.map((e) => {
-    const empId = e.employeeId.toString();
-    const emp = employeeById.get(empId);
-    return {
-      id: e._id.toString(),
-      title: e.title ?? (e.kind === 'shift' ? 'Műszak' : e.kind),
-      start: e.start.toISOString(),
-      end: e.end.toISOString(),
-      allDay: e.allDay ?? false,
-      kind: e.kind,
-      employeeId: empId,
-      employeeName: emp?.name,
-      color: resolveEmployeeScheduleColor(empId, emp?.calendarColor),
-    };
+export async function fetchTeamScheduleEventsAction(params: {
+  start: string;
+  end: string;
+  companyId?: string;
+}) {
+  const scope = await getHrSessionScope();
+  await assertCanReadTeamSchedule(scope.userId, scope.permissions);
+
+  const companyOid =
+    params.companyId && mongoose.Types.ObjectId.isValid(params.companyId)
+      ? new mongoose.Types.ObjectId(params.companyId)
+      : undefined;
+
+  const managedIds = await listManagedEmployeeIds(scope.userId, companyOid, scope.permissions);
+  if (!managedIds.length) return [];
+
+  const entries = await listScheduleEntries({
+    start: new Date(params.start),
+    end: new Date(params.end),
+    employeeIds: managedIds,
+    companyId: companyOid,
+    allowedCompanyIds: scope.allowedCompanyIds,
   });
+
+  const employeeById = await loadEmployeeMap([
+    ...new Set(entries.map((e) => String(e.employeeId))),
+  ]);
+  return entries.map((e) => mapEntryToEvent(e, employeeById));
 }
 
 export async function createScheduleEntryAction(
   _prev: HrFormState,
   formData: FormData
 ): Promise<HrFormState> {
-  await requirePermission('hr:write');
-  const { userId, permissions } = await getHrSessionScope();
+  const { userId, permissions } = await requireScheduleWriteAccess();
 
   const parsed = scheduleEntrySchema.safeParse({
     employeeId: formData.get('employeeId'),
@@ -86,6 +141,8 @@ export async function createScheduleEntryAction(
     kind: formData.get('kind') || 'shift',
     title: formData.get('title') || undefined,
     notes: formData.get('notes') || undefined,
+    locationLabel: formData.get('locationLabel') || undefined,
+    locationAddress: formData.get('locationAddress') || undefined,
   });
   if (!parsed.success) {
     return { success: false, fieldErrors: zodToFieldErrors(parsed.error.issues) };
@@ -101,11 +158,14 @@ export async function createScheduleEntryAction(
         kind: parsed.data.kind,
         title: parsed.data.title,
         notes: parsed.data.notes,
+        locationLabel: parsed.data.locationLabel,
+        locationAddress: parsed.data.locationAddress,
       },
       userId,
       permissions
     );
     revalidatePath('/accounting/schedule');
+    revalidatePath('/accounting/my-team/schedule');
     return { success: true, id: entry._id.toString() };
   } catch (e) {
     return { success: false, message: e instanceof Error ? e.message : 'Hiba történt.' };
@@ -116,8 +176,7 @@ export async function updateScheduleEntryAction(
   id: string,
   data: { start: string; end: string }
 ): Promise<HrFormState> {
-  await requirePermission('hr:write');
-  const { userId, permissions } = await getHrSessionScope();
+  const { userId, permissions } = await requireScheduleWriteAccess();
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return { success: false, message: 'Érvénytelen azonosító.' };
@@ -131,6 +190,7 @@ export async function updateScheduleEntryAction(
       permissions
     );
     revalidatePath('/accounting/schedule');
+    revalidatePath('/accounting/my-team/schedule');
     return { success: true };
   } catch (e) {
     return { success: false, message: e instanceof Error ? e.message : 'Hiba történt.' };
@@ -141,8 +201,7 @@ export async function updateScheduleEntryFormAction(
   _prev: HrFormState,
   formData: FormData
 ): Promise<HrFormState> {
-  await requirePermission('hr:write');
-  const { userId, permissions } = await getHrSessionScope();
+  const { userId, permissions } = await requireScheduleWriteAccess();
 
   const parsed = scheduleEntryUpdateSchema.safeParse({
     id: formData.get('id'),
@@ -152,6 +211,8 @@ export async function updateScheduleEntryFormAction(
     kind: formData.get('kind') || 'shift',
     title: formData.get('title') || undefined,
     notes: formData.get('notes') || undefined,
+    locationLabel: formData.get('locationLabel') || undefined,
+    locationAddress: formData.get('locationAddress') || undefined,
   });
   if (!parsed.success) {
     return { success: false, fieldErrors: zodToFieldErrors(parsed.error.issues) };
@@ -171,11 +232,14 @@ export async function updateScheduleEntryFormAction(
         kind: parsed.data.kind,
         title: parsed.data.title,
         notes: parsed.data.notes,
+        locationLabel: parsed.data.locationLabel,
+        locationAddress: parsed.data.locationAddress,
       },
       userId,
       permissions
     );
     revalidatePath('/accounting/schedule');
+    revalidatePath('/accounting/my-team/schedule');
     return { success: true };
   } catch (e) {
     return { success: false, message: e instanceof Error ? e.message : 'Hiba történt.' };
@@ -183,8 +247,7 @@ export async function updateScheduleEntryFormAction(
 }
 
 export async function deleteScheduleEntryAction(id: string): Promise<HrFormState> {
-  await requirePermission('hr:write');
-  const { userId, permissions } = await getHrSessionScope();
+  const { userId, permissions } = await requireScheduleWriteAccess();
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return { success: false, message: 'Érvénytelen azonosító.' };
@@ -193,6 +256,7 @@ export async function deleteScheduleEntryAction(id: string): Promise<HrFormState
   try {
     await deleteScheduleEntry(new mongoose.Types.ObjectId(id), userId, permissions);
     revalidatePath('/accounting/schedule');
+    revalidatePath('/accounting/my-team/schedule');
     return { success: true };
   } catch (e) {
     return { success: false, message: e instanceof Error ? e.message : 'Hiba történt.' };
@@ -203,8 +267,7 @@ export async function bulkScheduleAction(
   _prev: HrFormState,
   formData: FormData
 ): Promise<HrFormState> {
-  await requirePermission('hr:write');
-  const { userId, permissions } = await getHrSessionScope();
+  const { userId, permissions } = await requireScheduleWriteAccess();
 
   const employeeIds = formData.getAll('employeeIds').map(String);
   const selectedRaw = String(formData.get('selectedDates') ?? '');
@@ -239,11 +302,14 @@ export async function bulkScheduleAction(
         mode: parsed.data.mode,
         selectedDates: parsed.data.selectedDates,
         skipExisting: parsed.data.skipExisting,
+        locationLabel: String(formData.get('locationLabel') ?? '').trim() || undefined,
+        locationAddress: String(formData.get('locationAddress') ?? '').trim() || undefined,
       },
       userId,
       permissions
     );
     revalidatePath('/accounting/schedule');
+    revalidatePath('/accounting/my-team/schedule');
     return {
       success: true,
       message: `${result.created} műszak létrehozva, ${result.skipped} kihagyva.`,
@@ -251,4 +317,10 @@ export async function bulkScheduleAction(
   } catch (e) {
     return { success: false, message: e instanceof Error ? e.message : 'Hiba történt.' };
   }
+}
+
+export async function checkUserLeadsTeamAction(): Promise<boolean> {
+  const user = await requireAuth();
+  if (!user) return false;
+  return userLeadsAnyTeam(new mongoose.Types.ObjectId(user.id));
 }

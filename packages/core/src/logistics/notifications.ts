@@ -51,7 +51,14 @@ async function buildNotificationVariables(
   return {
     pickupReference: pickup.reference,
     jobReference: job?.reference ?? '',
+    eventName: job?.eventName ?? '',
+    siteAddress: job?.siteAddress ?? '',
     warehouseName: wh?.name ?? '',
+    plannedGatherAt: pickup.plannedGatherAt ? pickup.plannedGatherAt.toISOString() : '',
+    plannedEventAt:
+      (pickup.plannedEventAt ?? job?.plannedEventAt)
+        ? (pickup.plannedEventAt ?? job?.plannedEventAt)!.toISOString()
+        : '',
     actorName,
     ...(actorEmail ? { actorEmail } : {}),
   };

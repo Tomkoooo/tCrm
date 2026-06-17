@@ -67,6 +67,7 @@ type SidebarUser = {
   email: string;
   name: string;
   permissions: string[];
+  leadsTeam?: boolean;
 };
 
 export function MenuItem({
@@ -199,6 +200,13 @@ export function AppSidebar({ serverUser }: { serverUser?: SidebarUser }) {
         href: '/accounting/companies',
         icon: <Building2Icon className="h-4 w-4" />,
         label: 'Cégek',
+      });
+    }
+    if (hasPermission('hr:write')) {
+      items.push({
+        href: '/accounting/teams',
+        icon: <UsersIcon className="h-4 w-4" />,
+        label: 'Csapatok',
       });
     }
     if (HR_READ_PERMISSION_KEYS.some((key) => hasPermission(key))) {
@@ -350,6 +358,16 @@ export function AppSidebar({ serverUser }: { serverUser?: SidebarUser }) {
                 label="Saját beosztás"
                 onClick={linkClick}
               />
+              {('leadsTeam' in (user ?? {}) && (user as SidebarUser).leadsTeam) ||
+              hasPermission('hr:teams:read') ||
+              hasPermission('hr:teams:write') ? (
+                <MenuItem
+                  href="/accounting/my-team/schedule"
+                  icon={<CalendarDaysIcon className="h-4 w-4" />}
+                  label="Csapatom beosztása"
+                  onClick={linkClick}
+                />
+              ) : null}
               {SECRETS_READ_PERMISSION_KEYS.some((key) => hasPermission(key)) && (
                 <MenuItem
                   href="/secrets"

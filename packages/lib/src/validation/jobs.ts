@@ -16,6 +16,8 @@ export const createPickupInputSchema = z.object({
   teamMemberIds: z.array(objectIdSchema).default([]),
   contactEmails: z.array(emailSchema).default([]),
   note: z.string().max(2000).optional(),
+  plannedGatherAt: z.string().optional(),
+  plannedEventAt: z.string().optional(),
   lines: z.array(jobLineInputSchema).min(1, 'Legalább egy tétel szükséges'),
 });
 
@@ -23,6 +25,7 @@ export const createJobSchema = z.object({
   eventName: z.string().min(1).max(300),
   siteAddress: z.string().min(1).max(500),
   note: z.string().max(2000).optional(),
+  plannedEventAt: z.string().optional(),
   pickupsJson: z.string().min(1, 'Legalább egy átvételi kör szükséges'),
   publish: z
     .union([z.literal('true'), z.literal('false'), z.literal('on'), z.literal('')])

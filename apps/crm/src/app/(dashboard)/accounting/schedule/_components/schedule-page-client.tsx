@@ -104,14 +104,7 @@ export function SchedulePageClient({
             <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
               Új beosztás
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => setBulkOpen(true)}
-              disabled={!employeeId}
-              title={!employeeId ? 'Előbb válasszon dolgozót' : undefined}
-            >
+            <Button type="button" size="sm" variant="outline" onClick={() => setBulkOpen(true)}>
               Tömeges műszak
             </Button>
           </div>
@@ -157,21 +150,20 @@ export function SchedulePageClient({
             />
           </EntitySheet>
 
-          {selectedEmployee && (
-            <EntitySheet
-              open={bulkOpen}
-              onOpenChange={setBulkOpen}
-              title="Tömeges műszak"
-              description="Műszakok létrehozása több napra egyszerre."
-              mode="create"
-            >
-              <BulkScheduleForm
-                employeeId={selectedEmployee._id}
-                employeeName={selectedEmployee.label}
-                onSuccess={() => setBulkOpen(false)}
-              />
-            </EntitySheet>
-          )}
+          <EntitySheet
+            open={bulkOpen}
+            onOpenChange={setBulkOpen}
+            title="Tömeges műszak"
+            description="Műszakok létrehozása több napra egyszerre."
+            mode="create"
+          >
+            <BulkScheduleForm
+              employeeId={selectedEmployee?._id}
+              employeeName={selectedEmployee?.label}
+              employees={formEmployees}
+              onSuccess={() => setBulkOpen(false)}
+            />
+          </EntitySheet>
 
           {editEvent ? (
             <EntitySheet

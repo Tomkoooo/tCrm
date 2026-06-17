@@ -47,6 +47,8 @@ export function scheduleKindFallbackColor(kind?: string): string {
       return '#0d9488';
     case 'other':
       return '#a855f7';
+    case 'field_work':
+      return '#ea580c';
     default:
       return '#2563eb';
   }

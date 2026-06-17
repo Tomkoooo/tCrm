@@ -76,6 +76,7 @@ export const employeeSchema = z.object({
   taxId: z.string().optional(),
   isActive: z.boolean().default(true),
   hrNotes: z.string().optional(),
+  supervisorEmployeeId: z.string().optional().or(z.literal('')),
 });
 
 /** Shared profile across all company records for one person. */
@@ -179,15 +180,32 @@ export const inviteEmployeeSchema = z
     }
   });
 
+export const teamSchema = z.object({
+  companyId: z.string().min(1, 'A cég kötelező'),
+  name: z.string().min(1, 'A név kötelező'),
+  slug: z
+    .string()
+    .min(1, 'A slug kötelező')
+    .regex(/^[a-z0-9-]+$/, 'Csak kisbetű, szám és kötőjel'),
+  leaderEmployeeId: z.string().min(1, 'Válasszon csapatvezetőt'),
+  memberEmployeeIds: z.array(z.string().min(1)).default([]),
+  teamType: z.enum(['builders', 'drivers', 'mixed', 'other']).optional().or(z.literal('')),
+  isActive: z.boolean().default(true),
+});
+
+export const scheduleEntryKindSchema = z.enum(['shift', 'off', 'training', 'other', 'field_work']);
+
 export const scheduleEntrySchema = z
   .object({
     employeeId: z.string().min(1),
     start: hrDateTimeField,
     end: hrDateTimeField,
     allDay: z.boolean().optional(),
-    kind: z.enum(['shift', 'off', 'training', 'other']).default('shift'),
+    kind: scheduleEntryKindSchema.default('shift'),
     title: z.string().optional(),
     notes: z.string().optional(),
+    locationLabel: z.string().max(200).optional(),
+    locationAddress: z.string().max(500).optional(),
   })
   .refine((d) => d.end > d.start, { message: 'A befejezés későbbi kell legyen', path: ['end'] });
 
@@ -197,9 +215,11 @@ export const scheduleEntryUpdateSchema = z
     start: hrDateTimeField,
     end: hrDateTimeField,
     allDay: z.boolean().optional(),
-    kind: z.enum(['shift', 'off', 'training', 'other']).default('shift'),
+    kind: scheduleEntryKindSchema.default('shift'),
     title: z.string().optional(),
     notes: z.string().optional(),
+    locationLabel: z.string().max(200).optional(),
+    locationAddress: z.string().max(500).optional(),
   })
   .refine((d) => d.end > d.start, { message: 'A befejezés későbbi kell legyen', path: ['end'] });
 
@@ -280,13 +300,24 @@ export const bulkScheduleSchema = z.object({
   endDate: hrDateOnlyField,
   shiftStartTime: z.string().regex(/^\d{2}:\d{2}$/),
   shiftEndTime: z.string().regex(/^\d{2}:\d{2}$/),
-  mode: z.enum(['workdays', 'selected_dates']),
+  mode: z.enum([
+    'workdays',
+    'selected_dates',
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+    'sunday',
+  ]),
   selectedDates: z.array(hrDateOnlyField).optional(),
   skipExisting: z.coerce.boolean().default(true),
 });
 
 export type CompanyInput = z.infer<typeof companySchema>;
 export type EmployeeInput = z.infer<typeof employeeSchema>;
+export type TeamInput = z.infer<typeof teamSchema>;
 export type ScheduleEntryInput = z.infer<typeof scheduleEntrySchema>;
 export type HrRequestInput = z.infer<typeof hrRequestSchema>;
 export type MonthlyWorkSummaryInput = z.infer<typeof monthlyWorkSummarySchema>;

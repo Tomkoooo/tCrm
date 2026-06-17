@@ -97,8 +97,17 @@ export function EditScheduleForm({
           <option value="shift">Műszak</option>
           <option value="off">Szabad</option>
           <option value="training">Képzés</option>
+          <option value="field_work">Helyszíni munka</option>
           <option value="other">Egyéb</option>
         </select>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="edit-locationLabel">Helyszín címke</Label>
+        <Input id="edit-locationLabel" name="locationLabel" />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="edit-locationAddress">Cím</Label>
+        <Input id="edit-locationAddress" name="locationAddress" />
       </div>
       <div className="space-y-2">
         <Label htmlFor="edit-title">Cím</Label>

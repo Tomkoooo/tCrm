@@ -48,10 +48,19 @@ export const ACCOUNTING_NAV_PERMISSION_KEYS = [
   'hr:approve',
   'hr:reports',
   'hr:self',
+  'hr:teams:read',
+  'hr:teams:write',
 ] as const;
 
 /** View HR data (employees, schedules, requests). */
-export const HR_READ_PERMISSION_KEYS = ['hr:read', 'hr:write', 'hr:approve', 'hr:reports'] as const;
+export const HR_READ_PERMISSION_KEYS = [
+  'hr:read',
+  'hr:write',
+  'hr:approve',
+  'hr:reports',
+  'hr:teams:read',
+  'hr:teams:write',
+] as const;
 
 /** Manage companies, employees, schedules. */
 export const HR_WRITE_PERMISSION_KEYS = ['hr:write'] as const;

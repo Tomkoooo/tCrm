@@ -85,8 +85,17 @@ export function CreateScheduleForm({
           <option value="shift">Műszak</option>
           <option value="off">Szabad</option>
           <option value="training">Képzés</option>
+          <option value="field_work">Helyszíni munka</option>
           <option value="other">Egyéb</option>
         </select>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="locationLabel">Helyszín címke</Label>
+        <Input id="locationLabel" name="locationLabel" placeholder="pl. Építési helyszín" />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="locationAddress">Cím</Label>
+        <Input id="locationAddress" name="locationAddress" placeholder="Teljes cím" />
       </div>
       <div className="space-y-2">
         <Label htmlFor="title">Cím</Label>

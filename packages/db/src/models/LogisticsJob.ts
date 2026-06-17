@@ -63,6 +63,8 @@ export interface ILogisticsPickup {
   notifications?: ILogisticsPickupNotifications;
   documents?: ILogisticsPickupDocuments;
   scheduledAt?: Date;
+  plannedGatherAt?: Date;
+  plannedEventAt?: Date;
   gatheredAt?: Date;
   pickedUpAt?: Date;
   deliveredAt?: Date;
@@ -78,6 +80,7 @@ export interface ILogisticsJob extends Document {
   status: JobStatus;
   pickups: ILogisticsPickup[];
   note?: string;
+  plannedEventAt?: Date;
   createdBy: Types.ObjectId;
   scheduledAt?: Date;
   gatheredAt?: Date;
@@ -162,6 +165,8 @@ const LogisticsPickupSchema = new Schema<ILogisticsPickup>(
     notifications: { type: PickupNotificationsSchema, default: () => ({}) },
     documents: { type: PickupDocumentsSchema, default: () => ({}) },
     scheduledAt: { type: Date },
+    plannedGatherAt: { type: Date },
+    plannedEventAt: { type: Date },
     gatheredAt: { type: Date },
     pickedUpAt: { type: Date },
     deliveredAt: { type: Date },
@@ -194,6 +199,7 @@ const LogisticsJobSchema = new Schema<ILogisticsJob>(
     },
     pickups: { type: [LogisticsPickupSchema], default: [] },
     note: { type: String, maxlength: 2000 },
+    plannedEventAt: { type: Date },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     scheduledAt: { type: Date },
     gatheredAt: { type: Date },

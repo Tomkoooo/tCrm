@@ -39,12 +39,24 @@ export const BASELINE_MAIL_TEMPLATES: BaselineMailTemplate[] = [
     key: 'job_scheduled',
     subject: 'Logisztika: esemény ütemezve — {{pickupReference}}',
     description: 'Új vagy ütemezett szállítási feladat',
-    variables: ['pickupReference', 'jobReference', 'warehouseName', 'actorName'],
+    variables: [
+      'pickupReference',
+      'jobReference',
+      'eventName',
+      'siteAddress',
+      'warehouseName',
+      'plannedGatherAt',
+      'plannedEventAt',
+      'actorName',
+    ],
     enabled: true,
     recipientRoleKeys: ['manager'],
     body: `<p>Ütemezett feladat: <strong>{{pickupReference}}</strong></p>
-<p>Esemény: {{jobReference}}</p>
-<p>Raktár: {{warehouseName}}</p>`,
+<p>Esemény: {{eventName}} ({{jobReference}})</p>
+<p>Helyszín: {{siteAddress}}</p>
+<p>Raktár: {{warehouseName}}</p>
+<p>Összeszedés: {{plannedGatherAt}}</p>
+<p>Helyszíni időpont: {{plannedEventAt}}</p>`,
   },
   {
     key: 'pickup_gathered',
@@ -89,5 +101,94 @@ export const BASELINE_MAIL_TEMPLATES: BaselineMailTemplate[] = [
     variables: ['pickupReference', 'jobReference', 'warehouseName', 'actorName'],
     enabled: true,
     body: `<p>Visszáru bevételezve: <strong>{{pickupReference}}</strong></p>`,
+  },
+  {
+    key: 'hr_schedule_created',
+    subject: 'Új beosztás — {{scheduleTitle}}',
+    description: 'Dolgozó értesítése új beosztásról',
+    variables: [
+      'employeeName',
+      'companyName',
+      'scheduleTitle',
+      'scheduleKind',
+      'startAt',
+      'endAt',
+      'location',
+      'myScheduleLink',
+      'actorName',
+    ],
+    enabled: true,
+    body: `<p>Kedves {{employeeName}}!</p>
+<p>Új beosztás került a naptárába ({{companyName}}):</p>
+<p><strong>{{scheduleTitle}}</strong> ({{scheduleKind}})<br/>
+{{startAt}} — {{endAt}}<br/>
+Helyszín: {{location}}</p>
+<p><a href="{{myScheduleLink}}">Saját beosztás megtekintése</a></p>`,
+  },
+  {
+    key: 'hr_schedule_updated',
+    subject: 'Beosztás módosult — {{scheduleTitle}}',
+    description: 'Dolgozó értesítése beosztás módosításról',
+    variables: [
+      'employeeName',
+      'companyName',
+      'scheduleTitle',
+      'scheduleKind',
+      'startAt',
+      'endAt',
+      'location',
+      'changeSummary',
+      'myScheduleLink',
+      'actorName',
+    ],
+    enabled: true,
+    body: `<p>Kedves {{employeeName}}!</p>
+<p>Beosztása módosult ({{companyName}}):</p>
+<p>{{changeSummary}}</p>
+<p><strong>{{scheduleTitle}}</strong><br/>
+{{startAt}} — {{endAt}}<br/>
+Helyszín: {{location}}</p>
+<p><a href="{{myScheduleLink}}">Saját beosztás megtekintése</a></p>`,
+  },
+  {
+    key: 'hr_schedule_deleted',
+    subject: 'Beosztás törölve — {{scheduleTitle}}',
+    description: 'Dolgozó értesítése törölt beosztásról',
+    variables: [
+      'employeeName',
+      'companyName',
+      'scheduleTitle',
+      'scheduleKind',
+      'startAt',
+      'endAt',
+      'location',
+      'myScheduleLink',
+      'actorName',
+    ],
+    enabled: true,
+    body: `<p>Kedves {{employeeName}}!</p>
+<p>Az alábbi beosztás törölve lett ({{companyName}}):</p>
+<p><strong>{{scheduleTitle}}</strong> — {{startAt}}</p>`,
+  },
+  {
+    key: 'hr_request_submitted',
+    subject: 'Új HR kérelem — {{employeeName}}',
+    description: 'HR értesítése új dolgozói kérelemről',
+    variables: [
+      'employeeName',
+      'companyName',
+      'requestType',
+      'dateRange',
+      'reason',
+      'requestLink',
+      'requesterName',
+    ],
+    enabled: true,
+    recipientRoleKeys: ['hr'],
+    body: `<p>Új kérelem érkezett: <strong>{{requestType}}</strong></p>
+<p>Dolgozó: {{employeeName}} ({{companyName}})</p>
+<p>Időszak: {{dateRange}}</p>
+<p>Indoklás: {{reason}}</p>
+<p><a href="{{requestLink}}">Kérelmek megnyitása</a></p>`,
   },
 ];

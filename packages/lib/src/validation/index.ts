@@ -110,6 +110,7 @@ export {
   employeeLeaveYearSchema,
   employeePersonalDataSchema,
   bulkScheduleSchema,
+  teamSchema,
   scheduleEntrySchema,
   scheduleEntryUpdateSchema,
   hrRequestSchema,
@@ -124,6 +125,7 @@ export {
 export type {
   CompanyInput,
   EmployeeInput,
+  TeamInput,
   ScheduleEntryInput,
   HrRequestInput,
   MonthlyWorkSummaryInput,

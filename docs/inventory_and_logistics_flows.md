@@ -583,4 +583,30 @@ Részletek: [`hr.md`](./hr.md).
 
 ---
 
-*Utolsó frissítés: 2026-06 — logisztika RBAC: `logistics:vehicles:read` / `report`, sidebar write→read, incidens jogosultság; korábban: készlet lista BOM típus badge + szűrő.*
+## 16. HR — csapatok, vezetői beosztás, logisztika naptár
+
+```mermaid
+flowchart LR
+  HR[HR hr:write] --> Team[Team modell]
+  Team --> Leader[leaderEmployeeId]
+  Team --> Members[memberEmployeeIds]
+  Leader --> MyTeam["/accounting/my-team/schedule"]
+  MyTeam --> SE[ScheduleEntry]
+  Job[LogisticsJob publish] --> Sync[syncLogisticsJobToEmployeeSchedules]
+  Sync --> SE
+  SE --> MyCal["/accounting/my"]
+  SE --> Mail[hr_schedule_* e-mail]
+  Emp[hr:self kérelem] --> ReqMail[hr_request_submitted]
+```
+
+| Elem | Leírás |
+|------|--------|
+| `Team` | Cégenkénti csapat, vezető + tagok |
+| Vezetői jog | Derived — `Team.leaderEmployeeId` → userId, nem külön RBAC kulcs |
+| `ScheduleEntry.field_work` | Helyszíni munka; `locationLabel`, `locationAddress`, `sourceRef` |
+| Logisztika idő | `plannedGatherAt`, `plannedEventAt` (pickup / job) |
+| E-mail | `hr_schedule_created/updated/deleted`, `hr_request_submitted` |
+
+---
+
+*Utolsó frissítés: 2026-06 — HR csapatok, vezetői beosztás, logisztika→dolgozó naptár szinkron, HR e-mail értesítések; korábban: logisztika RBAC…*

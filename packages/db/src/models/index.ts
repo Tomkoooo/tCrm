@@ -59,7 +59,12 @@ export {
   type IEmployeePersonalData,
 } from './Employee';
 export { HrCompanyScope, type IHrCompanyScope } from './HrCompanyScope';
-export { ScheduleEntry, type IScheduleEntry, type ScheduleEntryKind } from './ScheduleEntry';
+export {
+  ScheduleEntry,
+  type IScheduleEntry,
+  type ScheduleEntryKind,
+  type ScheduleEntrySourceRef,
+} from './ScheduleEntry';
 export {
   HrRequest,
   type IHrRequest,
@@ -69,6 +74,7 @@ export {
 } from './HrRequest';
 export { MonthlyWorkSummary, type IMonthlyWorkSummary } from './MonthlyWorkSummary';
 export { EmployeeLeaveYear, type IEmployeeLeaveYear } from './EmployeeLeaveYear';
+export { Team, type ITeam, type TeamType } from './Team';
 export { MailTemplate, type IMailTemplate } from './MailTemplate';
 export { UserInvitation, type IUserInvitation, type UserInvitationKind } from './UserInvitation';
 export { Branding, type IBranding } from './Branding';

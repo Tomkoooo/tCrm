@@ -26,11 +26,14 @@ HR és könyvelési törzsadatok: cégek, dolgozók (cégenkénti rekordok), mű
 | Áttekintés | `/accounting` | accounting / hr olvasás |
 | Cégek | `/accounting/companies` | `hr:write` |
 | Dolgozók | `/accounting/employees` | `hr:read` |
+| Csapatok | `/accounting/teams` | `hr:write` |
 | Beosztás | `/accounting/schedule` | `hr:read` |
 | Kérelmek | `/accounting/requests` | `hr:read` |
 | Kimutatások | `/accounting/leave-summary` | `hr:reports` |
 
 **Dolgozói önkiszolgálás:** Beállítások → **Saját beosztás** (`/accounting/my`) — nem a **Fiók** oldal (`/account`).
+
+**Csapatvezető:** Beállítások → **Csapatom beosztása** — lásd [Csapatok és vezetői beosztás](/help/csapatok-es-vezetoi-beosztas).
 
 A régi külön „Kimutatások” és „Szabadság összesítő” menüpontok egy helyen vannak: **Kimutatások**, két füllel (szabadság / havi bér és órák).
 

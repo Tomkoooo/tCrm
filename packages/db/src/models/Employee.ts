@@ -32,6 +32,8 @@ export interface IEmployee extends Document {
   monthlySalaryHuf?: number;
   hourlyRateHuf?: number;
   calendarColor?: string;
+  supervisorEmployeeId?: Types.ObjectId;
+  teamIds?: Types.ObjectId[];
   personalData?: IEmployeePersonalData;
   isActive: boolean;
   hrNotes?: string;
@@ -69,6 +71,8 @@ const EmployeeSchema = new Schema<IEmployee>(
     monthlySalaryHuf: { type: Number, min: 0 },
     hourlyRateHuf: { type: Number, min: 0 },
     calendarColor: { type: String },
+    supervisorEmployeeId: { type: Schema.Types.ObjectId, ref: 'Employee' },
+    teamIds: [{ type: Schema.Types.ObjectId, ref: 'Team' }],
     personalData: {
       birthName: { type: String },
       birthPlaceDate: { type: String },
