@@ -13,6 +13,7 @@ import { LOGISTICS_READ_PERMISSION_KEYS, hasAnyPermission } from '@crm/lib';
 import { Container } from '@crm/ui';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { PwaInstallPrompt } from '@/components/pwa-install-prompt';
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -70,6 +71,8 @@ export default async function DashboardPage() {
           Működési vezérlőpult — készlet, ajánlatok, logisztika és egyebek.
         </p>
       </div>
+
+      <PwaInstallPrompt />
 
       {stats.length > 0 && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">

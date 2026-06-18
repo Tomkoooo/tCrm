@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { SessionProvider } from 'next-auth/react';
 import { auth } from '@crm/auth';
@@ -6,6 +6,7 @@ import { getBranding } from '@crm/db';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { BrandingProvider } from '@/components/branding-provider';
+import { PwaServiceWorkerRegister } from '@/components/pwa-service-worker';
 
 /** CRM pages use MongoDB — never prerender at build (CI/Docker have no database). */
 export const dynamic = 'force-dynamic';
@@ -29,9 +30,26 @@ export async function generateMetadata(): Promise<Metadata> {
       template: `%s — ${branding.appName}`,
     },
     description: branding.loginSubtitle,
-    icons: { icon: faviconUrl },
+    applicationName: branding.appName,
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: 'default',
+      title: branding.appName,
+    },
+    icons: {
+      icon: faviconUrl,
+      apple: '/pwa-icon/192',
+    },
+    manifest: '/manifest.webmanifest',
   };
 }
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#fafafa' },
+    { media: '(prefers-color-scheme: dark)', color: '#18181b' },
+  ],
+};
 
 export default async function RootLayout({
   children,
@@ -53,7 +71,10 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <BrandingProvider branding={branding}>
-            <SessionProvider session={session}>{children}</SessionProvider>
+            <SessionProvider session={session}>
+              <PwaServiceWorkerRegister />
+              {children}
+            </SessionProvider>
           </BrandingProvider>
         </ThemeProvider>
       </body>
