@@ -4,13 +4,13 @@ Single source of truth for system design, boundaries, and conventions.
 
 **Pair with:** [rules.md](./rules.md), [design.md](./design.md), [AGENT_HANDOFF.md](./AGENT_HANDOFF.md)
 
-**This file describes the rebuilt system.** The pre-rebuild codebase (inventory, logistics, HR/accounting, titoktár) was deleted and rebuilt from scratch per this plan; only the foundation slice below currently exists. If you find code or docs that reference `@crm/core`, `@crm/db`, `/inventory`, `/logistics`, `/accounting`, or `packages/core`, it is either dead reference material (`_legacy-core-reference/`, kept only for porting old logic) or stale — flag it, don't build on it.
+**This file describes the rebuilt system.** The pre-rebuild codebase was deleted and rebuilt from scratch. If you find code or docs that reference `@crm/core` or `@crm/db`, it is either dead reference material (`_legacy-core-reference/`, kept only for porting old HR/accounting logic) or stale — flag it, don't build on it.
 
 ---
 
 ## 1. Vision & Goals
 
-**tCrm** is an internal CRM, currently at its foundation slice (auth, dynamic RBAC, admin tooling), with a path toward the fuller operations platform (inventory, logistics, offers, accounting) described in the original plan.
+**tCrm** is an internal CRM with a live foundation (auth, RBAC, admin), inventory, logistics, and builds, with a path toward offers, accounting, and multi-tenant SaaS.
 
 | Goal | Approach |
 |------|----------|
@@ -39,6 +39,7 @@ flowchart LR
   packages --> mail["mail/ templated mail sender"]
   packages --> media["media/ media library service"]
   packages --> inventory["inventory/ products, Excel import, stock"]
+  packages --> logistics["logistics/ movements, jobs, vehicles"]
   packages --> employeecore["employee-core/ scaffolding, not yet wired"]
 ```
 
@@ -49,13 +50,14 @@ flowchart LR
 | `@crm/app` (`apps/crm`) | Main Next.js application — routes, app-specific UI |
 | `@crm/ui` | Shared shadcn primitives, `Container`, `DataTable`, `EntitySheet` |
 | `@crm/lib` | `cn()`, Zod schemas, env helpers (`isPublicRegistrationEnabled`, etc.) |
-| `@crm/db-core` | Mongoose connection, models (User/Role/Permission, Product/Category/Supplier/Warehouse/StockLevel, MailTemplate, Media, Branding, Counter), repositories, branding/system/user helpers |
+| `@crm/db-core` | Mongoose connection, models (User/Role/Permission, Product/Category/Supplier/Warehouse/StockLevel/StockAdjustment, Reservation/StockMovement/LogisticsJob/Vehicle/VehicleIncident, MailTemplate, Media, Branding, Counter), repositories, branding/system/user helpers |
 | `@crm/auth` | Auth.js v5 config, session helpers (`requireAuth`, `requirePermission`, `getCurrentUser`), `getEffectivePermissionKeys` |
 | `@crm/rbac` | Permission-module registry (`registerPermissionModule`) + `ensurePermissionsSynced` baseline sync |
 | `@crm/admin` | Engine permission module (`enginePermissions`), users/invitations/password-reset business logic, mail-template seeding |
 | `@crm/mail` | Nodemailer wrapper, templated send, recipient resolution |
 | `@crm/media` | Media library service (upload, dedup by hash, link-based media) + permission keys |
 | `@crm/inventory` | Products, categories, suppliers, warehouses/stock, Excel import/export, inventory permission module |
+| `@crm/logistics` | Stock movements, reservations, event jobs/pickups, vehicle fleet, logistics permission module |
 | `@crm/employee-core` | Schedule/employee helper functions — **exists but is not imported by any route yet**; do not assume an HR feature is live because this package exists |
 | `@crm/eslint-config`, `@crm/tsconfig` | Shared configs |
 
@@ -92,11 +94,12 @@ Everything that exists in the rebuilt app today. If a doc, comment, or plan refe
 | Dashboard | `/` — permission-filtered quick actions |
 | Account | `/account` — profile, password change, effective-permissions summary |
 | Help | `/help`, `/help/[slug]` — renders `docs/user-guide/*.md` |
-| Inventory | `/inventory`, `/inventory/dashboard`, `/inventory/new`, `/inventory/[sku]`, `/inventory/categories`, `/inventory/suppliers`, `/inventory/suppliers/[id]`, `/inventory/template`, `/inventory/export` |
+| Inventory | `/inventory`, `/inventory/dashboard`, `/inventory/new`, `/inventory/[sku]`, `/inventory/builds`, `/inventory/builds/new`, `/inventory/categories`, `/inventory/suppliers`, `/inventory/suppliers/[id]`, `/inventory/template`, `/inventory/export` |
+| Logistics | `/logistics`, `/logistics/movements`, `/logistics/movements/new/{grn,pick,transfer}`, `/logistics/movements/[id]`, `/logistics/reservations`, `/logistics/jobs`, `/logistics/jobs/new`, `/logistics/jobs/[id]`, `/logistics/vehicles`, `/logistics/vehicles/[id]` |
 | Admin | `/admin/users`, `/admin/users/new`, `/admin/users/invite`, `/admin/users/invitations`, `/admin/users/[id]`, `/admin/permissions`, `/admin/mail-templates`, `/admin/mail-templates/[id]`, `/admin/media`, `/admin/branding`, `/admin/warehouses`, `/admin/warehouses/[id]` |
 | PWA | Web app manifest (`/manifest.webmanifest`), service worker, install prompt on dashboard |
 
-No logistics, offers, accounting, HR, or secrets/titoktár routes exist. `_legacy-core-reference/` holds the old business logic for those domains as porting reference.
+Offers, accounting, HR, and secrets/titoktár are not built yet. `_legacy-core-reference/` holds remaining HR/accounting business logic as porting reference.
 
 ---
 
@@ -232,7 +235,8 @@ Collapsible sidebar (`apps/crm/src/components/app-sidebar.tsx`) built on shadcn 
 | Group (HU) | Routes | Gate |
 |------------|--------|------|
 | Általános | `/`, `/help` | authenticated |
-| Készletkezelés | `/inventory/dashboard`, `/inventory`, `/inventory/categories`, `/inventory/suppliers` | `inventory:read` (suppliers also accept `suppliers:read` / write / import) |
+| Készletkezelés | `/inventory/dashboard`, `/inventory`, `/inventory/builds`, `/inventory/categories`, `/inventory/suppliers` | `inventory:read` (suppliers also accept `suppliers:read` / write / import) |
+| Logisztika | `/logistics`, `/logistics/movements`, `/logistics/reservations`, `/logistics/jobs`, `/logistics/vehicles` | `logistics:read` (vehicles also accept `logistics:vehicles:read`) |
 | Beállítások | `/account` | authenticated |
 | Adminisztráció | `/admin/users`, `/admin/permissions`, `/admin/mail-templates`, `/admin/warehouses`, `/admin/media`, `/admin/branding` | group hidden unless `admin:access`; warehouses also need `warehouses:read` |
 
@@ -298,7 +302,7 @@ Brings up MongoDB, Mongo Express (`:8081`), and the CRM app (`:3000`).
 
 ## 14. Roadmap
 
-The original plan (logistics/offers → accounting/multi-tenant SaaS) still holds as the long-term direction. **Phase 1 (inventory) is live** — plan later phases against the current package/route list above.
+The original plan (offers → accounting/multi-tenant SaaS) still holds as the long-term direction. **Phase 1 (inventory) and Phase 2 (logistics + builds) are live** — plan later phases against the current package/route list above.
 
 ---
 
@@ -321,4 +325,4 @@ The original plan (logistics/offers → accounting/multi-tenant SaaS) still hold
 
 ---
 
-*Last updated: 2026-08 (Phase 1 inventory).*
+*Last updated: 2026-08 (Phase 2 logistics + builds).*

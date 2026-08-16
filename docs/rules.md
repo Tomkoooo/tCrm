@@ -13,7 +13,7 @@ Single source of truth for frontend, backend, and team conventions in the rebuil
 - **Feature-based branches** — `feature/<short-description>`
 - **Shared code** — never duplicate models, components, or utils across apps
 - **Dynamic RBAC** — permissions are data-driven, declared as `PermissionModule`s and registered at boot (see ARCHITECTURE.md §6) — never a hardcoded role enum
-- **Clean boundaries** — `packages/db-core`, `packages/auth`, `packages/rbac`, `packages/admin`, `packages/mail`, `packages/media`, `packages/ui`, `packages/lib`
+- **Clean boundaries** — `packages/db-core`, `packages/auth`, `packages/rbac`, `packages/admin`, `packages/mail`, `packages/media`, `packages/inventory`, `packages/logistics`, `packages/ui`, `packages/lib`
 
 ---
 
@@ -42,6 +42,7 @@ Single source of truth for frontend, backend, and team conventions in the rebuil
 | `@crm/media` | `packages/media` |
 | `@crm/lib` | `packages/lib` |
 | `@crm/inventory` | `packages/inventory` |
+| `@crm/logistics` | `packages/logistics` |
 | `@crm/employee-core` | `packages/employee-core` (not yet wired into any HR route) |
 | `@/*` | `apps/crm/src/*` |
 

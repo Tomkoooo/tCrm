@@ -38,8 +38,8 @@ Canonical columns: `packages/inventory/src/excel-columns.ts`. Import commit: `co
 
 CRM SKU (`product_id_SM`) is generated from category prefix + supplier SKU (`generateInternalSku`). Always show localized name with SKU in UI (`ProductSkuLabel`).
 
-## Out of scope (Phase 2)
+## Out of scope
 
-Builds list (`/inventory/builds`), logistics movements/reservations/jobs, offers.
+Offers (`/offers`). HR schedule sync from logistics jobs (Phase 3).
 
 *Last updated: 2026-08.*

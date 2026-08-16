@@ -1,5 +1,12 @@
 import Link from 'next/link';
-import { UsersIcon, ShieldIcon, TrendingUpIcon, ListIcon, PackageIcon } from 'lucide-react';
+import {
+  UsersIcon,
+  ShieldIcon,
+  TrendingUpIcon,
+  ListIcon,
+  PackageIcon,
+  TruckIcon,
+} from 'lucide-react';
 import { getCurrentUser } from '@crm/auth';
 import {
   Container,
@@ -24,6 +31,12 @@ export default async function DashboardPage() {
       href: '/inventory',
       icon: PackageIcon,
       show: has('inventory:read'),
+    },
+    {
+      label: 'Szállítások',
+      href: '/logistics/jobs',
+      icon: TruckIcon,
+      show: has('logistics:read') || has('logistics:write') || has('logistics:scope_all'),
     },
     {
       label: 'Szerepkörök kezelése',
@@ -57,8 +70,8 @@ export default async function DashboardPage() {
             Első lépések
           </CardTitle>
           <CardDescription>
-            Az alaprendszer és a készletmodul kész. A logisztika, HR/könyvelés és ajánlatok modulok
-            a következő fázisokban érkeznek.
+            Az alaprendszer, a készlet- és a logisztikai modul kész. A HR/könyvelés és ajánlatok
+            modulok a következő fázisokban érkeznek.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">

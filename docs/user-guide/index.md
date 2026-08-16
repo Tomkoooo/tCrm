@@ -20,7 +20,8 @@ A tCrm belső üzemeltetői rendszer. Ez az útmutató lépésről lépésre seg
 3. A **Vezérlőpult** (`/`) mutatja a számodra elérhető gyors műveleteket — csak azok jelennek meg, amelyekhez jogosultságod van.
 4. A bal oldali menü csoportokban található:
    - **Általános** — Vezérlőpult, Súgó
-   - **Készletkezelés** — termékek, kategóriák, beszállítók (jogosultság függvényében)
+   - **Készletkezelés** — termékek, összeszerelések, kategóriák, beszállítók (jogosultság függvényében)
+   - **Logisztika** — készletmozgások, foglalások, szállítások, járműflotta
    - **Beállítások** — Fiók
    - **Adminisztráció** — csak akkor látszik, ha van hozzá jogosultságod (lásd [Fiókod és jogosultságaid](/help/fiok))
 
@@ -33,7 +34,8 @@ A menüpontok **jogosultságtól függenek**. Ha nem látsz egy modult, kérd a 
 | Terület | Fő feladat |
 |---------|------------|
 | Fiók | Saját adatok, jelszó, jogosultságok áttekintése |
-| Készlet | Termékek, kategóriák, beszállítók, Excel import, raktári készlet |
+| Készlet | Termékek, összeszerelések, kategóriák, beszállítók, Excel import, raktári készlet |
+| Logisztika | Készletmozgások, foglalások, esemény szállítások, járműflotta |
 | Felhasználók | Munkatársak meghívása, fiókok kezelése |
 | Szerepkörök és jogosultságok | Ki mihez fér hozzá — kódmódosítás nélkül állítható |
 | E-mail sablonok | Rendszerüzenetek (meghívó, jelszó-visszaállítás) szövegének szerkesztése |
@@ -48,5 +50,6 @@ A menüpontok **jogosultságtól függenek**. Ha nem látsz egy modult, kérd a 
 - [Szerepkörök és jogosultságok](/help/admin-szerepkorok)
 
 - [Készletkezelés áttekintése](/help/keszlet-attekintes)
+- [Logisztika áttekintés](/help/logisztika-attekintes)
 
 *Utolsó frissítés: 2026-08*

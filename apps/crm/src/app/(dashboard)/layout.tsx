@@ -3,9 +3,11 @@ import { AppSidebar } from '@/components/app-sidebar';
 import AppHeader from '@/components/app-header';
 import { requireAuth } from '@crm/auth';
 import { ensureRbacBootstrapped } from '@/lib/rbac-bootstrap';
+import { ensureLogisticsMailTemplatesSeeded } from '@crm/logistics';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   await ensureRbacBootstrapped();
+  await ensureLogisticsMailTemplatesSeeded();
   const sessionUser = await requireAuth();
 
   return (

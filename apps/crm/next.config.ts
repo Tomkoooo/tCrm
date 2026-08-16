@@ -21,6 +21,7 @@ const nextConfig: NextConfig = {
     '@crm/db-core',
     '@crm/employee-core',
     '@crm/inventory',
+    '@crm/logistics',
     '@crm/lib',
     '@crm/mail',
     '@crm/media',

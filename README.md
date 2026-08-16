@@ -43,6 +43,7 @@ packages/media/        Media library service
 packages/lib/          Utils + Zod validation + env helpers
 packages/ui/           Shared Container, DataTable, EntitySheet, shadcn primitives
 packages/inventory/     Products, Excel import, stock
+packages/logistics/     Movements, reservations, jobs, vehicles
 packages/employee-core/ Schedule/employee helpers (not yet wired to a route)
 docker/                Docker Compose for local dev
 docs/                  Architecture, rules, design system, user guide
@@ -67,13 +68,14 @@ docs/                  Architecture, rules, design system, user guide
 - [design.md](./docs/design.md) — UI tokens, layout, components
 - [TESTING.md](./docs/TESTING.md) — test inventory and commands
 - [inventory.md](./docs/inventory.md) — Phase 1 product/import notes
+- [logistics.md](./docs/logistics.md) — Phase 2 movements, jobs, vehicles
 - [user-guide/](./docs/user-guide/) — end-user help articles, rendered at `/help` and used by the in-app guided tour
 
 ## Phase roadmap
 
 - **Phase 0:** Foundation — monorepo, auth, dynamic RBAC, admin (users, roles, mail templates, media, branding), help center, PWA.
-- **Phase 1 (current):** Inventory — products, categories, suppliers, warehouses/stock, Excel import/export, DataTable.
-- **Phase 2:** Logistics, offers, builds; `apps/landing` (tWeb fork)
+- **Phase 1:** Inventory — products, categories, suppliers, warehouses/stock, Excel import/export, DataTable.
+- **Phase 2 (current):** Logistics (movements, reservations, jobs, vehicles) and builds (`/inventory/builds`). Offers and `apps/landing` are still later.
 - **Phase 3:** Accounting, multi-tenant SaaS, reporting
 
 ## Tech stack

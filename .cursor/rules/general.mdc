@@ -16,9 +16,9 @@ Next.js 16 App Router · React 19 · TypeScript strict · Tailwind v4 · shadcn 
 - Server Components by default; `"use client"` only when needed
 - Server Actions + `useActionState` for forms (not RHF)
 - Co-locate `actions.ts` next to routes
-- Models in `@crm/db`, auth in `@crm/auth`, shared utils in `@crm/lib`
+- Models in `@crm/db-core`, auth in `@crm/auth`, shared utils in `@crm/lib`
 - Always use `requirePermission()` in admin routes and mutations
-- User-visible email: `sendTemplatedEmail` from `@crm/core` (see `docs/rules.md` §8); logistics via `enqueueLogisticsNotification`
+- User-visible email: `sendTemplatedEmail` from `@crm/mail` (see `docs/rules.md` §8); logistics via `enqueueLogisticsNotification` from `@crm/logistics`
 - Wrap pages in `<Container>` from `@crm/ui`
 - List views → `DataTable` (`tableId` required); panels → `EntitySheet` (not inline Cards above tables). Server pages use a client `*-table.tsx` wrapper — never pass `rowHref`, `rowDetail`, or column `render` from RSC (see `.cursor/rules/datatable.mdc`)
 - Product CRM SKU in UI → always with localized name (`ProductSkuLabel` / `.cursor/rules/product-sku-display.mdc`)
@@ -26,11 +26,11 @@ Next.js 16 App Router · React 19 · TypeScript strict · Tailwind v4 · shadcn 
 
 ## Workspace packages
 
-`@crm/auth` `@crm/db` `@crm/lib` `@crm/ui` `@crm/core` — never import across `apps/*`
+`@crm/auth` `@crm/db-core` `@crm/lib` `@crm/ui` `@crm/admin` `@crm/rbac` `@crm/mail` `@crm/media` `@crm/inventory` `@crm/logistics` — never import across `apps/*`
 
-## Phase 0 scope
+## Current scope
 
-Foundation only: auth shell, dynamic RBAC, admin permissions UI, dashboard. Inventory is Phase 1.
+Phase 0 foundation + Phase 1 inventory + Phase 2 logistics/builds are live. Offers, HR/accounting, and titoktár are later.
 
 ## Before push
 

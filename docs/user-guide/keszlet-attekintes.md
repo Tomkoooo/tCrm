@@ -19,6 +19,7 @@ A készlet modul a termékek, kategóriák, beszállítók és raktári készlet
 |----------|---------|
 | Termékmenedzsment | `/inventory/dashboard` |
 | Termékek | `/inventory` |
+| Összeszerelések | `/inventory/builds` |
 | Termékkategóriák | `/inventory/categories` |
 | Beszállítók | `/inventory/suppliers` |
 
@@ -42,6 +43,7 @@ Raktárak: **Oldalsáv → Adminisztráció → Raktárak** (`/admin/warehouses`
 
 - [Excel importálás](/help/excel-import)
 - [Terméklista és szűrés](/help/termeklista-es-szures)
+- [Összeszerelések](/help/osszeszerelesek)
 - [Termék szerkesztés](/help/termek-szerkesztes)
 - [Raktárak](/help/admin-raktarak)
 

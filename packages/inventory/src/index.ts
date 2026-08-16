@@ -63,6 +63,7 @@ export { setProductStockLevel, type SetProductStockLevelOptions } from './set-pr
 
 export {
   calculateBomAvailability,
+  getBulkAvailability,
   computeBomAvailabilityFromComponents,
   type BomAvailability,
   type ComponentAvailability,

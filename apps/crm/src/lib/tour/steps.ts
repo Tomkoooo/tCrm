@@ -32,7 +32,13 @@ export const shellTourSteps: TourStep[] = [
     selector: '[data-tour="inventory"]',
     title: 'Készletkezelés',
     description:
-      'Termékek, kategóriák, beszállítók és készletszintek — csak azoknak látszik, akiknek van készlet jogosultságuk.',
+      'Termékek, összeszerelések, kategóriák, beszállítók és készletszintek — csak azoknak látszik, akiknek van készlet jogosultságuk.',
+  },
+  {
+    selector: '[data-tour="logistics"]',
+    title: 'Logisztika',
+    description:
+      'Készletmozgások, foglalások, szállítások és járműflotta — jogosultság függvényében jelenik meg.',
   },
   {
     selector: '[data-tour="admin"]',

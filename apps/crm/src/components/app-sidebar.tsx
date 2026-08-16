@@ -18,12 +18,22 @@ import {
   TruckIcon,
   Building2Icon,
   LayoutGridIcon,
+  WrenchIcon,
+  ArrowRightLeftIcon,
+  LockIcon,
+  ClipboardListIcon,
+  CarIcon,
 } from 'lucide-react';
 import {
   SUPPLIER_READ_PERMISSION_KEYS,
   WAREHOUSE_READ_PERMISSION_KEYS,
 } from '@crm/inventory/permissions';
+import {
+  LOGISTICS_READ_PERMISSION_KEYS,
+  LOGISTICS_VEHICLES_READ_PERMISSION_KEYS,
+} from '@crm/logistics/permissions';
 import { MEDIA_READ_PERMISSION_KEYS } from '@crm/media/permissions';
+import { getInitials, hasAnyPermission } from '@crm/lib';
 import {
   Sidebar,
   SidebarContent,
@@ -41,7 +51,6 @@ import {
   Skeleton,
   cn,
 } from '@crm/ui';
-import { getInitials } from '@crm/lib';
 import { useAuth } from '@crm/auth/client';
 import { useBranding } from '@/components/branding-provider';
 import { SidebarNavGroup, type SidebarNavItem } from '@/components/sidebar-nav-group';
@@ -94,6 +103,8 @@ export function AppSidebar({ serverUser }: { serverUser?: SidebarUser }) {
   }, [setOpenMobile]);
 
   const hasPermission = (key: string) => user?.permissions.includes(key) ?? false;
+  const userPermissions = user?.permissions ?? [];
+  const hasAny = (keys: readonly string[]) => hasAnyPermission(userPermissions, keys);
 
   const inventoryItems = useMemo((): SidebarNavItem[] => {
     const items: SidebarNavItem[] = [];
@@ -109,6 +120,11 @@ export function AppSidebar({ serverUser }: { serverUser?: SidebarUser }) {
         label: 'Termékek',
       });
       items.push({
+        href: '/inventory/builds',
+        icon: <WrenchIcon className="h-4 w-4" />,
+        label: 'Összeszerelések',
+      });
+      items.push({
         href: '/inventory/categories',
         icon: <FolderTreeIcon className="h-4 w-4" />,
         label: 'Termékkategóriák',
@@ -119,6 +135,42 @@ export function AppSidebar({ serverUser }: { serverUser?: SidebarUser }) {
         href: '/inventory/suppliers',
         icon: <TruckIcon className="h-4 w-4" />,
         label: 'Beszállítók',
+      });
+    }
+    return items;
+  }, [user?.permissions]);
+
+  const logisticsItems = useMemo((): SidebarNavItem[] => {
+    const items: SidebarNavItem[] = [];
+    if (hasAny(LOGISTICS_READ_PERMISSION_KEYS)) {
+      items.push(
+        {
+          href: '/logistics',
+          icon: <TruckIcon className="h-4 w-4" />,
+          label: 'Áttekintés',
+        },
+        {
+          href: '/logistics/movements',
+          icon: <ArrowRightLeftIcon className="h-4 w-4" />,
+          label: 'Készletmozgások',
+        },
+        {
+          href: '/logistics/reservations',
+          icon: <LockIcon className="h-4 w-4" />,
+          label: 'Foglalások',
+        },
+        {
+          href: '/logistics/jobs',
+          icon: <ClipboardListIcon className="h-4 w-4" />,
+          label: 'Szállítások',
+        }
+      );
+    }
+    if (hasAny(LOGISTICS_VEHICLES_READ_PERMISSION_KEYS)) {
+      items.push({
+        href: '/logistics/vehicles',
+        icon: <CarIcon className="h-4 w-4" />,
+        label: 'Járműflotta',
       });
     }
     return items;
@@ -213,6 +265,13 @@ export function AppSidebar({ serverUser }: { serverUser?: SidebarUser }) {
           items={inventoryItems}
           onLinkClick={linkClick}
           tourId="inventory"
+        />
+
+        <SidebarNavGroup
+          label="Logisztika"
+          items={logisticsItems}
+          onLinkClick={linkClick}
+          tourId="logistics"
         />
 
         <SidebarGroup>

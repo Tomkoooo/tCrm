@@ -8,11 +8,11 @@ Canonical catch-up document for agents continuing work on this monorepo. Read th
 
 ## 1. What just happened — the rebuild
 
-The CRM was **rebuilt from scratch** per the architectural plan in the root [README.md](../README.md): the old inventory/logistics/HR/accounting codebase was deleted and replaced with a fresh foundation slice. This is why package names changed (`@crm/db` → `@crm/db-core`, `@crm/core` removed and split into `@crm/admin`/`@crm/rbac`/`@crm/mail`/`@crm/media`, etc.) and why routes like `/inventory`, `/logistics`, `/accounting` no longer exist.
+The CRM was **rebuilt from scratch** per the architectural plan in the root [README.md](../README.md): package names changed (`@crm/db` → `@crm/db-core`, `@crm/core` split into `@crm/admin`/`@crm/rbac`/`@crm/mail`/`@crm/media`/`@crm/inventory`/`@crm/logistics`).
 
-- **Branch:** `rebuild/core-engine` — the rebuild is **uncommitted** as of this writing. Do not assume it's on `main`.
-- **Reference material:** `_legacy-core-reference/` holds the old `packages/core` source (HR, inventory, logistics business logic) as a porting reference for when those phases are rebuilt. It is not imported by anything live — do not wire it back in without re-reviewing it against the current models/permissions first.
-- **Docs were previously stale:** the entire `docs/` tree and `.cursor/rules/*.mdc` still described the pre-rebuild system (wrong package names, routes, test counts) despite an explicit earlier request to delete them. This pass (2026-07-27) deleted the dead docs and rewrote the rest against the actual current codebase. If you find *more* stale references (e.g. in `.cursor/rules/`), treat them the same way: verify against the code, don't propagate.
+- **Branch:** `rebuild/core-engine`. Phase 0+1 landed in `07a5b39`. Phase 2 (logistics + builds) is the current working tree.
+- **Reference material:** `_legacy-core-reference/` holds leftover HR/accounting logic as porting reference. Do not import it.
+- Inventory and logistics are live. Offers, HR/accounting, and titoktár are not.
 
 ---
 
@@ -21,18 +21,18 @@ The CRM was **rebuilt from scratch** per the architectural plan in the root [REA
 | Item | Detail |
 |------|--------|
 | **App** | `apps/crm` (`@crm/app`) — Next.js 16 App Router |
-| **Packages** | `@crm/auth`, `@crm/db-core`, `@crm/rbac`, `@crm/admin`, `@crm/mail`, `@crm/media`, `@crm/inventory`, `@crm/employee-core` (HR unwired), `@crm/lib`, `@crm/ui` |
+| **Packages** | `@crm/auth`, `@crm/db-core`, `@crm/rbac`, `@crm/admin`, `@crm/mail`, `@crm/media`, `@crm/inventory`, `@crm/logistics`, `@crm/employee-core` (HR unwired), `@crm/lib`, `@crm/ui` |
 | **Stack** | React 19, TypeScript strict, Tailwind v4, shadcn New York+zinc, MongoDB/Mongoose, Auth.js v5, Turborepo/pnpm |
 | **Design** | [design.md](./design.md), [rules.md](./rules.md) |
-| **Last commit** | `ff792f8` — `feat(crm): add PWA support with mobile install prompt` |
+| **Last commit** | `07a5b39` — `feat: rebuild core engine and restore Phase 1 inventory` |
 
 ---
 
 ## 3. Current feature surface
 
-See [ARCHITECTURE.md §4](./ARCHITECTURE.md#4-current-feature-surface) for the authoritative route list. Summary: auth, first-run `/setup`, dashboard, `/account`, `/help`, admin (users/permissions/mail-templates/media/branding/warehouses), and **Phase 1 inventory** (`/inventory`, categories, suppliers, Excel import/export).
+See [ARCHITECTURE.md §4](./ARCHITECTURE.md#4-current-feature-surface) for the authoritative route list. Summary: auth, first-run `/setup`, dashboard, `/account`, `/help`, admin, **Phase 1 inventory**, **Phase 2 logistics** (`/logistics/*`, `/inventory/builds`).
 
-Logistics, offers, accounting/HR, and titoktár are not built yet. `_legacy-core-reference/` is porting reference only.
+Offers, accounting/HR, and titoktár are not built yet. `_legacy-core-reference/` is porting reference only.
 
 ---
 
@@ -45,7 +45,7 @@ Each entry: **symptom → what the code review shows → likely cause → next s
 - **Symptom:** the `admin` role is missing permission keys it should have (e.g. the Adminisztráció sidebar section doesn't appear because `admin:access` is missing, or an admin page 404s via `requirePermission`). Clicking **"Baseline jogosultságok szinkronizálása"** on `/admin/permissions` does not resolve it.
 - **What the code shows (reviewed 2026-07-27):** the sync pipeline itself is self-consistent —
   - `packages/rbac/src/bootstrap.ts::ensurePermissionsSynced` always rebuilds the `admin` role's `permissionIds` from **every currently registered** `PermissionModule` key, never a hand-maintained list.
-  - `apps/crm/src/lib/rbac-bootstrap.ts` registers exactly two modules (`enginePermissions`, `mediaPermissions`) — both are real, both are registered. No orphaned/unregistered `PermissionModule` was found anywhere else in the repo.
+  - `apps/crm/src/lib/rbac-bootstrap.ts` registers `enginePermissions`, `mediaPermissions`, `inventoryPermissions`, and `logisticsPermissions`.
   - `packages/auth/src/config.ts`'s `session()` callback recomputes `getEffectivePermissionKeys` from the database **on every session read** — permissions are not cached in the JWT, so a stale client session is not the cause either.
   - The sync button's own gate (`requirePermission('roles:manage')` on `/admin/permissions` and inside `syncBaselinePermissionsAction`) means if an admin can reach and click the button at all, their role already has `roles:manage` — so a *complete* lockout isn't possible via this path; a *partial* one (missing some other key) is.
 - **Most likely actual cause, given the above:** this is a **data or environment problem in the running deployment**, not a logic bug in the code as written:
@@ -119,12 +119,9 @@ Open http://localhost:3000 — redirects to `/setup` when no admin exists yet.
 
 ## 7. Recommended near-term follow-ups
 
-- [ ] Commit the rebuild on `rebuild/core-engine` once verified (it is currently uncommitted working-tree state)
 - [ ] Root-cause the admin-role sync issue (§4) against a real deployment DB
-- [ ] Review `.cursor/rules/*.mdc` for the same pre-rebuild staleness this doc pass fixed in `docs/`
-- [ ] Decide whether/when to wire `@crm/employee-core` into a route, or remove it if the HR phase isn't imminent
-- [ ] Expand E2E coverage beyond `auth.spec.ts` (inventory list/import, admin CRUD)
-- [ ] Phase 2: logistics, offers, builds
+- [ ] Expand E2E coverage beyond `auth.spec.ts` (inventory list/import, logistics jobs, admin CRUD)
+- [ ] Phase 3: accounting/HR; offers still unbuilt from Phase 2
 
 ---
 
@@ -133,17 +130,19 @@ Open http://localhost:3000 — redirects to `/setup` when no admin exists yet.
 ```
 You are continuing work on tCrm, an internal CRM monorepo (Next.js 16, React 19,
 MongoDB, Auth.js v5, Turborepo/pnpm) rebuilt from scratch. Phase 0 (foundation)
-and Phase 1 (inventory) are live. Next is Phase 2: logistics, offers, builds.
+and Phase 1 (inventory) and Phase 2 (logistics + builds) are live. Next is Phase 3:
+accounting/HR. Offers were planned for Phase 2 but never had a UI — do not invent
+one unless asked.
 
 Read in order: docs/AGENT_HANDOFF.md, docs/ARCHITECTURE.md, docs/inventory.md,
-docs/rules.md, docs/design.md, docs/TESTING.md. Treat `_legacy-core-reference/`
-as porting reference only.
+docs/logistics.md, docs/rules.md, docs/design.md, docs/TESTING.md. Treat
+`_legacy-core-reference/` as porting reference only.
 
-After adding inventory permissions, remind operators to sync baseline RBAC
-(Admin → Szerepkörök → Baseline jogosultságok szinkronizálása).
+After adding inventory or logistics permissions, remind operators to sync baseline
+RBAC (Admin → Szerepkörök → Baseline jogosultságok szinkronizálása).
 
 Before building anything new:
-1. Check git status/log — the rebuild may still be uncommitted on rebuild/core-engine.
+1. Check git status/log — Phase 2 may still be uncommitted on rebuild/core-engine.
 2. Run pnpm lint && pnpm typecheck && pnpm test && pnpm build.
 3. If asked to touch RBAC/permissions, read AGENT_HANDOFF.md §4 first — there's an
    open, deliberately-unfixed known issue there (admin role missing access keys).
@@ -165,7 +164,7 @@ driver.js tour steps whenever you add/remove/re-gate a route.
 | Setup | `apps/crm/src/app/(setup)/setup/` |
 | RBAC bootstrap (module registration) | `apps/crm/src/lib/rbac-bootstrap.ts` |
 | Baseline sync | `packages/rbac/src/bootstrap.ts` |
-| Permission modules | `packages/admin/src/permissions.ts`, `packages/media/src/permissions.ts` |
+| Permission modules | `packages/admin/src/permissions.ts`, `packages/media/src/permissions.ts`, `packages/inventory/src/permissions.ts`, `packages/logistics/src/permissions.ts` |
 | DB models | `packages/db-core/src/models/` |
 | Connection | `packages/db-core/src/connection.ts` |
 | Auth config | `packages/auth/src/config.ts`, `packages/auth/src/session.ts` |

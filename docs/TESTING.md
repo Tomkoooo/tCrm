@@ -1,6 +1,6 @@
 # Unit, integration, and E2E tests
 
-Last updated: 2026-08 (Phase 1 inventory). Counts below were verified by running `pnpm test` directly against this codebase — re-verify rather than trusting them blindly once more test files are added.
+Last updated: 2026-08 (Phase 2 logistics). Counts below were verified by running `pnpm test` directly against this codebase — re-verify rather than trusting them blindly once more test files are added.
 
 ## CI vs local
 
@@ -11,7 +11,7 @@ Last updated: 2026-08 (Phase 1 inventory). Counts below were verified by running
 | `pnpm test:e2e` | **No** | Playwright in `apps/crm` (browser + Next server) |
 | `pnpm test:all` | No | Unit + E2E |
 
-**Pass rate (unit):** re-verify with `pnpm test`. Phase 1 added `@crm/inventory` (SKU/import/export column tests) and restored `@crm/lib` product-display / BOM-role / inventory validation tests.
+**Pass rate (unit):** re-verify with `pnpm test`. Phase 2 added `@crm/logistics` (availability/vehicle/reference tests) and logistics Zod tests in `@crm/lib`.
 
 **Code coverage:** Not measured (no `@vitest/coverage-v8` in CI).
 
@@ -50,10 +50,11 @@ pnpm test:all              # unit then E2E
 
 | Package | Files | Tests | Covers |
 |---------|-------|-------|--------|
-| `@crm/app` | 5 | 19 | Login schema, help-article loading/permission filtering, active-nav highlighting, PWA install-prompt detection |
+| `@crm/app` | 5 | 20 | Login schema, help-article loading/permission filtering, active-nav highlighting, PWA install-prompt detection |
 | `@crm/ui` | 2 | 8 | DataTable query parsing (pagination/sort/filters), column-preference persistence |
-| `@crm/lib` | 5 | 21 | `cn()`, secret encrypt/decrypt, product display, BOM role, inventory validation |
+| `@crm/lib` | 6 | 24 | `cn()`, secret encrypt/decrypt, product display, BOM role, inventory + logistics validation |
 | `@crm/inventory` | 6 | 31 | SKU generation, Excel columns, import parse/preview, warehouse stock columns |
+| `@crm/logistics` | 3 | 7 | BOM availability math, vehicle cargo fit, movement references |
 | `@crm/admin` | 1 | 3 | Invitation creation/validation |
 | `@crm/media` | 1 | 3 | Upload constraint validation |
 | `@crm/mail` | 1 | 2 | Mail template variable substitution |

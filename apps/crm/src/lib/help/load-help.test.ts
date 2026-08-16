@@ -29,6 +29,14 @@ describe('load-help integration', () => {
     expect(withoutInv.some((a) => a.slug === 'excel-import')).toBe(false);
   });
 
+  it('filters logistics articles by permission', () => {
+    const withLog = getHelpArticlesForUser(['logistics:read']);
+    const withoutLog = getHelpArticlesForUser([]);
+
+    expect(withLog.some((a) => a.slug === 'logisztika-attekintes')).toBe(true);
+    expect(withoutLog.some((a) => a.slug === 'logisztika-attekintes')).toBe(false);
+  });
+
   it('groups sections with Áttekintés first', () => {
     const sections = groupHelpArticlesBySection(
       getHelpArticlesForUser(['users:read', 'roles:manage'])

@@ -70,7 +70,7 @@ export function groupHelpArticlesBySection(articles: HelpArticle[]): HelpSection
     sectionMap.set(article.section, list);
   }
 
-  const sectionOrder = ['Áttekintés', 'Fiók', 'Készletkezelés', 'Adminisztráció'];
+  const sectionOrder = ['Áttekintés', 'Fiók', 'Készletkezelés', 'Logisztika', 'Adminisztráció'];
 
   const sections: HelpSection[] = [];
 

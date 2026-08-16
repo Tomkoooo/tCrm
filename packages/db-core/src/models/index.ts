@@ -15,3 +15,32 @@ export { Counter, type ICounter } from './Counter';
 export { Media, type IMedia, type MediaType, type MediaUsage } from './Media';
 export { MailTemplate, type IMailTemplate } from './MailTemplate';
 export { Branding, type IBranding } from './Branding';
+export {
+  Reservation,
+  type IReservation,
+  type ReservationSourceType,
+  type ReservationStatus,
+} from './Reservation';
+export {
+  StockMovement,
+  type IStockMovement,
+  type IMovementLine,
+  type MovementType,
+  type MovementStatus,
+} from './StockMovement';
+export { Vehicle, type IVehicle } from './Vehicle';
+export {
+  VehicleIncident,
+  type IVehicleIncident,
+  type VehicleIncidentStatus,
+} from './VehicleIncident';
+export {
+  LogisticsJob,
+  type ILogisticsJob,
+  type IJobLine,
+  type ILogisticsPickup,
+  type ILogisticsPickupDocuments,
+  type ILogisticsPickupNotifications,
+  type JobStatus,
+  type PickupStatus,
+} from './LogisticsJob';

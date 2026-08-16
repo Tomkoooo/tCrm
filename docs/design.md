@@ -193,8 +193,13 @@ const { filter, sort, skip, limit } = buildDataTableMongoQuery(query, columns);
 | `/inventory` | Products | `inventory:read` |
 | `/inventory/dashboard` | Inventory KPIs | `inventory:read` |
 | `/inventory/categories` | Categories | `inventory:read` |
-| `/inventory/suppliers` | Suppliers | `suppliers:read` (or inventory write/import) |
-| `/admin/warehouses` | Warehouses | `warehouses:read` |
+| `/inventory/builds` | BOM kits | `inventory:read` |
+| `/inventory/builds/new` | Create kit | `inventory:write` |
+| `/logistics` | Logistics overview | `logistics:read` |
+| `/logistics/movements` | Stock movements | `logistics:read` |
+| `/logistics/reservations` | Reservations | `logistics:read` |
+| `/logistics/jobs` | Event shipments | `logistics:read` |
+| `/logistics/vehicles` | Vehicle fleet | `logistics:vehicles:read` |
 
 ---
 

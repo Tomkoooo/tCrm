@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { connectDB, hasAnyAdminUser, Role, User } from '@crm/db-core';
 import { registerSchema } from '@crm/auth/validation';
 import { seedEngineMailTemplates } from '@crm/admin';
+import { seedLogisticsMailTemplates } from '@crm/logistics';
 import { ensureRbacBootstrapped } from '@/lib/rbac-bootstrap';
 import { setInitializedCookie } from '@/lib/initialized-cookie';
 
@@ -37,6 +38,7 @@ export async function setupAdminAction(_prev: SetupState, formData: FormData): P
 
   await ensureRbacBootstrapped();
   await seedEngineMailTemplates();
+  await seedLogisticsMailTemplates();
 
   const email = parsed.data.email.toLowerCase();
   const existing = await User.findOne({ email });

@@ -1,5 +1,5 @@
 import { connectDB, Product, StockLevel, type IProduct } from '@crm/db-core';
-import type { Types } from 'mongoose';
+import mongoose, { type Types } from 'mongoose';
 
 export type ComponentAvailability = {
   productId: Types.ObjectId;
@@ -97,4 +97,41 @@ export async function calculateBomAvailability(
   const stockByProduct = await loadAvailableStock(allIds, warehouseId);
 
   return computeBomAvailabilityFromComponents(productId, product.components, stockByProduct);
+}
+
+export async function getBulkAvailability(
+  productIds: Types.ObjectId[],
+  warehouseId?: Types.ObjectId
+): Promise<Map<string, BomAvailability>> {
+  await connectDB();
+
+  const products = await Product.find({ _id: { $in: productIds } })
+    .lean<IProduct[]>()
+    .exec();
+
+  const allComponentIds = new Set<string>();
+  for (const p of products) {
+    for (const c of p.components) {
+      allComponentIds.add(c.productId.toString());
+    }
+  }
+
+  const uniqueStockIds = [
+    ...new Set([...productIds.map((id) => id.toString()), ...allComponentIds]),
+  ];
+  const objectIds = uniqueStockIds.map((id) => new mongoose.Types.ObjectId(id));
+
+  const stockByProduct = await loadAvailableStock(objectIds, warehouseId);
+  const result = new Map<string, BomAvailability>();
+
+  for (const product of products) {
+    const avail = computeBomAvailabilityFromComponents(
+      product._id,
+      product.components,
+      stockByProduct
+    );
+    result.set(product._id.toString(), avail);
+  }
+
+  return result;
 }

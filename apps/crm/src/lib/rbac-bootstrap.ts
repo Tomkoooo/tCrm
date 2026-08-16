@@ -7,8 +7,11 @@ import {
 import { enginePermissions } from '@crm/admin';
 import { mediaPermissions } from '@crm/media';
 import { inventoryPermissions } from '@crm/inventory/permissions';
+import { logisticsPermissions } from '@crm/logistics/permissions';
 
-[enginePermissions, mediaPermissions, inventoryPermissions].forEach(registerPermissionModule);
+[enginePermissions, mediaPermissions, inventoryPermissions, logisticsPermissions].forEach(
+  registerPermissionModule
+);
 
 export { ensurePermissionsSyncedOnce as ensureRbacBootstrapped };
 

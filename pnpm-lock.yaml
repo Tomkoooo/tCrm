@@ -60,6 +60,9 @@ importers:
       '@crm/lib':
         specifier: workspace:*
         version: link:../../packages/lib
+      '@crm/logistics':
+        specifier: workspace:*
+        version: link:../../packages/logistics
       '@crm/mail':
         specifier: workspace:*
         version: link:../../packages/mail
@@ -465,6 +468,49 @@ importers:
       zod:
         specifier: ^4.3.6
         version: 4.4.3
+    devDependencies:
+      '@crm/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@crm/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/node':
+        specifier: ^20
+        version: 20.19.41
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.4(jiti@2.7.0)
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.18
+        version: 4.1.7(@types/node@20.19.41)(jsdom@26.1.0)(vite@8.0.14(@types/node@20.19.41)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
+
+  packages/logistics:
+    dependencies:
+      '@crm/db-core':
+        specifier: workspace:*
+        version: link:../db-core
+      '@crm/inventory':
+        specifier: workspace:*
+        version: link:../inventory
+      '@crm/lib':
+        specifier: workspace:*
+        version: link:../lib
+      '@crm/mail':
+        specifier: workspace:*
+        version: link:../mail
+      '@crm/media':
+        specifier: workspace:*
+        version: link:../media
+      '@crm/rbac':
+        specifier: workspace:*
+        version: link:../rbac
+      mongoose:
+        specifier: ^9.2.1
+        version: 9.6.2
     devDependencies:
       '@crm/eslint-config':
         specifier: workspace:*
