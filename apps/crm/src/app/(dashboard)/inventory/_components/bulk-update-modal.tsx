@@ -3,14 +3,12 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { SearchAutocomplete, type SearchItem } from '@/components/ui/search-autocomplete';
+
 import { cn } from '@/lib/utils';
 import { bulkUpdateProductsAction } from '../actions';
 import { searchSuppliersAction } from '../search-actions';
+import { Button, Checkbox, Input, Label, SearchAutocomplete } from '@crm/ui';
+import type { SearchItem } from '@crm/ui';
 
 const selectClassName = cn(
   'border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-xs',

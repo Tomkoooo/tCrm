@@ -1,17 +1,37 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { createTestMongo } from './test/mongo-memory';
-import { Permission, Role, User, connectDB, ensureBaselineRbac } from '@crm/db';
+import { createTestMongo } from '@crm/test-utils/mongo-memory';
+import { Permission, Role, User, connectDB } from '@crm/db-core';
 import { getEffectivePermissionKeys, userHasAnyPermission, userHasPermission } from './permissions';
 
 let mongo: MongoMemoryServer;
+
+/** Auth only needs a handful of permission docs to exist — not a full module bootstrap. */
+async function seedTestPermissions(): Promise<void> {
+  const keys = [
+    'inventory:read',
+    'inventory:write',
+    'hr:read',
+    'hr:self',
+    'users:read',
+    'users:write',
+    'admin:access',
+  ];
+  for (const key of keys) {
+    await Permission.findOneAndUpdate(
+      { key },
+      { $setOnInsert: { key, label: key, group: key.split(':')[0], isSystem: true } },
+      { upsert: true }
+    ).exec();
+  }
+}
 
 beforeAll(async () => {
   mongo = await createTestMongo();
   process.env.MONGODB_URI = mongo.getUri();
   await connectDB();
-  await ensureBaselineRbac();
+  await seedTestPermissions();
 });
 
 afterAll(async () => {

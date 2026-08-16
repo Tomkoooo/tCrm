@@ -2,7 +2,7 @@
 
 import { useTransition } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import { Button } from '@crm/ui';
 import { sendPasswordResetAction } from '../actions';
 
 export function SendResetEmailButton({ userId }: { userId: string }) {

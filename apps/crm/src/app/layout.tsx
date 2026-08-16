@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { SessionProvider } from 'next-auth/react';
 import { auth } from '@crm/auth';
-import { getBranding } from '@crm/db';
-import './globals.css';
+import { getBranding, brandingMediaUrl } from '@crm/db-core';
+import '@crm/ui/globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { BrandingProvider } from '@/components/branding-provider';
 import { PwaServiceWorkerRegister } from '@/components/pwa-service-worker';
@@ -23,7 +23,7 @@ const geistMono = Geist_Mono({
 
 export async function generateMetadata(): Promise<Metadata> {
   const branding = await getBranding();
-  const faviconUrl = branding.faviconId ? `/api/uploads/${branding.faviconId}` : '/favicon.ico';
+  const faviconUrl = brandingMediaUrl(branding.faviconId) ?? '/favicon.ico';
   return {
     title: {
       default: branding.appName,

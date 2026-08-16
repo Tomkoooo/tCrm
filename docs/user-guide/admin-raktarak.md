@@ -30,6 +30,6 @@ Raktárak (pl. Kispest, Erzsébet, Récsei) kulcsainak és meta adatainak kezel�
 ## Kapcsolódó fejezetek
 
 - [Excel importálás](/help/excel-import)
-- [Esemény szállítások](/help/szallitasok)
+- [Készletkezelés áttekintése](/help/keszlet-attekintes)
 
-*Utolsó frissítés: 2026-06*
+*Utolsó frissítés: 2026-08*

@@ -1,17 +1,17 @@
 # Unit, integration, and E2E tests
 
-Last updated: 2026-05.
+Last updated: 2026-08 (Phase 1 inventory). Counts below were verified by running `pnpm test` directly against this codebase — re-verify rather than trusting them blindly once more test files are added.
 
 ## CI vs local
 
 | Command | Runs in GitHub CI | What it runs |
 |---------|-------------------|--------------|
-| `pnpm test` / `pnpm test:unit` | Yes | Vitest unit tests only (`*.integration.test.ts` skipped when `CI=true`) |
-| `pnpm test:integration` | No | MongoDB in-memory integration tests (`@crm/core`, `@crm/auth`) |
+| `pnpm test` / `pnpm test:unit` | Yes | Vitest unit tests only (`*.integration.test.ts` excluded by each package's vitest config) |
+| `pnpm test:integration` | No | MongoDB in-memory integration tests (`@crm/auth`, `@crm/employee-core`) |
 | `pnpm test:e2e` | **No** | Playwright in `apps/crm` (browser + Next server) |
-| `pnpm test:all` | No | Unit + integration + E2E (full local check) |
+| `pnpm test:all` | No | Unit + E2E |
 
-**Pass rate (unit):** **72 / 72 tests passing (100%)** via `pnpm test`.
+**Pass rate (unit):** re-verify with `pnpm test`. Phase 1 added `@crm/inventory` (SKU/import/export column tests) and restored `@crm/lib` product-display / BOM-role / inventory validation tests.
 
 **Code coverage:** Not measured (no `@vitest/coverage-v8` in CI).
 
@@ -22,9 +22,9 @@ Last updated: 2026-05.
 ### Unit / integration
 
 ```bash
-pnpm test              # same as test:unit (Turbo)
+pnpm test              # same as test:unit (Turbo, all packages)
 pnpm test:unit
-pnpm --filter @crm/core test
+pnpm --filter @crm/app test    # single package
 ```
 
 ### E2E (Playwright)
@@ -32,7 +32,7 @@ pnpm --filter @crm/core test
 **Prerequisites**
 
 1. MongoDB running (`MONGODB_URI` in `apps/crm/.env.local`).
-2. Seeded admin (or defaults): `pnpm --filter @crm/db seed`
+2. A first admin — either run through `/setup` once, or create one directly.
 3. Browsers once: `pnpm test:e2e:install`
 
 ```bash
@@ -42,112 +42,40 @@ pnpm test:e2e:report       # open last HTML report
 pnpm test:all              # unit then E2E
 ```
 
-E2E uses `next start` (builds first if `.next` missing). With `pnpm dev` already on port 3000, Playwright reuses that server.
-
-**Env vars** (optional; see [`.env.example`](../.env.example)):
-
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `E2E_ADMIN_EMAIL` | `admin@tcrm.local` | Admin login |
-| `E2E_ADMIN_PASSWORD` | `admin123456` | Admin password |
-| `E2E_EMPLOYEE_EMAIL` | `e2e-employee@tcrm.local` | Self-service HR user |
-| `E2E_EMPLOYEE_PASSWORD` | `e2eemployee123` | Employee password |
-| `PLAYWRIGHT_BASE_URL` | `http://localhost:3000` | App base URL |
-
-`e2e/global-setup.ts` ensures the E2E employee user and linked `Employee` record exist.
+`apps/crm/e2e/global-setup.ts` provisions whatever fixture users the current specs need before the run.
 
 ---
 
-## `@crm/lib` (21 tests)
+## Unit test inventory (by package)
 
-### `src/validation/hr.test.ts`
+| Package | Files | Tests | Covers |
+|---------|-------|-------|--------|
+| `@crm/app` | 5 | 19 | Login schema, help-article loading/permission filtering, active-nav highlighting, PWA install-prompt detection |
+| `@crm/ui` | 2 | 8 | DataTable query parsing (pagination/sort/filters), column-preference persistence |
+| `@crm/lib` | 5 | 21 | `cn()`, secret encrypt/decrypt, product display, BOM role, inventory validation |
+| `@crm/inventory` | 6 | 31 | SKU generation, Excel columns, import parse/preview, warehouse stock columns |
+| `@crm/admin` | 1 | 3 | Invitation creation/validation |
+| `@crm/media` | 1 | 3 | Upload constraint validation |
+| `@crm/mail` | 1 | 2 | Mail template variable substitution |
+| `@crm/rbac` | 1 | 2 | Permission-module registry (register/get/idempotency) |
 
-| Scenario | Verifies |
-|----------|----------|
-| Valid / invalid company slug | `companySchema` |
-| Valid / invalid employee email | `employeeSchema` |
-| User employee profile schema | `userEmployeeProfileSchema` |
-| Checkbox parsing | `parseLinkEmployeeFromForm` |
-| Form profile extraction | `employeeProfileFromForm` |
-| Schedule window | `scheduleEntrySchema` end after start |
+`@crm/auth` and `@crm/employee-core` currently have only `*.integration.test.ts` files (run via `pnpm test:integration`, not part of the unit count above).
 
-### `src/utils/cn.test.ts`, `crypto.test.ts`, `validation/logistics.test.ts`
+### Notable unit suites
 
-Unchanged — class merge, secret round-trip, movement/reservation Zod.
+**`src/lib/help/load-help.test.ts` (`@crm/app`)** — loads real files from `docs/user-guide/`, so it will break the moment that directory's content drifts from what the test expects (slugs, permission gates). If you edit `docs/user-guide/*.md`, re-run this file. This is intentional: it's the guardrail that would have caught the exact problem this doc rewrite fixed (stale help content shipping alongside dead routes).
 
----
-
-## `@crm/core` (37 tests)
-
-### `src/hr/company-scope.test.ts` (unit)
-
-| Scenario | Verifies |
-|----------|----------|
-| Global scope flags | `hasGlobalHrScope` |
-| Company filters | `buildCompanyFilter`, `buildCompanyIdFilter` |
-
-### `src/hr/user-provisioning.integration.test.ts`
-
-| Scenario | Verifies |
-|----------|----------|
-| Provision with employee | User + employee + `employee` role |
-| Duplicate email | Hungarian error |
-| HR scope denial | Out-of-scope company blocked |
-| Upsert employee | Create and update single record |
-
-### `src/hr/requests.integration.test.ts`
-
-| Scenario | Verifies |
-|----------|----------|
-| Submit / wrong user | Own requests only |
-| Cancel pending | Status `cancelled` |
-| Approve holiday | Summary + schedule `off` entry |
-| Reject | No side effects |
-| Self-approval | Blocked |
-
-### `src/hr/schedules.integration.test.ts`
-
-| Scenario | Verifies |
-|----------|----------|
-| Shift hours sum | `suggestWorkedHoursFromSchedule` excludes `off` |
-
-### Logistics / inventory
-
-Existing: SKU, import, vehicles, availability, references, `logistics.integration.test.ts`.
+**`src/lib/pwa/detect.test.ts` (`@crm/app`)** — install-prompt platform detection, added with the PWA feature.
 
 ---
 
-## `@crm/auth` (4 tests)
+## `@crm/auth` (integration, `test:integration`)
 
-### `src/permissions.integration.test.ts`
+`src/permissions.integration.test.ts` — `getEffectivePermissionKeys` role+direct merge, inactive-user handling, `userHasPermission`/`userHasAnyPermission`. Uses `mongodb-memory-server`.
 
-| Scenario | Verifies |
-|----------|----------|
-| Role + direct merge | `getEffectivePermissionKeys` |
-| Inactive user | Empty set |
-| `userHasPermission` / `userHasAnyPermission` | Key checks |
+## `@crm/employee-core` (integration, `test:integration`)
 
-Uses `mongodb-memory-server` + `ensureBaselineRbac()`.
-
----
-
-## `@crm/app` (2 tests)
-
-### `src/app/(auth)/login/actions.test.ts`
-
-`loginSchema` valid email / invalid email.
-
----
-
-## `@crm/ui` (8 tests)
-
-### `src/components/data-table/query.test.ts`
-
-Pagination, sort, boolean/enum/number filters, search.
-
-### `src/components/data-table/preferences.test.ts`
-
-Default visible columns, persisted preferences.
+`src/schedule.integration.test.ts` — schedule helper logic. Note: this package is not wired into any route yet (see ARCHITECTURE.md §2); its tests validate the library in isolation.
 
 ---
 
@@ -156,18 +84,13 @@ Default visible columns, persisted preferences.
 | Spec | Flow |
 |------|------|
 | `auth.spec.ts` | Admin login → dashboard |
-| `accounting-hr.spec.ts` | Admin → `/accounting` → overview heading |
-| `accounting-my.spec.ts` | E2E employee → `/accounting/my` → schedule UI |
 
-**Selectors:** `data-testid` on `login-form`, `login-submit`, `accounting-overview`, `my-hr-schedule`, `my-no-employee`.
-
-**Reports:** Terminal `list` reporter + `apps/crm/playwright-report/index.html`.
+This is the only E2E spec in the rebuilt app. Inventory list/import coverage is a follow-up.
 
 ---
 
 ## Gaps (follow-up)
 
 - Vitest coverage thresholds (`@vitest/coverage-v8`)
-- Full HR approval flows in browser
-- Inventory commit beyond logistics integration
-- Register-with-employee server action test
+- E2E coverage beyond login (admin CRUD flows, invite/reset-password flows, help/tour rendering)
+- Integration test for the RBAC baseline sync (`ensurePermissionsSynced`) against a real Mongo instance, to help pin down the admin-role known issue in [AGENT_HANDOFF.md](./AGENT_HANDOFF.md)

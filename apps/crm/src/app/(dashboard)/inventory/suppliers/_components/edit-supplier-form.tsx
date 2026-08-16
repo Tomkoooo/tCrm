@@ -3,10 +3,11 @@
 import { useActionState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+
 import { updateSupplierAction, type SupplierFormState } from '../actions';
 import type { SupplierContactEntry } from '@crm/lib';
 import { SupplierFormFields } from './supplier-form-fields';
+import { Button } from '@crm/ui';
 
 type SupplierData = {
   _id: string;

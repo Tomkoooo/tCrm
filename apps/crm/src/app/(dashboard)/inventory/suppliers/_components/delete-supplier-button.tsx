@@ -2,8 +2,9 @@
 
 import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
+
 import { deleteSupplierAction } from '../actions';
+import { Button } from '@crm/ui';
 
 export function DeleteSupplierButton({ id, name }: { id: string; name: string }) {
   const router = useRouter();

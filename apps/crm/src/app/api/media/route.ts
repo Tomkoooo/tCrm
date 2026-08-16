@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { requireAnyPermission } from '@crm/auth';
-import { MEDIA_READ_PERMISSION_KEYS, MEDIA_UPLOAD_PERMISSION_KEYS } from '@crm/lib';
-import { listMedia, resolveOrCreateLinkMedia } from '@crm/core';
+import {
+  listMedia,
+  resolveOrCreateLinkMedia,
+  MEDIA_READ_PERMISSION_KEYS,
+  MEDIA_UPLOAD_PERMISSION_KEYS,
+} from '@crm/media';
 
 export async function GET(request: Request) {
   await requireAnyPermission([...MEDIA_READ_PERMISSION_KEYS]);

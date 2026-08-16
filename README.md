@@ -33,14 +33,19 @@ Mongo Express: [http://localhost:8081](http://localhost:8081)
 ## Monorepo layout
 
 ```
-apps/crm/          Main CRM application
-packages/auth/     Auth.js + RBAC helpers
-packages/db/       Mongoose models + seed
-packages/lib/      Utils + Zod validation
-packages/ui/       Shared Container + (graduating shadcn)
-packages/core/     Business logic (Phase 1+)
-docker/            Docker Compose for local dev
-docs/              Architecture, rules, design system
+apps/crm/              Main CRM application
+packages/auth/         Auth.js v5 + session/permission helpers
+packages/rbac/         Permission-module registry + baseline sync
+packages/admin/        Users, invitations, roles, mail-template seed
+packages/db-core/      Mongoose connection, models, repositories
+packages/mail/         Templated mail sender
+packages/media/        Media library service
+packages/lib/          Utils + Zod validation + env helpers
+packages/ui/           Shared Container, DataTable, EntitySheet, shadcn primitives
+packages/inventory/     Products, Excel import, stock
+packages/employee-core/ Schedule/employee helpers (not yet wired to a route)
+docker/                Docker Compose for local dev
+docs/                  Architecture, rules, design system, user guide
 ```
 
 ## Scripts
@@ -56,15 +61,18 @@ docs/              Architecture, rules, design system
 
 ## Documentation
 
-- [AGENT_HANDOFF.md](./docs/AGENT_HANDOFF.md) — phase status, known issues, **copy-paste prompt for next agent** (§10)
+- [AGENT_HANDOFF.md](./docs/AGENT_HANDOFF.md) — current status, known issues, **copy-paste prompt for next agent** (§8) — **read this first**
 - [ARCHITECTURE.md](./docs/ARCHITECTURE.md) — system design, RBAC, CI/CD
 - [rules.md](./docs/rules.md) — coding conventions
 - [design.md](./docs/design.md) — UI tokens, layout, components
+- [TESTING.md](./docs/TESTING.md) — test inventory and commands
+- [inventory.md](./docs/inventory.md) — Phase 1 product/import notes
+- [user-guide/](./docs/user-guide/) — end-user help articles, rendered at `/help` and used by the in-app guided tour
 
 ## Phase roadmap
 
-- **Phase 0 (current):** Foundation — monorepo, auth, RBAC admin, dashboard shell
-- **Phase 1:** Inventory — product schema, Excel parser, dynamic DataTable
+- **Phase 0:** Foundation — monorepo, auth, dynamic RBAC, admin (users, roles, mail templates, media, branding), help center, PWA.
+- **Phase 1 (current):** Inventory — products, categories, suppliers, warehouses/stock, Excel import/export, DataTable.
 - **Phase 2:** Logistics, offers, builds; `apps/landing` (tWeb fork)
 - **Phase 3:** Accounting, multi-tenant SaaS, reporting
 

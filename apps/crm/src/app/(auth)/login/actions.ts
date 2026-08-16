@@ -1,7 +1,7 @@
 'use server';
 
 import { signIn } from '@crm/auth';
-import { loginSchema } from '@crm/lib/validation';
+import { loginSchema } from '@crm/auth/validation';
 import { AuthError } from 'next-auth';
 
 export type LoginFormState =

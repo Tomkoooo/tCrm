@@ -3,10 +3,10 @@
 import Link from 'next/link';
 import { useActionState } from 'react';
 import { loginAction, type LoginFormState } from './actions';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@crm/ui';
+import { Input } from '@crm/ui';
+import { Label } from '@crm/ui';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@crm/ui';
 import { useBranding } from '@/components/branding-provider';
 
 const initialState: LoginFormState = { success: false };

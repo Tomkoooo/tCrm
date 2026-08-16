@@ -1,12 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { SearchAutocomplete } from '@/components/ui/search-autocomplete';
+
 import { productDisplayName } from '@crm/lib';
 import { searchProductsAction } from '../search-actions';
+import { Button, Input, Label, SearchAutocomplete } from '@crm/ui';
 
 export type ComponentLine = {
   productId: string;

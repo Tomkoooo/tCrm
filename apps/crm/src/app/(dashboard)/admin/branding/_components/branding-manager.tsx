@@ -3,13 +3,10 @@
 import { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import type { BrandingSettings } from '@crm/db';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { MediaSelector } from '@/components/media/media-selector';
-import type { SelectedMedia } from '@/lib/media-types';
+import type { BrandingSettings } from '@crm/db-core';
+import { Button, Input, Label, Textarea } from '@crm/ui';
+import { MediaSelector } from '@crm/media/components';
+import { mediaPreviewPath, type SelectedMedia } from '@crm/media/paths';
 import { updateBrandingAction, type BrandingFormState } from '../actions';
 
 function mediaFromId(id: string | undefined, label: string): SelectedMedia[] {
@@ -17,7 +14,7 @@ function mediaFromId(id: string | undefined, label: string): SelectedMedia[] {
   return [
     {
       id,
-      previewUrl: `/api/uploads/${id}`,
+      previewUrl: mediaPreviewPath(id),
       filename: label,
       type: 'file',
     },

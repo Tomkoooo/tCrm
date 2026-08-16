@@ -3,7 +3,7 @@ import {
   MEDIA_DELETE_PERMISSION_KEYS,
   MEDIA_READ_PERMISSION_KEYS,
   MEDIA_UPLOAD_PERMISSION_KEYS,
-} from '@crm/lib';
+} from '@crm/media';
 import { Container } from '@crm/ui';
 import { MediaAdminClient } from './_components/media-admin-client';
 

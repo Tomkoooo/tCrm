@@ -9,8 +9,8 @@ import {
   BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb';
-import { SidebarTrigger } from '@/components/ui/sidebar';
+} from '@crm/ui';
+import { SidebarTrigger } from '@crm/ui';
 import { Container } from '@crm/ui';
 import { ThemeToggle } from '@/components/theme-toggle';
 

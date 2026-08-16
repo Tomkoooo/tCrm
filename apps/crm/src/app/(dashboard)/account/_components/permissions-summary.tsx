@@ -1,5 +1,5 @@
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@crm/ui';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@crm/ui';
 
 type RoleSummary = {
   id: string;

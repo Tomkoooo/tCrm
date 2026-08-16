@@ -1,13 +1,12 @@
 'use client';
 
 import { EntitySearchField } from '@/components/entity-search-field';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
 import { searchCategoriesAction, searchSuppliersAction } from '../search-actions';
 import { OptionalEnDeFields, hasEnDeContent } from '@/components/optional-en-de-fields';
 import { ProductEditSection } from './product-edit-section';
 import type { ProductEditSectionId } from './use-product-edit-sections';
+import { Input, Label, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@crm/ui';
 
 function Field({
   id,

@@ -3,12 +3,7 @@
 import { useActionState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Separator } from '@/components/ui/separator';
-import { EmployeeProfileFields, type CompanyOption } from '@/components/hr/employee-profile-fields';
+import { Button, Input, Label, Checkbox, Separator } from '@crm/ui';
 import { PermissionGroupSections } from '@/components/admin/permission-group-sections';
 import { inviteUserAction, type UserFormState } from '../actions';
 
@@ -28,11 +23,9 @@ type PermissionOption = {
 export function InviteUserForm({
   roles,
   permissions,
-  companies,
 }: {
   roles: RoleOption[];
   permissions: PermissionOption[];
-  companies: CompanyOption[];
 }) {
   const router = useRouter();
   const [state, action, pending] = useActionState(inviteUserAction, {
@@ -115,18 +108,6 @@ export function InviteUserForm({
           )}
         />
       </section>
-
-      {companies.length > 0 && (
-        <>
-          <Separator />
-          <EmployeeProfileFields
-            companies={companies}
-            defaultChecked={false}
-            checkboxName="isEmployee"
-            checkboxLabel="Dolgozói profil a meghívóban"
-          />
-        </>
-      )}
 
       <div className="flex justify-end border-t pt-4">
         <Button type="submit" loading={pending} disabled={pending} size="lg">

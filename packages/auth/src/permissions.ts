@@ -1,4 +1,4 @@
-import { connectDB, Permission, Role, User } from '@crm/db';
+import { connectDB, Permission, Role, User } from '@crm/db-core';
 
 export async function getEffectivePermissionKeys(userId: string): Promise<Set<string>> {
   await connectDB();

@@ -2,8 +2,10 @@
 
 import bcrypt from 'bcryptjs';
 import { redirect } from 'next/navigation';
-import { connectDB, ensureBaselineRbac, hasAnyAdminUser, Role, User } from '@crm/db';
-import { registerSchema } from '@crm/lib/validation';
+import { connectDB, hasAnyAdminUser, Role, User } from '@crm/db-core';
+import { registerSchema } from '@crm/auth/validation';
+import { seedEngineMailTemplates } from '@crm/admin';
+import { ensureRbacBootstrapped } from '@/lib/rbac-bootstrap';
 import { setInitializedCookie } from '@/lib/initialized-cookie';
 
 export type SetupState =
@@ -33,7 +35,8 @@ export async function setupAdminAction(_prev: SetupState, formData: FormData): P
     redirect('/setup/complete');
   }
 
-  await ensureBaselineRbac();
+  await ensureRbacBootstrapped();
+  await seedEngineMailTemplates();
 
   const email = parsed.data.email.toLowerCase();
   const existing = await User.findOne({ email });

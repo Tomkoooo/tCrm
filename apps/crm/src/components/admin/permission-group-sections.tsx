@@ -1,9 +1,9 @@
 'use client';
 
 import { ChevronDownIcon } from 'lucide-react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@crm/ui';
+import { Badge } from '@crm/ui';
+import { cn } from '@crm/lib';
 import { permissionGroupLabel, sortPermissionGroups } from './permission-group-labels';
 
 export type PermissionItem = {

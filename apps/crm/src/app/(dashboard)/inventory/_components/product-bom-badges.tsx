@@ -1,6 +1,6 @@
-import { Badge } from '@/components/ui/badge';
 import { PRODUCT_BOM_ROLE_LABELS, type ProductBomRole } from '@crm/lib';
 import { cn } from '@/lib/utils';
+import { Badge } from '@crm/ui';
 
 const ROLE_VARIANT: Record<
   Exclude<ProductBomRole, 'standalone'>,

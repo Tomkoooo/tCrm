@@ -5,43 +5,25 @@ import { useCallback, useMemo } from 'react';
 import { signOut } from 'next-auth/react';
 import {
   LayoutDashboardIcon,
-  BarChart3Icon,
-  PackageIcon,
-  TruckIcon,
-  CarIcon,
-  ClipboardListIcon,
-  ArrowRightLeftIcon,
-  LockIcon,
-  FileTextIcon,
-  WrenchIcon,
   UsersIcon,
   ShieldIcon,
-  Building2Icon,
-  HandshakeIcon,
-  LogOutIcon,
-  UserIcon,
-  TagsIcon,
   ImagesIcon,
   PaletteIcon,
-  KeyRoundIcon,
   MailIcon,
-  CalculatorIcon,
-  CalendarDaysIcon,
-  ClipboardCheckIcon,
-  UserCircleIcon,
+  LogOutIcon,
+  UserIcon,
   CircleHelpIcon,
+  PackageIcon,
+  FolderTreeIcon,
+  TruckIcon,
+  Building2Icon,
+  LayoutGridIcon,
 } from 'lucide-react';
 import {
-  ACCOUNTING_NAV_PERMISSION_KEYS,
-  HR_READ_PERMISSION_KEYS,
-  HR_REPORTS_PERMISSION_KEYS,
-  LOGISTICS_READ_PERMISSION_KEYS,
-  LOGISTICS_VEHICLES_READ_PERMISSION_KEYS,
-  MEDIA_READ_PERMISSION_KEYS,
-  SECRETS_READ_PERMISSION_KEYS,
   SUPPLIER_READ_PERMISSION_KEYS,
-  hasAnyPermission,
-} from '@crm/lib';
+  WAREHOUSE_READ_PERMISSION_KEYS,
+} from '@crm/inventory/permissions';
+import { MEDIA_READ_PERMISSION_KEYS } from '@crm/media/permissions';
 import {
   Sidebar,
   SidebarContent,
@@ -53,13 +35,15 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   useSidebar,
-} from '@/components/ui/sidebar';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useAuth } from '@/hooks/use-auth';
+  Button,
+  Avatar,
+  AvatarFallback,
+  Skeleton,
+  cn,
+} from '@crm/ui';
+import { getInitials } from '@crm/lib';
+import { useAuth } from '@crm/auth/client';
 import { useBranding } from '@/components/branding-provider';
-import { getInitials } from '@/lib/utils';
 import { SidebarNavGroup, type SidebarNavItem } from '@/components/sidebar-nav-group';
 
 type SidebarUser = {
@@ -67,7 +51,6 @@ type SidebarUser = {
   email: string;
   name: string;
   permissions: string[];
-  leadsTeam?: boolean;
 };
 
 export function MenuItem({
@@ -75,18 +58,22 @@ export function MenuItem({
   icon,
   label,
   onClick,
+  tourId,
 }: {
   href: string;
   icon: React.ReactNode;
   label: string;
   onClick?: () => void;
+  tourId?: string;
 }) {
   return (
-    <SidebarMenuItem>
+    <SidebarMenuItem data-tour={tourId}>
       <Link
         href={href}
         onClick={onClick}
-        className="bg-muted flex flex-row items-center gap-2 rounded-md px-2 py-1.5 transition-all duration-300 hover:tracking-wider md:py-1"
+        className={cn(
+          'bg-muted flex flex-row items-center gap-2 rounded-md px-2 py-1.5 transition-all duration-300 hover:tracking-wider md:py-1'
+        )}
       >
         {icon}
         {label}
@@ -107,144 +94,31 @@ export function AppSidebar({ serverUser }: { serverUser?: SidebarUser }) {
   }, [setOpenMobile]);
 
   const hasPermission = (key: string) => user?.permissions.includes(key) ?? false;
-  const userPermissions = user?.permissions ?? [];
-  const hasAny = (keys: readonly string[]) => hasAnyPermission(userPermissions, keys);
 
   const inventoryItems = useMemo((): SidebarNavItem[] => {
-    if (!hasPermission('inventory:read')) return [];
-    const items: SidebarNavItem[] = [
-      {
+    const items: SidebarNavItem[] = [];
+    if (hasPermission('inventory:read')) {
+      items.push({
         href: '/inventory/dashboard',
-        icon: <BarChart3Icon className="h-4 w-4" />,
+        icon: <LayoutGridIcon className="h-4 w-4" />,
         label: 'Termékmenedzsment',
-      },
-
-      {
+      });
+      items.push({
         href: '/inventory',
         icon: <PackageIcon className="h-4 w-4" />,
         label: 'Termékek',
-      },
-      {
-        href: '/inventory/builds',
-        icon: <WrenchIcon className="h-4 w-4" />,
-        label: 'Összeszerelések',
-      },
-      {
+      });
+      items.push({
         href: '/inventory/categories',
-        icon: <TagsIcon className="h-4 w-4" />,
+        icon: <FolderTreeIcon className="h-4 w-4" />,
         label: 'Termékkategóriák',
-      },
-    ];
+      });
+    }
     if (SUPPLIER_READ_PERMISSION_KEYS.some((key) => hasPermission(key))) {
       items.push({
         href: '/inventory/suppliers',
-        icon: <HandshakeIcon className="h-4 w-4" />,
+        icon: <TruckIcon className="h-4 w-4" />,
         label: 'Beszállítók',
-      });
-    }
-    return items;
-  }, [user?.permissions]);
-
-  const logisticsItems = useMemo((): SidebarNavItem[] => {
-    const items: SidebarNavItem[] = [];
-    if (hasAny(LOGISTICS_READ_PERMISSION_KEYS)) {
-      items.push(
-        {
-          href: '/logistics',
-          icon: <TruckIcon className="h-4 w-4" />,
-          label: 'Áttekintés',
-        },
-        {
-          href: '/logistics/movements',
-          icon: <ArrowRightLeftIcon className="h-4 w-4" />,
-          label: 'Készletmozgások',
-        },
-        {
-          href: '/logistics/reservations',
-          icon: <LockIcon className="h-4 w-4" />,
-          label: 'Foglalások',
-        },
-        {
-          href: '/logistics/jobs',
-          icon: <ClipboardListIcon className="h-4 w-4" />,
-          label: 'Szállítások',
-        }
-      );
-    }
-    if (hasAny(LOGISTICS_VEHICLES_READ_PERMISSION_KEYS)) {
-      items.push({
-        href: '/logistics/vehicles',
-        icon: <CarIcon className="h-4 w-4" />,
-        label: 'Járműflotta',
-      });
-    }
-    return items;
-  }, [user?.permissions]);
-
-  const accountingItems = useMemo((): SidebarNavItem[] => {
-    if (!ACCOUNTING_NAV_PERMISSION_KEYS.some((key) => hasPermission(key))) return [];
-    const items: SidebarNavItem[] = [];
-    if (
-      ACCOUNTING_NAV_PERMISSION_KEYS.filter((k) => k !== 'hr:self').some((key) =>
-        hasPermission(key)
-      )
-    ) {
-      items.push({
-        href: '/accounting',
-        icon: <CalculatorIcon className="h-4 w-4" />,
-        label: 'Áttekintés',
-      });
-    }
-    if (hasPermission('hr:write')) {
-      items.push({
-        href: '/accounting/companies',
-        icon: <Building2Icon className="h-4 w-4" />,
-        label: 'Cégek',
-      });
-    }
-    if (hasPermission('hr:write')) {
-      items.push({
-        href: '/accounting/teams',
-        icon: <UsersIcon className="h-4 w-4" />,
-        label: 'Csapatok',
-      });
-    }
-    if (HR_READ_PERMISSION_KEYS.some((key) => hasPermission(key))) {
-      items.push(
-        {
-          href: '/accounting/employees',
-          icon: <UsersIcon className="h-4 w-4" />,
-          label: 'Dolgozók',
-        },
-        {
-          href: '/accounting/schedule',
-          icon: <CalendarDaysIcon className="h-4 w-4" />,
-          label: 'Beosztás',
-        },
-        {
-          href: '/accounting/requests',
-          icon: <ClipboardCheckIcon className="h-4 w-4" />,
-          label: 'Kérelmek',
-        }
-      );
-    }
-    if (HR_REPORTS_PERMISSION_KEYS.some((key) => hasPermission(key))) {
-      items.push({
-        href: '/accounting/leave-summary',
-        icon: <FileTextIcon className="h-4 w-4" />,
-        label: 'Kimutatások',
-      });
-    }
-    return items;
-  }, [user?.permissions]);
-
-  const salesItems = useMemo((): SidebarNavItem[] => {
-    const items: SidebarNavItem[] = [];
-    if (hasPermission('offers:read')) {
-      items.push({
-        href: '/offers',
-        icon: <FileTextIcon className="h-4 w-4" />,
-        label: 'Ajánlatok',
       });
     }
     return items;
@@ -274,7 +148,7 @@ export function AppSidebar({ serverUser }: { serverUser?: SidebarUser }) {
         label: 'E-mail sablonok',
       });
     }
-    if (hasPermission('warehouses:read')) {
+    if (WAREHOUSE_READ_PERMISSION_KEYS.some((key) => hasPermission(key))) {
       items.push({
         href: '/admin/warehouses',
         icon: <Building2Icon className="h-4 w-4" />,
@@ -321,26 +195,25 @@ export function AppSidebar({ serverUser }: { serverUser?: SidebarUser }) {
                 icon={<LayoutDashboardIcon className="h-4 w-4" />}
                 label="Vezérlőpult"
                 onClick={linkClick}
+                tourId="dashboard"
               />
               <MenuItem
                 href="/help"
                 icon={<CircleHelpIcon className="h-4 w-4" />}
                 label="Súgó"
                 onClick={linkClick}
+                tourId="help"
               />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarNavGroup label="Készletkezelés" items={inventoryItems} onLinkClick={linkClick} />
-
-        <SidebarNavGroup label="Logisztika" items={logisticsItems} onLinkClick={linkClick} />
-
-        {salesItems.length > 0 && (
-          <SidebarNavGroup label="Értékesítés" items={salesItems} onLinkClick={linkClick} />
-        )}
-
-        <SidebarNavGroup label="Könyvelés és HR" items={accountingItems} onLinkClick={linkClick} />
+        <SidebarNavGroup
+          label="Készletkezelés"
+          items={inventoryItems}
+          onLinkClick={linkClick}
+          tourId="inventory"
+        />
 
         <SidebarGroup>
           <SidebarGroupLabel>Beállítások</SidebarGroupLabel>
@@ -351,37 +224,19 @@ export function AppSidebar({ serverUser }: { serverUser?: SidebarUser }) {
                 icon={<UserIcon className="h-4 w-4" />}
                 label="Fiók"
                 onClick={linkClick}
+                tourId="account"
               />
-              <MenuItem
-                href="/accounting/my"
-                icon={<UserCircleIcon className="h-4 w-4" />}
-                label="Saját beosztás"
-                onClick={linkClick}
-              />
-              {('leadsTeam' in (user ?? {}) && (user as SidebarUser).leadsTeam) ||
-              hasPermission('hr:teams:read') ||
-              hasPermission('hr:teams:write') ? (
-                <MenuItem
-                  href="/accounting/my-team/schedule"
-                  icon={<CalendarDaysIcon className="h-4 w-4" />}
-                  label="Csapatom beosztása"
-                  onClick={linkClick}
-                />
-              ) : null}
-              {SECRETS_READ_PERMISSION_KEYS.some((key) => hasPermission(key)) && (
-                <MenuItem
-                  href="/secrets"
-                  icon={<KeyRoundIcon className="h-4 w-4" />}
-                  label="Titoktár"
-                  onClick={linkClick}
-                />
-              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
         {adminItems.length > 0 && (
-          <SidebarNavGroup label="Adminisztráció" items={adminItems} onLinkClick={linkClick} />
+          <SidebarNavGroup
+            label="Adminisztráció"
+            items={adminItems}
+            onLinkClick={linkClick}
+            tourId="admin"
+          />
         )}
       </SidebarContent>
       <SidebarFooter>

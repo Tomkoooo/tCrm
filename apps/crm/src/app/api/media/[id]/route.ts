@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { requireAnyPermission, requirePermission } from '@crm/auth';
-import { MEDIA_READ_PERMISSION_KEYS } from '@crm/lib';
-import { deleteMediaById, getMediaById } from '@crm/core';
+import {
+  deleteMediaById,
+  getMediaById,
+  mediaPreviewPath,
+  MEDIA_READ_PERMISSION_KEYS,
+} from '@crm/media';
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireAnyPermission([...MEDIA_READ_PERMISSION_KEYS]);
@@ -20,7 +24,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     size: media.size,
     useCount: media.useCount,
     usages: media.usages,
-    previewUrl: `/api/inventory/images/${String(media._id)}`,
+    previewUrl: mediaPreviewPath(String(media._id)),
   });
 }
 

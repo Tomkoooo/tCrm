@@ -11,14 +11,14 @@ import {
   syncBaselinePermissionsAction,
   type PermissionsFormState,
 } from './actions';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { Button } from '@crm/ui';
+import { Input } from '@crm/ui';
+import { Label } from '@crm/ui';
+import { Checkbox } from '@crm/ui';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@crm/ui';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@crm/ui';
+import { Badge } from '@crm/ui';
+import { cn } from '@crm/lib';
 import { PermissionGroupSections } from '@/components/admin/permission-group-sections';
 
 type Permission = {

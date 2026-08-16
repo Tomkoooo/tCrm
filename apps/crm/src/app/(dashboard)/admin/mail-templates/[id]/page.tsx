@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requirePermission } from '@crm/auth';
 import { Container } from '@crm/ui';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@crm/ui';
+import { Card, CardContent, CardHeader, CardTitle } from '@crm/ui';
 import { getMailTemplateForEdit } from '../actions';
 import { MailTemplateForm } from '../_components/mail-template-form';
 

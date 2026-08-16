@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { DataTable, EntitySheet } from '@crm/ui';
 import type { ColumnDef, DataTableQuery } from '@crm/ui';
-import { Button } from '@/components/ui/button';
+
 import { CreateWarehouseForm } from './warehouse-form';
+import { Button } from '@crm/ui';
 
 export type WarehouseRow = {
   _id: string;

@@ -4,10 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import type { SupplierContactEntry } from '@crm/lib';
 import { EntitySheet } from '@crm/ui';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
 import { EditSupplierForm } from './edit-supplier-form';
 import { DeleteSupplierButton } from './delete-supplier-button';
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@crm/ui';
 
 export type SupplierDetailData = {
   _id: string;

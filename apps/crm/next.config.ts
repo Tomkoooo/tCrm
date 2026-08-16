@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadEnvConfig } from '@next/env';
-import { ensurePublicUrlEnv } from '@crm/lib/mail-env';
+import { ensurePublicUrlEnv } from '@crm/mail/env';
 import type { NextConfig } from 'next';
 
 const appDir = path.dirname(fileURLToPath(import.meta.url));
@@ -15,8 +15,19 @@ ensurePublicUrlEnv();
 const nextConfig: NextConfig = {
   reactCompiler: true,
   output: 'standalone',
-  transpilePackages: ['@crm/auth', '@crm/db', '@crm/lib', '@crm/ui', '@crm/core'],
-  serverExternalPackages: ['mongoose', 'mongodb', 'bcryptjs'],
+  transpilePackages: [
+    '@crm/admin',
+    '@crm/auth',
+    '@crm/db-core',
+    '@crm/employee-core',
+    '@crm/inventory',
+    '@crm/lib',
+    '@crm/mail',
+    '@crm/media',
+    '@crm/rbac',
+    '@crm/ui',
+  ],
+  serverExternalPackages: ['mongoose', 'mongodb', 'bcryptjs', 'xlsx'],
 };
 
 export default nextConfig;

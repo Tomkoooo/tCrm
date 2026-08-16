@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Container } from '@crm/ui';
-import { Button } from '@/components/ui/button';
+import { Button } from '@crm/ui';
 
 export default function NotFound() {
   return (

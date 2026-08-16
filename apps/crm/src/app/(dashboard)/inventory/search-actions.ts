@@ -1,10 +1,11 @@
 'use server';
 
 import { requirePermission } from '@crm/auth';
-import { connectDB, Category, Product, Supplier } from '@crm/db';
+import { connectDB, Category, Product, Supplier } from '@crm/db-core';
 import { productDisplayName } from '@crm/lib';
-import type { SearchItem } from '@/components/ui/search-autocomplete';
+
 import { buildScopedProductFilter } from '@/lib/inventory/warehouse-scope';
+import type { SearchItem } from '@crm/ui';
 
 export async function searchProductsAction(query: string): Promise<SearchItem[]> {
   await requirePermission('inventory:read');

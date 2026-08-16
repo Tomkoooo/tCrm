@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { DataTable, EntitySheet } from '@crm/ui';
 import type { ColumnDef, DataTableQuery } from '@crm/ui';
-import { Button } from '@/components/ui/button';
+
 import { CreateSupplierForm } from './supplier-form';
+import { Button } from '@crm/ui';
 
 export type SupplierRow = {
   _id: string;

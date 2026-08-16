@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { SearchAutocomplete, type SearchItem } from '@/components/ui/search-autocomplete';
-import { Label } from '@/components/ui/label';
+import { SearchAutocomplete, Label } from '@crm/ui';
+import type { SearchItem } from '@crm/ui';
 
 export function EntitySearchField({
   label,

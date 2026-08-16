@@ -1,8 +1,8 @@
 import type { NextAuthConfig } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
-import { connectDB, User } from '@crm/db';
-import { loginSchema } from '@crm/lib/validation';
+import { connectDB, User } from '@crm/db-core';
+import { loginSchema } from './validation';
 import { getEffectivePermissionKeys } from './permissions';
 
 export const authConfig: NextAuthConfig = {

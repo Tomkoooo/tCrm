@@ -3,8 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import bcrypt from 'bcryptjs';
 import { requireAuth } from '@crm/auth';
-import { connectDB, User } from '@crm/db';
-import { changePasswordSchema, updateProfileSchema } from '@crm/lib/validation';
+import { connectDB, User } from '@crm/db-core';
+import { changePasswordSchema, updateProfileSchema } from '@crm/auth/validation';
 
 export type AccountFormState =
   | { success: false; fieldErrors?: Record<string, string[]>; message?: string }

@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { requirePermission, requireAuth } from '@crm/auth';
 import { Container } from '@crm/ui';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@crm/ui';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@crm/ui';
 import { getUsersEditorData } from '../actions';
 import { InviteUserForm } from '../_components/invite-user-form';
 
@@ -11,7 +11,7 @@ export default async function InviteUserPage() {
   await requirePermission('mail:send');
   await requireAuth();
 
-  const { roles, permissions, companies } = await getUsersEditorData();
+  const { roles, permissions } = await getUsersEditorData();
 
   return (
     <Container className="flex max-w-3xl flex-col gap-4 md:gap-6">
@@ -41,7 +41,7 @@ export default async function InviteUserPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <InviteUserForm roles={roles} permissions={permissions} companies={companies} />
+          <InviteUserForm roles={roles} permissions={permissions} />
         </CardContent>
       </Card>
     </Container>

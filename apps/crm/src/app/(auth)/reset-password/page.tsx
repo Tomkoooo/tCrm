@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { findUserByResetToken } from '@crm/core';
+import { findUserByResetToken } from '@crm/admin';
 import { ResetPasswordForm } from './reset-password-form';
 
 export default async function ResetPasswordPage({

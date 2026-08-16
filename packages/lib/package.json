@@ -6,7 +6,6 @@
   "exports": {
     ".": "./src/index.ts",
     "./env": "./src/env.ts",
-    "./mail-env": "./src/mail-env.ts",
     "./utils": "./src/utils/index.ts",
     "./validation": "./src/validation/index.ts"
   },

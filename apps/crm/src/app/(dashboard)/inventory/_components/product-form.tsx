@@ -2,13 +2,13 @@
 
 import { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
 import { MediaSelector } from '@/components/media/media-selector';
 import type { SelectedMedia } from '@/lib/media-types';
 import type { InventoryFormState } from '../actions';
 import { ProductFormExcelSections } from './product-form-excel';
 import { ProductWarehouseFields } from './product-warehouse-fields';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@crm/ui';
 
 export function ProductForm({
   mode,
@@ -72,6 +72,7 @@ export function ProductForm({
             onChange={setMedia}
             multiple
             maxCount={5}
+            uploadPermissionKeys={['inventory:write']}
             description="Excel import bild URL-ek a médiatárban linkként is kezelhetők."
           />
         </CardContent>

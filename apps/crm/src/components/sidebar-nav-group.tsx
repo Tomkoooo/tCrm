@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ChevronDownIcon } from 'lucide-react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@crm/ui';
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -13,9 +13,9 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-} from '@/components/ui/sidebar';
+} from '@crm/ui';
 import { isNavItemActive, resolveActiveNavHref } from '@/lib/navigation/active-nav';
-import { cn } from '@/lib/utils';
+import { cn } from '@crm/lib';
 
 export type SidebarNavItem = {
   href: string;
@@ -28,11 +28,13 @@ export function SidebarNavGroup({
   items,
   defaultOpen = true,
   onLinkClick,
+  tourId,
 }: {
   label: string;
   items: SidebarNavItem[];
   defaultOpen?: boolean;
   onLinkClick?: () => void;
+  tourId?: string;
 }) {
   const pathname = usePathname();
   const hrefs = items.map((item) => item.href);
@@ -42,7 +44,7 @@ export function SidebarNavGroup({
 
   return (
     <Collapsible defaultOpen={defaultOpen || isActiveGroup} className="group/collapsible">
-      <SidebarGroup>
+      <SidebarGroup data-tour={tourId}>
         <SidebarGroupLabel asChild>
           <CollapsibleTrigger className="hover:bg-sidebar-accent flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs font-medium">
             {label}

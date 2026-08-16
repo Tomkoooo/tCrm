@@ -1,9 +1,10 @@
 import { requirePermission, hasPermission } from '@crm/auth';
-import { connectDB, Category } from '@crm/db';
+import { connectDB, Category } from '@crm/db-core';
 import { Container } from '@crm/ui';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
 import { CreateCategoryForm } from './_components/category-form';
 import { CategoryRowActions } from './_components/category-row-actions';
+import { Card, CardContent, CardHeader, CardTitle } from '@crm/ui';
 
 export default async function CategoriesPage() {
   await requirePermission('inventory:read');

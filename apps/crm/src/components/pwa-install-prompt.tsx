@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { DownloadIcon, ShareIcon, SmartphoneIcon, XIcon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@crm/ui';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@crm/ui';
 import { PWA_INSTALL_DISMISS_KEY } from '@/lib/pwa/constants';
 import { detectMobileOs, isStandaloneDisplay, type MobileOs } from '@/lib/pwa/detect';
 

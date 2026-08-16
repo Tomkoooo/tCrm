@@ -2,9 +2,10 @@
 
 import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
+
 import { deleteCategoryAction } from '../actions';
 import { EditCategoryForm } from './edit-category-form';
+import { Button } from '@crm/ui';
 
 type ParentOption = { _id: string; label: string; level: number };
 

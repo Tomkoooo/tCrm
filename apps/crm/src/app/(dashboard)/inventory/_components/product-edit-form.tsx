@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+
 import { MediaSelector } from '@/components/media/media-selector';
 import type { SelectedMedia } from '@/lib/media-types';
 import type { ProductTableRow } from '@/lib/inventory/product-table-columns';
@@ -14,6 +14,7 @@ import { ProductEditSection } from './product-edit-section';
 import { ProductFormExcelSections } from './product-form-excel';
 import { ProductStockEditor } from './product-stock-editor';
 import { useProductEditSections, PRODUCT_EDIT_SECTION_DEFAULTS } from './use-product-edit-sections';
+import { Button } from '@crm/ui';
 
 function mediaFromIds(ids: string[], labelPrefix: string): SelectedMedia[] {
   return ids.map((id, index) => ({
@@ -183,6 +184,7 @@ export function ProductEditForm({
           multiple
           maxCount={5}
           name="imageId"
+          uploadPermissionKeys={['inventory:write']}
           description="Excel import bild URL-ek a médiatárban linkként is kezelhetők."
         />
       </ProductEditSection>
@@ -202,6 +204,7 @@ export function ProductEditForm({
           multiple
           maxCount={5}
           name="guideMediaId"
+          uploadPermissionKeys={['inventory:write']}
         />
       </ProductEditSection>
 

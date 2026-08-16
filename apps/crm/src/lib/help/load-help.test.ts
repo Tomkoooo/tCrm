@@ -12,18 +12,26 @@ describe('load-help integration', () => {
     expect(article?.title).toContain('Áttekintés');
   });
 
+  it('filters permission-gated articles', () => {
+    const withPerm = getHelpArticlesForUser(['users:read']);
+    const withoutPerm = getHelpArticlesForUser([]);
+
+    expect(withPerm.some((a) => a.slug === 'admin-felhasznalok')).toBe(true);
+    expect(withoutPerm.some((a) => a.slug === 'admin-felhasznalok')).toBe(false);
+    expect(withoutPerm.some((a) => a.slug === 'index')).toBe(true);
+  });
+
   it('filters inventory articles by permission', () => {
     const withInv = getHelpArticlesForUser(['inventory:read']);
     const withoutInv = getHelpArticlesForUser([]);
 
     expect(withInv.some((a) => a.slug === 'excel-import')).toBe(true);
     expect(withoutInv.some((a) => a.slug === 'excel-import')).toBe(false);
-    expect(withoutInv.some((a) => a.slug === 'index')).toBe(true);
   });
 
   it('groups sections with Áttekintés first', () => {
     const sections = groupHelpArticlesBySection(
-      getHelpArticlesForUser(['inventory:read', 'logistics:read'])
+      getHelpArticlesForUser(['users:read', 'roles:manage'])
     );
     expect(sections.length).toBeGreaterThan(0);
     expect(sections[0]?.name).toBe('Áttekintés');

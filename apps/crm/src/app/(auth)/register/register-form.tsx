@@ -4,20 +4,24 @@ import { useActionState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { registerAction, type RegisterFormState } from './actions';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { EmployeeProfileFields, type CompanyOption } from '@/components/hr/employee-profile-fields';
+import {
+  Button,
+  Input,
+  Label,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@crm/ui';
 import { useBranding } from '@/components/branding-provider';
 
 const initialState: RegisterFormState = { success: false };
 
-export function RegisterForm({ companies }: { companies: CompanyOption[] }) {
+export function RegisterForm() {
   const router = useRouter();
   const branding = useBranding();
   const [state, formAction, pending] = useActionState(registerAction, initialState);
-  const hasCompanies = companies.length > 0;
 
   useEffect(() => {
     if (state.success) {
@@ -37,7 +41,7 @@ export function RegisterForm({ companies }: { companies: CompanyOption[] }) {
             />
           ) : null}
           <CardTitle className="text-2xl">Regisztráció</CardTitle>
-          <CardDescription>{branding.appName} fiók és opcionális dolgozói profil</CardDescription>
+          <CardDescription>{branding.appName} fiók létrehozása</CardDescription>
         </CardHeader>
         <CardContent>
           <form action={formAction} className="flex flex-col gap-6">
@@ -92,20 +96,6 @@ export function RegisterForm({ companies }: { companies: CompanyOption[] }) {
                 <p className="text-destructive text-sm">{state.fieldErrors.confirmPassword[0]}</p>
               )}
             </div>
-
-            {hasCompanies ? (
-              <EmployeeProfileFields
-                companies={companies}
-                defaultChecked
-                checkboxName="registerAsEmployee"
-                checkboxLabel="Regisztráció dolgozóként (beosztás, kérelmek)"
-              />
-            ) : (
-              <p className="text-muted-foreground text-sm">
-                Dolgozói profil: a HR-nek előbb létre kell hoznia egy céget, vagy az admin hozza
-                létre a fiókját.
-              </p>
-            )}
 
             <Button type="submit" loading={pending} disabled={pending} className="w-full">
               {pending ? 'Létrehozás…' : 'Regisztráció'}

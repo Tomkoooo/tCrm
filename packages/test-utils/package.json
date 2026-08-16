@@ -1,0 +1,23 @@
+{
+  "name": "@crm/test-utils",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./mongo-memory": "./src/mongo-memory.ts"
+  },
+  "scripts": {
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "mongodb-memory-server": "^11.2.0"
+  },
+  "devDependencies": {
+    "@crm/eslint-config": "workspace:*",
+    "@crm/tsconfig": "workspace:*",
+    "eslint": "^9.17.0",
+    "typescript": "^5.7.2"
+  }
+}

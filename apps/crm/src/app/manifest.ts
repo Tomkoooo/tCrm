@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { getBranding } from '@crm/db';
+import { getBranding } from '@crm/db-core';
 
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const branding = await getBranding();

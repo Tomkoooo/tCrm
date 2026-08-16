@@ -1,0 +1,45 @@
+{
+  "name": "@crm/media",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./paths": "./src/paths.ts",
+    "./upload-constraints": "./src/upload-constraints.ts",
+    "./permissions": "./src/permissions.ts",
+    "./components": "./src/components/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:integration": "vitest run \"**/*.integration.test.ts\""
+  },
+  "dependencies": {
+    "@crm/auth": "workspace:*",
+    "@crm/db-core": "workspace:*",
+    "@crm/lib": "workspace:*",
+    "@crm/rbac": "workspace:*",
+    "@crm/ui": "workspace:*",
+    "lucide-react": "^0.574.0",
+    "sonner": "^2.0.7"
+  },
+  "devDependencies": {
+    "@crm/eslint-config": "workspace:*",
+    "@crm/test-utils": "workspace:*",
+    "@crm/tsconfig": "workspace:*",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9.17.0",
+    "mongodb-memory-server": "^11.2.0",
+    "mongoose": "^9.2.1",
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.18"
+  },
+  "peerDependencies": {
+    "next": ">=15.0.0",
+    "react": ">=19.0.0"
+  }
+}

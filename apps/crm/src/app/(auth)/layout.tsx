@@ -1,11 +1,9 @@
-import { getBranding } from '@crm/db';
+import { getBranding, brandingMediaUrl } from '@crm/db-core';
 import { AuthShell } from './auth-shell';
 
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   const branding = await getBranding();
-  const loginBackgroundUrl = branding.loginBackgroundId
-    ? `/api/uploads/${branding.loginBackgroundId}`
-    : undefined;
+  const loginBackgroundUrl = brandingMediaUrl(branding.loginBackgroundId);
 
   return <AuthShell loginBackgroundUrl={loginBackgroundUrl}>{children}</AuthShell>;
 }

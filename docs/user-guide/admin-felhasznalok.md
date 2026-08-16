@@ -1,51 +1,40 @@
 ---
-title: Felhasználók és meghívók
-description: Fiókok létrehozása, szerkesztése, meghívás e-mailben.
-order: 60
+title: Felhasználók kezelése
+description: Munkatársak meghívása, fiókok szerkesztése és jelszó-visszaállítás.
+order: 1
 section: Adminisztráció
 permissions:
   - users:read
 ---
 
-## Mire való
-
-CRM felhasználók kezelése: létrehozás, szerepkörök, inaktiválás, e-mail meghívó.
-
 ## Hol találod
 
-**Adminisztráció → Felhasználók** (`/admin/users`)
+**Oldalsáv → Adminisztráció → Felhasználók** (`/admin/users`)
 
-- Új: `/admin/users/new`
-- Meghívás: `/admin/users/invite`
-- Kiküldött meghívók: `/admin/users/invitations`
+## Mit látsz
 
-## Szükséges jogosultság
+Táblázatos lista az összes felhasználóról: név, e-mail, szerepkör(ök), állapot (aktív/inaktív). A táblázat felett kereséssel, szűrőkkel és oszlopválasztóval finomíthatod a listát.
 
-- Lista: `users:read`
-- Létrehozás / szerkesztés / inaktiválás: `users:write`
-- Meghívó e-mail: `mail:send`
+## Új munkatárs felvétele
 
-## Lépésről lépésre
+Két módon adhatsz hozzá felhasználót:
 
-### Új felhasználó
+1. **Meghívás e-mailben** (`/admin/users/invite`) — a munkatárs egy regisztrációs linket kap e-mailben, amellyel saját maga állítja be a jelszavát. A függőben lévő meghívásokat az **Meghívások** listában (`/admin/users/invitations`) követheted, és szükség esetén újraküldheted vagy visszavonhatod.
+2. **Közvetlen létrehozás** (`/admin/users/new`) — azonnal létrehozod a fiókot és beállítod a kezdeti jelszót.
 
-1. **Új felhasználó** — e-mail, név, jelszó vagy meghívó.
-2. Rendeld hozzá a **szerepköröket**.
-3. Opcionálisan kösd **dolgozói profilhoz** (HR).
+Mindkettőhöz **Felhasználók kezelése** (`users:write`) jogosultság szükséges.
 
-### Meghívó
+## Meglévő felhasználó szerkesztése
 
-1. **Felhasználó meghívása** — add meg az e-mailt és szerepköröket.
-2. A címzett a `/register/invite?token=...` linken állítja be a jelszót és automatikusan bejelentkezik.
+Kattints egy sorra a részletek megnyitásához (`/admin/users/[id]`). Itt módosíthatod a nevet, a hozzárendelt szerepköröket, és inaktiválhatod a fiókot, ha valaki már nem dolgozik a rendszerben.
 
-### Inaktiválás
+## Jelszó-visszaállítás
 
-1. Felhasználó szerkesztése → **Inaktív** — nem törlés.
-2. Az utolsó admin nem inaktiválható; admin szerepkör nem vehető el teljesen.
+Egy felhasználó sorában a **Jelszó-visszaállító e-mail küldése** gombbal jelszó-visszaállító linket küldhetsz a felhasználónak — nincs szükség arra, hogy ismerd vagy beállítsd helyette az új jelszót.
 
 ## Kapcsolódó fejezetek
 
-- [Szerepkörök](/help/admin-szerepkorok)
-- [Fiók és jogosultságok](/help/fiok-es-jogosultsagok)
+- [Szerepkörök és jogosultságok](/help/admin-szerepkorok)
+- [E-mail sablonok](/help/admin-email-sablonok)
 
-*Utolsó frissítés: 2026-06*
+*Utolsó frissítés: 2026-07*

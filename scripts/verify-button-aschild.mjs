@@ -9,7 +9,7 @@ import path from 'node:path';
 
 const buttonPath = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
-  '../apps/crm/src/components/ui/button.tsx'
+  '../packages/ui/src/components/button.tsx'
 );
 
 const src = readFileSync(buttonPath, 'utf8');

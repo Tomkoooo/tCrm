@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Label } from '@/components/ui/label';
-import { GroupedMultiSelect, type GroupedSelectGroup } from '@/components/ui/grouped-multi-select';
+
 import { searchUsersGroupedAction, type GroupedUserGroup } from '@/lib/user-grouped-search';
+import { Label, GroupedMultiSelect } from '@crm/ui';
+import type { GroupedSelectGroup } from '@crm/ui';
 
 export function WarehouseStaffSelect({
   initialSelected,

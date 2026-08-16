@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { loginSchema } from '@crm/lib/validation';
+import { loginSchema } from '@crm/auth/validation';
 
 describe('loginSchema', () => {
   it('validates correct login input', () => {

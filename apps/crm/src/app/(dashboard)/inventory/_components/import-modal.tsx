@@ -3,13 +3,9 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { INVENTORY_COLUMNS } from '@crm/core/inventory/excel-columns';
-import { detectImportGaps } from '@crm/core/inventory/import-config';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { SearchAutocomplete, type SearchItem } from '@/components/ui/search-autocomplete';
+import { INVENTORY_COLUMNS } from '@crm/inventory/excel-columns';
+import { detectImportGaps } from '@crm/inventory/import-config';
+
 import { cn } from '@/lib/utils';
 import {
   commitImportAction,
@@ -18,6 +14,8 @@ import {
   type ImportState,
 } from '../import-actions';
 import { searchSuppliersAction } from '../search-actions';
+import { Button, Checkbox, Input, Label, SearchAutocomplete } from '@crm/ui';
+import type { SearchItem } from '@crm/ui';
 
 type ImportColumnMap = Partial<Record<string, string | null>>;
 

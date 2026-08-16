@@ -48,12 +48,12 @@ Egy termék teljes adatainak megtekintése és módosítása: azonosítók, kés
 ## Gyakori hibák / tippek
 
 - Összecsukott szekció mezői is elküldődnek mentéskor — a rendszer a meglévő értékeket megtartja.
-- BOM szerkesztés: lásd [Összeszerelések](/help/osszeszerelesek).
-- Képek: [Médiatár használata](/help/mediatar).
+- BOM (alkatrész) sorok a termék szerkesztő **Összeszerelés** szekciójában kezelhetők.
+- Képek: [Médiatár](/help/admin-mediatar).
 
 ## Kapcsolódó fejezetek
 
 - [Excel importálás](/help/excel-import)
-- [Összeszerelések](/help/osszeszerelesek)
+- [Terméklista és szűrés](/help/termeklista-es-szures)
 
-*Utolsó frissítés: 2026-06*
+*Utolsó frissítés: 2026-08*

@@ -1,10 +1,7 @@
 import { hasAnyPermission, requireAnyPermission } from '@crm/auth';
-import { connectDB, Supplier } from '@crm/db';
-import {
-  SUPPLIER_MANAGE_PERMISSION_KEYS,
-  SUPPLIER_READ_PERMISSION_KEYS,
-  primarySalesContactName,
-} from '@crm/lib';
+import { connectDB, Supplier } from '@crm/db-core';
+import { primarySalesContactName } from '@crm/lib';
+import { SUPPLIER_MANAGE_PERMISSION_KEYS, SUPPLIER_READ_PERMISSION_KEYS } from '@crm/inventory';
 import { Container, parseDataTableQuery, buildDataTableMongoQuery } from '@crm/ui';
 import type { ColumnDef } from '@crm/ui';
 import { SuppliersTable, type SupplierRow } from './_components/suppliers-table';

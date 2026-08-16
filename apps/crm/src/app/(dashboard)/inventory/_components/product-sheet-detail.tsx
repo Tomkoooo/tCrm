@@ -5,11 +5,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { ProductSkuLabel } from '@/components/product-sku-label';
-import { Button } from '@/components/ui/button';
+
 import { formatProductSkuLine } from '@crm/lib';
 import type { ProductTableRow } from '@/lib/inventory/product-table-columns';
 import { deleteProductAction } from '../actions';
 import { ProductEditPanel } from './product-edit-panel';
+import { Button } from '@crm/ui';
 
 const SKU_HINT =
   'CRM SKU = kategória előtag + beszállítói cikkszám. SM import módban a product_id_SM a forrás.';

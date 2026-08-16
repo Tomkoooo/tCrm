@@ -1,8 +1,9 @@
 'use client';
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { Label } from '@/components/ui/label';
+
 import { cn } from '@/lib/utils';
+import { Label } from '@crm/ui';
 
 const selectClassName = cn(
   'border-input bg-background ring-offset-background flex h-9 rounded-md border px-3 py-1 text-sm shadow-xs',

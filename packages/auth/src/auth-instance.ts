@@ -1,5 +1,5 @@
 import NextAuth from 'next-auth';
-import { ensurePublicUrlEnv } from '@crm/lib/mail-env';
+import { ensurePublicUrlEnv } from '@crm/mail/env';
 import { edgeAuthConfig } from './auth.config';
 import { authConfig } from './config';
 

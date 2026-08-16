@@ -2,15 +2,15 @@ import Link from 'next/link';
 import { ProductSkuLabel } from '@/components/product-sku-label';
 import mongoose from 'mongoose';
 import { requirePermission } from '@crm/auth';
-import { getInventoryDashboardSummary } from '@crm/core';
+import { getInventoryDashboardSummary } from '@crm/inventory';
 import { Container } from '@crm/ui';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+
 import {
   buildScopedProductFilter,
   getInventoryWarehouseScope,
 } from '@/lib/inventory/warehouse-scope';
 import { WarehouseFilter } from '../_components/warehouse-filter';
+import { Card, CardContent, CardHeader, CardTitle, Button } from '@crm/ui';
 
 function formatHuf(n: number) {
   return new Intl.NumberFormat('hu-HU', {

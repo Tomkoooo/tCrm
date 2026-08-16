@@ -1,9 +1,9 @@
 import Link from 'next/link';
 import { hasPermission, requirePermission } from '@crm/auth';
 import { classifyProductBomRoles } from '@crm/lib';
-import { connectDB, Product, StockLevel, Warehouse } from '@crm/db';
+import { connectDB, Product, StockLevel, Warehouse } from '@crm/db-core';
 import { Container, buildDataTableMongoQuery, parseDataTableQuery } from '@crm/ui';
-import { Button } from '@/components/ui/button';
+
 import { resolveProductThumbnailUrl } from '@/lib/product-thumbnail';
 import {
   formatProductStockSummary,
@@ -22,6 +22,7 @@ import {
   getInventoryWarehouseScope,
 } from '@/lib/inventory/warehouse-scope';
 import { InventoryTable } from './_components/inventory-table';
+import { Button } from '@crm/ui';
 
 function inventorySummary(
   total: number,

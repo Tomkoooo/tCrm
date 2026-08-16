@@ -3,13 +3,7 @@
 import { useActionState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Separator } from '@/components/ui/separator';
-import { EmployeeProfileFields, type CompanyOption } from '@/components/hr/employee-profile-fields';
+import { Button, Input, Label, Badge, Checkbox, Separator } from '@crm/ui';
 import { PermissionGroupSections } from '@/components/admin/permission-group-sections';
 import { createUserAction, updateUserAction, type UserFormState } from '../actions';
 
@@ -31,7 +25,6 @@ type UserFormProps = {
   mode: 'create' | 'edit';
   roles: RoleOption[];
   permissions: PermissionOption[];
-  companies: CompanyOption[];
   initial?: {
     id: string;
     name: string;
@@ -40,14 +33,6 @@ type UserFormProps = {
     roleIds: string[];
     directPermissionKeys: string[];
     isLastActiveAdmin?: boolean;
-    employee?: {
-      _id: string;
-      companyId: string;
-      employeeNumber?: string;
-      department?: string;
-      phone?: string;
-      hrNotes?: string;
-    };
   };
   currentUserId?: string;
 };
@@ -72,14 +57,7 @@ function FormSection({
   );
 }
 
-export function UserForm({
-  mode,
-  roles,
-  permissions,
-  companies,
-  initial,
-  currentUserId,
-}: UserFormProps) {
+export function UserForm({ mode, roles, permissions, initial, currentUserId }: UserFormProps) {
   const router = useRouter();
   const bound = mode === 'create' ? createUserAction : updateUserAction.bind(null, initial!.id);
 
@@ -242,32 +220,6 @@ export function UserForm({
           )}
         />
       </FormSection>
-
-      {companies.length > 0 && (
-        <>
-          <Separator />
-          <FormSection
-            title="Dolgozói profil"
-            description="Beosztás és kérelmek — automatikusan összekötve a fiókkal."
-          >
-            <EmployeeProfileFields
-              companies={companies}
-              defaultChecked
-              initial={initial?.employee}
-              showCheckbox={false}
-              compact
-            />
-            {mode === 'edit' && initial?.employee && (
-              <div className="flex items-center gap-2">
-                <Checkbox id="unlinkEmployee" name="unlinkEmployee" value="true" />
-                <Label htmlFor="unlinkEmployee" className="text-sm font-normal">
-                  Dolgozói profil leválasztása (vendég rekord marad)
-                </Label>
-              </div>
-            )}
-          </FormSection>
-        </>
-      )}
 
       <div className="flex justify-end border-t pt-4">
         <Button type="submit" loading={pending} disabled={pending} size="lg">

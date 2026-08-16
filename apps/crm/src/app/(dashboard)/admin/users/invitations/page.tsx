@@ -1,9 +1,8 @@
 import Link from 'next/link';
 import { requirePermission } from '@crm/auth';
-import { buildInviteLink, getInvitationStatus } from '@crm/core';
-import { connectDB, Role, User, UserInvitation } from '@crm/db';
-import { Container } from '@crm/ui';
-import { Button } from '@/components/ui/button';
+import { buildInviteLink, getInvitationStatus, UserInvitation } from '@crm/admin';
+import { connectDB } from '@crm/db-core';
+import { Container, Button } from '@crm/ui';
 import { InvitationsTable, type InvitationRow } from './_components/invitations-table';
 
 export default async function UserInvitationsPage() {

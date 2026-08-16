@@ -5,10 +5,11 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ProductSkuLabel } from '@/components/product-sku-label';
 import { Container } from '@crm/ui';
-import { Button } from '@/components/ui/button';
+
 import { productNameFromParts } from '@crm/lib';
 import type { ProductTableRow } from '@/lib/inventory/product-table-columns';
 import { ProductEditPanel } from './product-edit-panel';
+import { Button } from '@crm/ui';
 
 export function ProductDetailShell({
   row,

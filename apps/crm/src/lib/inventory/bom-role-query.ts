@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { Product } from '@crm/db';
+import { Product } from '@crm/db-core';
 import type { ProductBomRole } from '@crm/lib';
 
 export async function loadBomComponentProductIds(): Promise<Set<string>> {

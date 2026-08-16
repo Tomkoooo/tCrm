@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import mongoose from 'mongoose';
 import { requirePermission } from '@crm/auth';
-import { connectDB, Category, Product } from '@crm/db';
+import { connectDB, Category, Product } from '@crm/db-core';
 import { categorySchema } from '@crm/lib/validation';
 
 export type CategoryFormState =

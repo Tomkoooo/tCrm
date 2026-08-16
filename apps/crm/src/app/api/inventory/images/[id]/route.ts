@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { auth } from '@crm/auth';
-import { connectDB, getUploadsBucket, Media } from '@crm/db';
+import { connectDB, getUploadsBucket, Media } from '@crm/db-core';
 async function streamGridFs(fileId: ObjectId, contentType: string) {
   const bucket = getUploadsBucket();
   const stream = bucket.openDownloadStream(fileId);

@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from 'react';
 import { toast } from 'sonner';
 import { DataTable } from '@crm/ui';
 import type { ColumnDef, DataTableQuery } from '@crm/ui';
-import { Checkbox } from '@/components/ui/checkbox';
+
 import { ProductSkuLabel } from '@/components/product-sku-label';
 import { formatProductSkuLine } from '@crm/lib';
 import type { ProductTableRow } from '@/lib/inventory/product-table-columns';
@@ -13,6 +13,7 @@ import { toggleProductActiveAction } from '../actions';
 import { InventoryTableToolbar } from './inventory-toolbar';
 import { ProductBomBadges } from './product-bom-badges';
 import { ProductSheetDetail } from './product-sheet-detail';
+import { Checkbox } from '@crm/ui';
 
 export type InventoryTableRow = ProductTableRow;
 

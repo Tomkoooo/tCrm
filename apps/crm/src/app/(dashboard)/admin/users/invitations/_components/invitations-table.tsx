@@ -5,7 +5,7 @@ import { CopyIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { DataTable } from '@crm/ui';
 import type { ColumnDef, DataTableQuery } from '@crm/ui';
-import { Button } from '@/components/ui/button';
+import { Button } from '@crm/ui';
 
 export type InvitationRow = {
   _id: string;

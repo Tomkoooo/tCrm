@@ -4,10 +4,10 @@ import { useActionState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { resetPasswordAction, type ResetPasswordFormState } from './actions';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@crm/ui';
+import { Input } from '@crm/ui';
+import { Label } from '@crm/ui';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@crm/ui';
 import { useBranding } from '@/components/branding-provider';
 
 const initialState: ResetPasswordFormState = { success: false };

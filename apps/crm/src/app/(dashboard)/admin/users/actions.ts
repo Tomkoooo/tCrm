@@ -4,30 +4,9 @@ import { revalidatePath } from 'next/cache';
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 import { requireAuth, requirePermission } from '@crm/auth';
-import {
-  connectDB,
-  Company,
-  Employee,
-  Permission,
-  Role,
-  User,
-  getAdminRoleId,
-  isLastActiveAdmin,
-} from '@crm/db';
-import {
-  provisionUserWithEmployee,
-  upsertEmployeeForUser,
-  removeEmployeeLinkForUser,
-  createAndSendInvitation,
-  issuePasswordReset,
-} from '@crm/core';
-import { inviteUserSchema } from '@crm/lib/validation';
-import {
-  createUserSchema,
-  updateUserSchema,
-  parseLinkEmployeeFromForm,
-  employeeProfileFromForm,
-} from '@crm/lib/validation';
+import { connectDB, Permission, Role, User, getAdminRoleId, isLastActiveAdmin } from '@crm/db-core';
+import { createUser, createAndSendInvitation, issuePasswordReset } from '@crm/admin';
+import { createUserSchema, updateUserSchema, inviteUserSchema } from '@crm/admin/validation';
 
 export type UserFormState =
   | { success: false; fieldErrors?: Record<string, string[]>; message?: string }
@@ -109,49 +88,22 @@ export async function createUserAction(
   const roleError = await validateRoleIds(parsed.data.roleIds);
   if (roleError) return { success: false, message: roleError };
 
-  const email = parsed.data.email.toLowerCase();
-  const existing = await User.findOne({ email }).exec();
-  if (existing) {
-    return { success: false, message: 'Ez az e-mail cím már foglalt.' };
-  }
-
-  const companyIdRaw = String(formData.get('companyId') ?? '').trim();
-  const linkEmployee = parseLinkEmployeeFromForm(formData) || Boolean(companyIdRaw);
-  const profile = employeeProfileFromForm(formData, linkEmployee);
-
   try {
     const roleIds = parsed.data.roleIds
       .filter((id) => mongoose.Types.ObjectId.isValid(id))
       .map((id) => new mongoose.Types.ObjectId(id));
 
-    const { user } = await provisionUserWithEmployee({
+    const user = await createUser({
       name: parsed.data.name,
-      email,
+      email: parsed.data.email,
       password: parsed.data.password,
       roleIds,
       directPermissionKeys: parsed.data.directPermissionKeys,
       isActive: parsed.data.isActive,
-      skipCompanyScope: true,
-      employee: profile?.companyId
-        ? {
-            companyId: new mongoose.Types.ObjectId(profile.companyId),
-            employeeNumber: profile.employeeNumber,
-            department: profile.department,
-            phone: profile.phone,
-            hrNotes: profile.hrNotes,
-          }
-        : undefined,
     });
 
     revalidatePath('/admin/users');
-    revalidatePath('/accounting/employees');
-    return {
-      success: true,
-      message: profile?.companyId
-        ? 'Felhasználó és dolgozói profil létrehozva.'
-        : 'Felhasználó létrehozva.',
-      id: user._id.toString(),
-    };
+    return { success: true, message: 'Felhasználó létrehozva.', id: user._id.toString() };
   } catch (e) {
     return { success: false, message: e instanceof Error ? e.message : 'Hiba történt.' };
   }
@@ -211,40 +163,8 @@ export async function updateUserAction(
 
   await user.save();
 
-  const companyIdRaw = String(formData.get('companyId') ?? '').trim();
-  const linkEmployee = parseLinkEmployeeFromForm(formData) || Boolean(companyIdRaw);
-  const profile = employeeProfileFromForm(formData, linkEmployee);
-  const unlink = formData.get('unlinkEmployee') === 'on';
-
-  try {
-    if (unlink) {
-      await removeEmployeeLinkForUser(user._id);
-    } else if (profile?.companyId) {
-      if (!mongoose.Types.ObjectId.isValid(profile.companyId)) {
-        return { success: false, message: 'Érvénytelen cég.' };
-      }
-      await upsertEmployeeForUser(
-        user._id,
-        {
-          name: user.name,
-          email: user.email,
-          companyId: new mongoose.Types.ObjectId(profile.companyId),
-          employeeNumber: profile.employeeNumber,
-          department: profile.department,
-          phone: profile.phone,
-          hrNotes: profile.hrNotes,
-          isActive: user.isActive,
-        },
-        { skipCompanyScope: true }
-      );
-    }
-  } catch (e) {
-    return { success: false, message: e instanceof Error ? e.message : 'Dolgozói profil hiba.' };
-  }
-
   revalidatePath('/admin/users');
   revalidatePath(`/admin/users/${userId}`);
-  revalidatePath('/accounting/employees');
   return { success: true, message: 'Felhasználó mentve.' };
 }
 
@@ -252,14 +172,12 @@ export async function getUsersEditorData() {
   await requirePermission('users:write');
   await connectDB();
 
-  const [roles, permissions, companies] = await Promise.all([
+  const [roles, permissions] = await Promise.all([
     Role.find().sort({ name: 1 }).lean().exec(),
     Permission.find().sort({ group: 1, key: 1 }).lean().exec(),
-    Company.find({ isActive: true }).sort({ name: 1 }).lean().exec(),
   ]);
 
   return {
-    companies: companies.map((c) => ({ _id: String(c._id), name: c.name })),
     roles: roles.map((r) => ({
       id: String(r._id),
       key: r.key,
@@ -291,12 +209,6 @@ export async function inviteUserAction(
     email: formData.get('email'),
     roleIds,
     directPermissionKeys,
-    companyId: formData.get('companyId') || undefined,
-    isEmployee: formData.get('isEmployee') === 'on' || formData.get('isEmployee') === 'true',
-    employeeNumber: formData.get('employeeNumber') || undefined,
-    department: formData.get('department') || undefined,
-    phone: formData.get('phone') || undefined,
-    hrNotes: formData.get('hrNotes') || undefined,
     expiresInDays: formData.get('expiresInDays') || 7,
   });
 
@@ -306,11 +218,6 @@ export async function inviteUserAction(
 
   const roleError = await validateRoleIds(parsed.data.roleIds);
   if (roleError) return { success: false, message: roleError };
-
-  const companyIdRaw = parsed.data.companyId?.trim();
-  if (parsed.data.isEmployee && companyIdRaw && !mongoose.Types.ObjectId.isValid(companyIdRaw)) {
-    return { success: false, message: 'Érvénytelen cég.' };
-  }
 
   try {
     const roleObjectIds = parsed.data.roleIds
@@ -322,15 +229,6 @@ export async function inviteUserAction(
       email: parsed.data.email,
       roleIds: roleObjectIds,
       directPermissionKeys: parsed.data.directPermissionKeys,
-      companyId:
-        parsed.data.isEmployee && companyIdRaw
-          ? new mongoose.Types.ObjectId(companyIdRaw)
-          : undefined,
-      isEmployee: parsed.data.isEmployee,
-      employeeNumber: parsed.data.employeeNumber,
-      department: parsed.data.department,
-      phone: parsed.data.phone,
-      hrNotes: parsed.data.hrNotes,
       invitedBy: new mongoose.Types.ObjectId(actor.id),
       expiresInDays: parsed.data.expiresInDays,
     });
@@ -370,7 +268,6 @@ export async function getUserForEdit(userId: string) {
   if (!user) return null;
 
   const lastAdmin = await isLastActiveAdmin(userId);
-  const employee = await Employee.findOne({ userId: user._id }).lean().exec();
 
   return {
     id: String(user._id),
@@ -380,15 +277,5 @@ export async function getUserForEdit(userId: string) {
     roleIds: (user.roleIds ?? []).map((id) => String(id)),
     directPermissionKeys: user.directPermissionKeys ?? [],
     isLastActiveAdmin: lastAdmin,
-    employee: employee
-      ? {
-          _id: String(employee._id),
-          companyId: String(employee.companyId),
-          employeeNumber: employee.employeeNumber,
-          department: employee.department,
-          phone: employee.phone,
-          hrNotes: employee.hrNotes,
-        }
-      : undefined,
   };
 }

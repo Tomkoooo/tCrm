@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { connectDB, hasAnyAdminUser } from '@crm/db';
+import { connectDB, hasAnyAdminUser } from '@crm/db-core';
 import { SetupForm } from './setup-form';
 
 export default async function SetupPage() {

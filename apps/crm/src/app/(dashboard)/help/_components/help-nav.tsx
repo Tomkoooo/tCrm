@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils';
+import { cn } from '@crm/lib';
 import type { HelpSection } from '@/lib/help/types';
 
 export function HelpNav({ sections }: { sections: HelpSection[] }) {

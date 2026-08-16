@@ -2,8 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { requirePermission } from '@crm/auth';
-import { getBranding, updateBranding } from '@crm/db';
-import { brandingUpdateSchema } from '@crm/lib/validation';
+import { getBranding, updateBranding } from '@crm/db-core';
+import { brandingUpdateSchema } from '@crm/admin/validation';
 
 export type BrandingFormState =
   | { success: false; fieldErrors?: Record<string, string[]>; message?: string }

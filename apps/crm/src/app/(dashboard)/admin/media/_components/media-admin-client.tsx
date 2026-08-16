@@ -1,6 +1,6 @@
 'use client';
 
-import { MediaLibraryPanel } from '@/components/media/media-library-panel';
+import { MediaLibraryPanel } from '@crm/media/components';
 
 export function MediaAdminClient({
   canUpload,

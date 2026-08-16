@@ -3,12 +3,12 @@
 import { useActionState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
+import { Button } from '@crm/ui';
+import { Input } from '@crm/ui';
+import { Label } from '@crm/ui';
+import { Checkbox } from '@crm/ui';
+import { Textarea } from '@crm/ui';
+import { Badge } from '@crm/ui';
 import { RichTextEditor } from './rich-text-editor';
 import { updateMailTemplateAction, type MailTemplateFormState } from '../actions';
 

@@ -1,39 +1,40 @@
 ---
 title: Szerepkörök és jogosultságok
-description: RBAC mátrix — szerepkörök és finomhangolt jogok kezelése.
-order: 61
+description: Dinamikus jogosultságkezelés — szerepkörök létrehozása és jogok hozzárendelése kódmódosítás nélkül.
+order: 2
 section: Adminisztráció
 permissions:
   - roles:manage
 ---
 
-## Mire való
-
-Szerepkörök létrehozása és jogosultságok hozzárendelése; rendszer jogok szinkronizálása.
-
 ## Hol találod
 
-**Adminisztráció → Szerepkörök** (`/admin/permissions`)
+**Oldalsáv → Adminisztráció → Szerepkörök** (`/admin/permissions`)
 
-## Szükséges jogosultság
+## Hogyan működik
 
-`roles:manage`
+A rendszerben a jogosultságok **jogkulcsokból** (pl. `users:read`, `mail:manage`) és **szerepkörökből** épülnek fel. Egy felhasználó tényleges (effektív) jogköre a hozzá rendelt szerepkörök jogainak uniója, plusz az esetleges egyedi jogkulcsai.
 
-## Lépésről lépésre
+## Baseline jogosultságok szinkronizálása
 
-1. Nyisd meg a **Szerepkörök és jogosultságok** oldalt.
-2. Bontsd ki a szerepkör kártyát.
-3. Pipáld ki a kívánt **jogosultság kulcsokat**.
-4. Mentsd a változtatásokat.
-5. **Baseline szinkron** — frissíti a rendszer alap jogait és szerepköröket új verzió után.
+A lap tetején lévő **Baseline jogosultságok szinkronizálása** gomb frissíti az összes rendszer jogkulcsot és a rendszer szerepkörök (pl. `admin`) jogait a jelenlegi verzió szerint. Egyedi (nem rendszer) szerepkörök érintetlenek maradnak. Ezt érdemes lefuttatni, ha:
 
-## Gyakori tippek
+- frissítés után új jogkulcsok jelentek meg a rendszerben,
+- egy rendszer szerepkör (pl. `admin`) hiányos jogokkal rendelkezik.
 
-- A felhasználók a **Fiók** oldalon látják az érvényes jogokat.
-- Modulok (pl. Készlet, Logisztika) egész csoportok jogait egy-egy kulcs zárja (`inventory:read`, `logistics:read`).
+A szinkron után frissítsd az oldalt — a jogosultságok azonnal érvénybe lépnek, nem szükséges új bejelentkezés.
+
+## Szerepkör jogainak módosítása
+
+Nyisd meg a szerepkör kártyáját, és a jelölőnégyzetekkel kapcsold ki/be az egyes jogokat. A **rendszer `admin` szerepkör jogai zárolva vannak** — ez mindig minden jelenleg regisztrált jogkulcsot tartalmaz, és nem szerkeszthető soronként (a szinkron gombbal frissül).
+
+## Új szerepkör létrehozása
+
+A **Új szerepkör** panelben adj meg egy kulcsot (pl. `sales_rep`) és egy megjelenítendő nevet, majd hozd létre. Utána a szerepkör kártyáján kapcsold be a szükséges jogokat.
 
 ## Kapcsolódó fejezetek
 
-- [Felhasználók és meghívók](/help/admin-felhasznalok)
+- [Felhasználók kezelése](/help/admin-felhasznalok)
+- [Fiókod és jogosultságaid](/help/fiok)
 
-*Utolsó frissítés: 2026-06*
+*Utolsó frissítés: 2026-07*

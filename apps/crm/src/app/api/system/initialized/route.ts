@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { connectDB, hasAnyAdminUser } from '@crm/db';
+import { connectDB, hasAnyAdminUser } from '@crm/db-core';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

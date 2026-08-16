@@ -42,18 +42,33 @@ importers:
 
   apps/crm:
     dependencies:
+      '@crm/admin':
+        specifier: workspace:*
+        version: link:../../packages/admin
       '@crm/auth':
         specifier: workspace:*
         version: link:../../packages/auth
-      '@crm/core':
+      '@crm/db-core':
         specifier: workspace:*
-        version: link:../../packages/core
-      '@crm/db':
+        version: link:../../packages/db-core
+      '@crm/employee-core':
         specifier: workspace:*
-        version: link:../../packages/db
+        version: link:../../packages/employee-core
+      '@crm/inventory':
+        specifier: workspace:*
+        version: link:../../packages/inventory
       '@crm/lib':
         specifier: workspace:*
         version: link:../../packages/lib
+      '@crm/mail':
+        specifier: workspace:*
+        version: link:../../packages/mail
+      '@crm/media':
+        specifier: workspace:*
+        version: link:../../packages/media
+      '@crm/rbac':
+        specifier: workspace:*
+        version: link:../../packages/rbac
       '@crm/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -102,6 +117,9 @@ importers:
       date-fns:
         specifier: ^4.3.0
         version: 4.3.0
+      driver.js:
+        specifier: ^1.8.0
+        version: 1.8.0
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
@@ -203,17 +221,69 @@ importers:
         specifier: ^4.0.18
         version: 4.1.7(@types/node@20.19.41)(jsdom@26.1.0)(vite@8.0.14(@types/node@20.19.41)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
 
+  packages/admin:
+    dependencies:
+      '@crm/db-core':
+        specifier: workspace:*
+        version: link:../db-core
+      '@crm/mail':
+        specifier: workspace:*
+        version: link:../mail
+      '@crm/rbac':
+        specifier: workspace:*
+        version: link:../rbac
+      bcryptjs:
+        specifier: ^2.4.3
+        version: 2.4.3
+      zod:
+        specifier: ^4.3.6
+        version: 4.4.3
+    devDependencies:
+      '@crm/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@crm/test-utils':
+        specifier: workspace:*
+        version: link:../test-utils
+      '@crm/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/bcryptjs':
+        specifier: ^2.4.6
+        version: 2.4.6
+      '@types/node':
+        specifier: ^20
+        version: 20.19.41
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.4(jiti@2.7.0)
+      mongodb-memory-server:
+        specifier: ^11.2.0
+        version: 11.2.0
+      mongoose:
+        specifier: ^9.2.1
+        version: 9.6.2
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.18
+        version: 4.1.7(@types/node@20.19.41)(jsdom@26.1.0)(vite@8.0.14(@types/node@20.19.41)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
+
   packages/auth:
     dependencies:
       '@auth/mongodb-adapter':
         specifier: ^3.11.1
         version: 3.11.2(mongodb@6.21.0)
-      '@crm/db':
+      '@crm/db-core':
         specifier: workspace:*
-        version: link:../db
+        version: link:../db-core
       '@crm/lib':
         specifier: workspace:*
         version: link:../lib
+      '@crm/mail':
+        specifier: workspace:*
+        version: link:../mail
       bcryptjs:
         specifier: ^2.4.3
         version: 2.4.3
@@ -226,10 +296,16 @@ importers:
       next-auth:
         specifier: 5.0.0-beta.30
         version: 5.0.0-beta.30(next@16.1.6(@playwright/test@1.60.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
+      zod:
+        specifier: ^4.3.6
+        version: 4.4.3
     devDependencies:
       '@crm/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@crm/test-utils':
+        specifier: workspace:*
+        version: link:../test-utils
       '@crm/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
@@ -252,60 +328,8 @@ importers:
         specifier: ^4.0.18
         version: 4.1.7(@types/node@20.19.41)(jsdom@26.1.0)(vite@8.0.14(@types/node@20.19.41)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
 
-  packages/core:
+  packages/db-core:
     dependencies:
-      '@crm/db':
-        specifier: workspace:*
-        version: link:../db
-      '@crm/lib':
-        specifier: workspace:*
-        version: link:../lib
-      bcryptjs:
-        specifier: ^2.4.3
-        version: 2.4.3
-      mongoose:
-        specifier: ^9.0.0
-        version: 9.6.2
-      nodemailer:
-        specifier: ^7.0.7
-        version: 7.0.13
-      xlsx:
-        specifier: ^0.18.5
-        version: 0.18.5
-    devDependencies:
-      '@crm/eslint-config':
-        specifier: workspace:*
-        version: link:../eslint-config
-      '@crm/tsconfig':
-        specifier: workspace:*
-        version: link:../tsconfig
-      '@types/bcryptjs':
-        specifier: ^2.4.6
-        version: 2.4.6
-      '@types/node':
-        specifier: ^20
-        version: 20.19.41
-      '@types/nodemailer':
-        specifier: ^6.4.17
-        version: 6.4.23
-      eslint:
-        specifier: ^9.17.0
-        version: 9.39.4(jiti@2.7.0)
-      mongodb-memory-server:
-        specifier: ^11.2.0
-        version: 11.2.0
-      typescript:
-        specifier: ^5.7.2
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.13)(@types/node@20.19.41)(jiti@2.7.0)(jsdom@26.1.0)(lightningcss@1.32.0)(tsx@4.22.3)(yaml@2.9.0)
-
-  packages/db:
-    dependencies:
-      bcryptjs:
-        specifier: ^2.4.3
-        version: 2.4.3
       mongoose:
         specifier: ^9.2.1
         version: 9.6.2
@@ -316,21 +340,52 @@ importers:
       '@crm/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
-      '@types/bcryptjs':
-        specifier: ^2.4.6
-        version: 2.4.6
       '@types/node':
         specifier: ^20
         version: 20.19.41
       eslint:
         specifier: ^9.17.0
         version: 9.39.4(jiti@2.7.0)
-      tsx:
-        specifier: ^4.19.2
-        version: 4.22.3
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
+
+  packages/employee-core:
+    dependencies:
+      '@crm/db-core':
+        specifier: workspace:*
+        version: link:../db-core
+      mongoose:
+        specifier: ^9.2.1
+        version: 9.6.2
+      next:
+        specifier: '>=15.0.0'
+        version: 16.1.6(@babel/core@7.29.7)(@playwright/test@1.60.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+    devDependencies:
+      '@crm/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@crm/test-utils':
+        specifier: workspace:*
+        version: link:../test-utils
+      '@crm/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/node':
+        specifier: ^20
+        version: 20.19.41
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.4(jiti@2.7.0)
+      mongodb-memory-server:
+        specifier: ^11.2.0
+        version: 11.2.0
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.18
+        version: 4.1.7(@types/node@20.19.41)(jsdom@26.1.0)(vite@8.0.14(@types/node@20.19.41)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
 
   packages/eslint-config:
     devDependencies:
@@ -358,6 +413,46 @@ importers:
       typescript-eslint:
         specifier: ^8.18.2
         version: 8.60.0(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3)
+
+  packages/inventory:
+    dependencies:
+      '@crm/db-core':
+        specifier: workspace:*
+        version: link:../db-core
+      '@crm/lib':
+        specifier: workspace:*
+        version: link:../lib
+      '@crm/media':
+        specifier: workspace:*
+        version: link:../media
+      '@crm/rbac':
+        specifier: workspace:*
+        version: link:../rbac
+      mongoose:
+        specifier: ^9.2.1
+        version: 9.6.2
+      xlsx:
+        specifier: ^0.18.5
+        version: 0.18.5
+    devDependencies:
+      '@crm/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@crm/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/node':
+        specifier: ^20
+        version: 20.19.41
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.4(jiti@2.7.0)
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.18
+        version: 4.1.7(@types/node@20.19.41)(jsdom@26.1.0)(vite@8.0.14(@types/node@20.19.41)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
 
   packages/lib:
     dependencies:
@@ -389,6 +484,163 @@ importers:
       vitest:
         specifier: ^4.0.18
         version: 4.1.7(@types/node@20.19.41)(jsdom@26.1.0)(vite@8.0.14(@types/node@20.19.41)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
+
+  packages/mail:
+    dependencies:
+      '@crm/db-core':
+        specifier: workspace:*
+        version: link:../db-core
+      nodemailer:
+        specifier: ^7.0.7
+        version: 7.0.13
+    devDependencies:
+      '@crm/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@crm/test-utils':
+        specifier: workspace:*
+        version: link:../test-utils
+      '@crm/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/node':
+        specifier: ^20
+        version: 20.19.41
+      '@types/nodemailer':
+        specifier: ^6.4.17
+        version: 6.4.23
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.4(jiti@2.7.0)
+      mongodb-memory-server:
+        specifier: ^11.2.0
+        version: 11.2.0
+      mongoose:
+        specifier: ^9.2.1
+        version: 9.6.2
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.18
+        version: 4.1.7(@types/node@20.19.41)(jsdom@26.1.0)(vite@8.0.14(@types/node@20.19.41)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
+
+  packages/media:
+    dependencies:
+      '@crm/auth':
+        specifier: workspace:*
+        version: link:../auth
+      '@crm/db-core':
+        specifier: workspace:*
+        version: link:../db-core
+      '@crm/lib':
+        specifier: workspace:*
+        version: link:../lib
+      '@crm/rbac':
+        specifier: workspace:*
+        version: link:../rbac
+      '@crm/ui':
+        specifier: workspace:*
+        version: link:../ui
+      lucide-react:
+        specifier: ^0.574.0
+        version: 0.574.0(react@19.2.3)
+      next:
+        specifier: '>=15.0.0'
+        version: 16.1.6(@babel/core@7.29.7)(@playwright/test@1.60.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      react:
+        specifier: '>=19.0.0'
+        version: 19.2.3
+      sonner:
+        specifier: ^2.0.7
+        version: 2.0.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+    devDependencies:
+      '@crm/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@crm/test-utils':
+        specifier: workspace:*
+        version: link:../test-utils
+      '@crm/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/node':
+        specifier: ^20
+        version: 20.19.41
+      '@types/react':
+        specifier: ^19
+        version: 19.2.15
+      '@types/react-dom':
+        specifier: ^19
+        version: 19.2.3(@types/react@19.2.15)
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.4(jiti@2.7.0)
+      mongodb-memory-server:
+        specifier: ^11.2.0
+        version: 11.2.0
+      mongoose:
+        specifier: ^9.2.1
+        version: 9.6.2
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.18
+        version: 4.1.7(@types/node@20.19.41)(jsdom@26.1.0)(vite@8.0.14(@types/node@20.19.41)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
+
+  packages/rbac:
+    dependencies:
+      '@crm/db-core':
+        specifier: workspace:*
+        version: link:../db-core
+    devDependencies:
+      '@crm/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@crm/test-utils':
+        specifier: workspace:*
+        version: link:../test-utils
+      '@crm/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/node':
+        specifier: ^20
+        version: 20.19.41
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.4(jiti@2.7.0)
+      mongodb-memory-server:
+        specifier: ^11.2.0
+        version: 11.2.0
+      mongoose:
+        specifier: ^9.2.1
+        version: 9.6.2
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.18
+        version: 4.1.7(@types/node@20.19.41)(jsdom@26.1.0)(vite@8.0.14(@types/node@20.19.41)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
+
+  packages/test-utils:
+    dependencies:
+      mongodb-memory-server:
+        specifier: ^11.2.0
+        version: 11.2.0
+    devDependencies:
+      '@crm/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@crm/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.4(jiti@2.7.0)
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
 
   packages/tsconfig: {}
 
@@ -464,6 +716,9 @@ importers:
       '@crm/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      '@tailwindcss/typography':
+        specifier: ^0.5.20
+        version: 0.5.20(tailwindcss@4.3.0)
       '@types/react':
         specifier: ^19
         version: 19.2.15
@@ -476,6 +731,12 @@ importers:
       jsdom:
         specifier: ^26.0.0
         version: 26.1.0
+      tailwindcss:
+        specifier: ^4
+        version: 4.3.0
+      tw-animate-css:
+        specifier: ^1.4.0
+        version: 1.4.0
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
@@ -3008,6 +3269,9 @@ packages:
     resolution: {integrity: sha512-QM8q3zDe58hqUqjraQOmzZ1LIH9SWQJTlEKCH4kJ2oQvLZk7RbQXvtDM2XEq3fwkV9CCvvH4LA0AV+ogFsBM2Q==}
     engines: {node: '>=8'}
 
+  driver.js@1.8.0:
+    resolution: {integrity: sha512-+8/IO7h1v14IzWh2GP60N7T3PFZweXwdn5e5POuxRSBoCYUojsBxzqawPeXh3YZIibRy7EehYNEyxe7slwwtdg==}
+
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
     engines: {node: '>= 0.4'}
@@ -3408,7 +3672,7 @@ packages:
   git-raw-commits@4.0.0:
     resolution: {integrity: sha512-ICsMM1Wk8xSGMowkOmPrzo2Fgmfo4bMHLNX6ytHjajRJUqvHOw/TFapQ+QG75c3X/tTDDhOSRPGC52dDbNM8FQ==}
     engines: {node: '>=16'}
-    deprecated: This package is no longer maintained. For the JavaScript API, please use @conventional-changelog/git-client instead.
+    deprecated: Deprecated and no longer maintained. Use @conventional-changelog/git-client instead.
     hasBin: true
 
   glob-parent@5.1.2:
@@ -7718,6 +7982,8 @@ snapshots:
     dependencies:
       is-obj: 2.0.0
 
+  driver.js@1.8.0: {}
+
   dunder-proto@1.0.1:
     dependencies:
       call-bind-apply-helpers: 1.0.2
@@ -7909,6 +8175,7 @@ snapshots:
       '@esbuild/win32-arm64': 0.28.0
       '@esbuild/win32-ia32': 0.28.0
       '@esbuild/win32-x64': 0.28.0
+    optional: true
 
   escalade@3.2.0: {}
 
@@ -10212,6 +10479,7 @@ snapshots:
       esbuild: 0.28.0
     optionalDependencies:
       fsevents: 2.3.3
+    optional: true
 
   turbo@2.9.15:
     optionalDependencies:

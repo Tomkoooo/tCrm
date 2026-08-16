@@ -1,5 +1,5 @@
 import { requirePermission } from '@crm/auth';
-import { connectDB, MailTemplate } from '@crm/db';
+import { connectDB, MailTemplate } from '@crm/db-core';
 import { Container, parseDataTableQuery, buildDataTableMongoQuery } from '@crm/ui';
 import type { ColumnDef } from '@crm/ui';
 import { MailTemplatesTable, type MailTemplateRow } from './_components/mail-templates-table';

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requirePermission } from '@crm/auth';
-import { getImportTemplateXlsx } from '@crm/core/inventory/import-template';
+import { getImportTemplateXlsx } from '@crm/inventory/import-template';
 
 export const runtime = 'nodejs';
 

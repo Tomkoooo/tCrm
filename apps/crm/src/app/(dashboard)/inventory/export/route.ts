@@ -4,8 +4,8 @@ import {
   exportInventoryXlsx,
   excelColumnFromWarehouseKey,
   type InventoryExportEnrichment,
-} from '@crm/core';
-import { connectDB, Product, StockLevel, Supplier, Warehouse, Category } from '@crm/db';
+} from '@crm/inventory';
+import { connectDB, Product, StockLevel, Supplier, Warehouse, Category } from '@crm/db-core';
 import { INVENTORY_PRODUCT_COLUMNS } from '@/lib/inventory/product-table-columns';
 import { buildProductListFilter, parseSkuListParam } from '@/lib/inventory/product-list-filter';
 import { getInventoryWarehouseScope } from '@/lib/inventory/warehouse-scope';

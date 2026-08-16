@@ -2,21 +2,23 @@
 
 Single source of truth for system design, boundaries, and conventions.
 
-**Pair with:** [rules.md](./rules.md), [design.md](./design.md)
+**Pair with:** [rules.md](./rules.md), [design.md](./design.md), [AGENT_HANDOFF.md](./AGENT_HANDOFF.md)
+
+**This file describes the rebuilt system.** The pre-rebuild codebase (inventory, logistics, HR/accounting, titoktár) was deleted and rebuilt from scratch per this plan; only the foundation slice below currently exists. If you find code or docs that reference `@crm/core`, `@crm/db`, `/inventory`, `/logistics`, `/accounting`, or `packages/core`, it is either dead reference material (`_legacy-core-reference/`, kept only for porting old logic) or stale — flag it, don't build on it.
 
 ---
 
 ## 1. Vision & Goals
 
-**tCrm** is an internal CRM for full operations (inventory, builds, logistics, offers, accounting) with a path to a sellable multi-tenant SaaS product.
+**tCrm** is an internal CRM, currently at its foundation slice (auth, dynamic RBAC, admin tooling), with a path toward the fuller operations platform (inventory, logistics, offers, accounting) described in the original plan.
 
 | Goal | Approach |
 |------|----------|
-| Beautiful, consistent UX | 3SGP shell + design system (shadcn New York + zinc) |
+| Beautiful, consistent UX | 3SGP-derived shell + design system (shadcn New York + zinc) |
 | Maintainable & extensible | Turborepo monorepo, feature-based packages |
 | Production DevOps | Docker, GitHub Actions, Husky, Vitest |
 | Flexible RBAC | Data-driven permissions — admin assigns without code changes |
-| Data-centric UI | Dynamic tables/filters (Phase 1) |
+| Installable | PWA support (manifest, service worker, install prompt) |
 
 ---
 
@@ -27,13 +29,17 @@ flowchart LR
   root[tCrm/] --> apps[apps/]
   root --> packages[packages/]
   root --> docker[docker/]
-  apps --> crm["crm/ Next.js 16"]
-  apps --> landing["landing/ Phase 2 tWeb fork"]
-  packages --> ui["ui/ shared components"]
-  packages --> lib["lib/ utils + zod"]
-  packages --> db["db/ mongoose"]
-  packages --> auth["auth/ Auth.js + RBAC"]
-  packages --> core["core/ business logic"]
+  apps --> crm["crm/ Next.js 16 (@crm/app)"]
+  packages --> ui["ui/ shared components + DataTable"]
+  packages --> lib["lib/ utils + zod + env"]
+  packages --> dbcore["db-core/ mongoose connection + models"]
+  packages --> auth["auth/ Auth.js + RBAC session"]
+  packages --> rbac["rbac/ permission registry + baseline sync"]
+  packages --> admin["admin/ users, invitations, roles seed"]
+  packages --> mail["mail/ templated mail sender"]
+  packages --> media["media/ media library service"]
+  packages --> inventory["inventory/ products, Excel import, stock"]
+  packages --> employeecore["employee-core/ scaffolding, not yet wired"]
 ```
 
 ### Package responsibilities
@@ -41,47 +47,56 @@ flowchart LR
 | Package | Purpose |
 |---------|---------|
 | `@crm/app` (`apps/crm`) | Main Next.js application — routes, app-specific UI |
-| `@crm/ui` | Shared shadcn primitives + Container |
-| `@crm/lib` | `cn()`, Zod schemas, date/pagination utils |
-| `@crm/db` | Mongoose connection, models, repositories, seed |
-| `@crm/auth` | Auth.js v5, session helpers, permission resolution |
-| `@crm/core` | Cross-cutting business logic (Phase 1+) |
-| `@crm/eslint-config` | Shared ESLint flat configs |
-| `@crm/tsconfig` | Shared TypeScript configs |
+| `@crm/ui` | Shared shadcn primitives, `Container`, `DataTable`, `EntitySheet` |
+| `@crm/lib` | `cn()`, Zod schemas, env helpers (`isPublicRegistrationEnabled`, etc.) |
+| `@crm/db-core` | Mongoose connection, models (User/Role/Permission, Product/Category/Supplier/Warehouse/StockLevel, MailTemplate, Media, Branding, Counter), repositories, branding/system/user helpers |
+| `@crm/auth` | Auth.js v5 config, session helpers (`requireAuth`, `requirePermission`, `getCurrentUser`), `getEffectivePermissionKeys` |
+| `@crm/rbac` | Permission-module registry (`registerPermissionModule`) + `ensurePermissionsSynced` baseline sync |
+| `@crm/admin` | Engine permission module (`enginePermissions`), users/invitations/password-reset business logic, mail-template seeding |
+| `@crm/mail` | Nodemailer wrapper, templated send, recipient resolution |
+| `@crm/media` | Media library service (upload, dedup by hash, link-based media) + permission keys |
+| `@crm/inventory` | Products, categories, suppliers, warehouses/stock, Excel import/export, inventory permission module |
+| `@crm/employee-core` | Schedule/employee helper functions — **exists but is not imported by any route yet**; do not assume an HR feature is live because this package exists |
+| `@crm/eslint-config`, `@crm/tsconfig` | Shared configs |
 
-**Rule:** Cross-app shared code → `packages/`. Single-app code stays in `apps/crm/src/`.
+**Rule:** Cross-app shared code → `packages/`. Single-app code stays in `apps/crm/src/`. There is currently only one app (`apps/crm`); do not create `apps/landing` or similar without an explicit ask.
 
 ---
 
 ## 3. Tech Stack
 
-| Layer | Choice | Version |
-|-------|--------|---------|
-| Framework | Next.js App Router | 16.1.6 |
-| UI | React | 19.2 |
-| Language | TypeScript | 5.x strict |
-| Styling | Tailwind CSS | v4 |
-| Components | shadcn/ui | New York + zinc |
-| Database | MongoDB + Mongoose | 9.x |
-| Auth | Auth.js (NextAuth v5) | beta.30 |
-| Validation | Zod | 4.x |
-| Monorepo | Turborepo + pnpm | — |
-| Testing | Vitest | 4.x |
-| Deployment | Docker → GHCR → Portainer | — |
+| Layer | Choice |
+|-------|--------|
+| Framework | Next.js 16 App Router |
+| UI | React 19 |
+| Language | TypeScript strict |
+| Styling | Tailwind CSS v4 |
+| Components | shadcn/ui — New York + zinc |
+| Database | MongoDB + Mongoose 9.x |
+| Auth | Auth.js v5 (NextAuth beta), Credentials provider, JWT session |
+| Validation | Zod |
+| Monorepo | Turborepo + pnpm workspaces |
+| Testing | Vitest (unit/integration), Playwright (E2E) |
+| Deployment | Docker → GHCR (see `.github/workflows/docker-publish.yml`) |
 
 ---
 
-## 4. App Boundaries
+## 4. Current Feature Surface
 
-### `apps/crm` (Phase 0 — active)
+Everything that exists in the rebuilt app today. If a doc, comment, or plan references anything outside this list, treat it as future work, not current state.
 
-- All CRM routes, layouts, and app-specific components
-- Server Actions co-located with routes (`actions.ts`)
-- Imports workspace packages via `@crm/*`
+| Area | Routes |
+|------|--------|
+| Auth | `/login`, `/register` (gated by `ALLOW_PUBLIC_REGISTRATION`), `/register/invite?token=`, `/reset-password?token=` |
+| First-run setup | `/setup` (creates the first admin), `/setup/complete` |
+| Dashboard | `/` — permission-filtered quick actions |
+| Account | `/account` — profile, password change, effective-permissions summary |
+| Help | `/help`, `/help/[slug]` — renders `docs/user-guide/*.md` |
+| Inventory | `/inventory`, `/inventory/dashboard`, `/inventory/new`, `/inventory/[sku]`, `/inventory/categories`, `/inventory/suppliers`, `/inventory/suppliers/[id]`, `/inventory/template`, `/inventory/export` |
+| Admin | `/admin/users`, `/admin/users/new`, `/admin/users/invite`, `/admin/users/invitations`, `/admin/users/[id]`, `/admin/permissions`, `/admin/mail-templates`, `/admin/mail-templates/[id]`, `/admin/media`, `/admin/branding`, `/admin/warehouses`, `/admin/warehouses/[id]` |
+| PWA | Web app manifest (`/manifest.webmanifest`), service worker, install prompt on dashboard |
 
-### `apps/landing` (Phase 2 — deferred)
-
-Fork of [tWeb / webshop-engine](https://github.com/tomkoooo/tWeb) for marketing + ordering sites. Will share `@crm/ui` and `@crm/db` once Tailwind/Next versions align.
+No logistics, offers, accounting, HR, or secrets/titoktár routes exist. `_legacy-core-reference/` holds the old business logic for those domains as porting reference.
 
 ---
 
@@ -94,20 +109,26 @@ sequenceDiagram
   participant Layout
   participant ServerAction
   participant Auth as @crm/auth
-  participant DB as @crm/db
+  participant DB as @crm/db-core
   participant MongoDB
 
   Browser->>Middleware: HTTP request
-  Middleware->>Auth: Validate session JWT
+  Middleware->>Middleware: getToken (next-auth/jwt) — no Mongoose on Edge
+  alt Not initialized (no admin yet)
+    Middleware-->>Browser: Redirect /setup
+  end
   alt Unauthenticated
     Middleware-->>Browser: Redirect /login
   end
   Middleware->>Layout: Forward request
   Layout->>Auth: requireAuth / requirePermission
+  Auth->>DB: getEffectivePermissionKeys (fresh every call)
   Layout->>DB: connectDB + query
   DB->>MongoDB: Mongoose operation
   MongoDB-->>Browser: Rendered RSC / action result
 ```
+
+**Edge constraint:** `apps/crm/src/middleware.ts` never imports Mongoose or `@crm/db-core`. It only checks a signed "initialized" cookie (`hasInitializedCookie`) and the session JWT (`getToken`). Admin-existence and DB-backed checks live in Node route handlers (`/api/system/initialized` pattern from the old build; the initialized state is now cookie-based — see `apps/crm/src/lib/initialized-cookie.ts`).
 
 ---
 
@@ -115,67 +136,68 @@ sequenceDiagram
 
 ### Auth.js v5 + Credentials
 
-- JWT session strategy (8-hour max age)
-- Credentials provider validates against `@crm/db` User model
-- Session includes `user.id` and `user.permissions[]`
+- JWT session strategy
+- Credentials provider validates against `@crm/db-core` `User` model
+- `session.user.permissions[]` is **recomputed from the database on every `session()` callback** (`packages/auth/src/config.ts`) — it is never trusted from a stale JWT claim, so a permission change takes effect on next request, no re-login needed.
 
 ### Permission model
 
 ```
 Permission { key, label, group, isSystem }
-Role       { key, name, permissionIds[] }
-User       { email, roleIds[], directPermissionKeys[] }
+Role       { key, name, permissionIds[], isSystem }
+User       { email, roleIds[], directPermissionKeys[], isActive }
 ```
 
-Effective permissions = union of all role permissions + direct permission keys.
+Effective permissions = union of all role permissions + `directPermissionKeys` (`packages/auth/src/permissions.ts::getEffectivePermissionKeys`).
 
 ### Defense in depth
 
-1. **Middleware** — session presence; redirect unauthenticated users
-2. **Route layouts** — `requireAuth()` / `requirePermission(key)` → `notFound()`
+1. **Middleware** — session presence only (Edge-safe)
+2. **Route layouts** — `requirePermission(key)` → `notFound()` when denied
 3. **Server Actions** — first line `await requirePermission(...)`
-4. **Client UI** — sidebar hides items (not security)
+4. **Client UI** — sidebar hides items by permission (not a security boundary)
 
-### Adding a new permission
+### Permission modules & the baseline sync
 
-1. Add key to seed (`packages/db/src/seed.ts`) or admin UI
-2. Assign to roles via `/admin/permissions`
-3. Guard routes/actions with `requirePermission('module:action')`
-4. Optionally hide nav items client-side
+Permission keys are declared as `PermissionModule` objects (`packages/rbac/src/types.ts`) and registered at process start via `registerPermissionModule` — see `apps/crm/src/lib/rbac-bootstrap.ts`, which currently registers three modules: `enginePermissions`, `mediaPermissions`, and `inventoryPermissions`.
 
-No code change needed for **assignment** — only for **new keys**.
+`ensurePermissionsSynced` (`packages/rbac/src/bootstrap.ts`) upserts every registered permission, then rebuilds the `admin` system role so it always contains **every currently registered key** — recomputed on each sync, never hand-maintained. Each module's own `roleTemplates` (e.g. a baseline `viewer` role) are merged in the same pass.
+
+- Runs automatically once per server process via `ensureRbacBootstrapped()` (module-level guard) — called from the dashboard layout and from `/setup`.
+- Can be forced on demand via **"Baseline jogosultságok szinkronizálása"** on `/admin/permissions` → `syncBaselinePermissionsAction` → `resyncRbac()` (bypasses the once-per-process guard).
+
+**Adding a new permission:** add it to the relevant module's `permissions.ts` (or create a new `PermissionModule` and register it in `rbac-bootstrap.ts`), then run the baseline sync (automatic on next deploy, or manual via the admin UI). No seed script edit needed — there is no `packages/db/src/seed.ts` in the rebuilt app; the module registry *is* the seed.
+
+**Known issue — see [AGENT_HANDOFF.md §Known issues](./AGENT_HANDOFF.md) for the current "admin role missing access keys" report** before assuming this pipeline is broken; the mechanism as coded is self-consistent, so treat this as a data/env question first.
 
 ---
 
 ## 7. Mail service
 
-Database-driven templates (`MailTemplate`) sent via Nodemailer (`@crm/core`).
+Database-driven templates (`MailTemplate` model in `@crm/db-core`) sent via `@crm/mail` (Nodemailer).
 
 | Piece | Location |
 |-------|----------|
-| Models | `MailTemplate`, `UserInvitation`; `User.resetToken*` |
-| Send API | `sendTemplatedEmail({ templateKey, to, variables, actorUserId })` |
-| Logistics | `enqueueLogisticsNotification` → template key = notification kind |
-| Invites | `createAndSendInvitation` → `/register/invite?token=` |
-| Password reset | `issuePasswordReset` → `/reset-password?token=` |
+| Model | `MailTemplate` (`@crm/db-core`) |
+| Send API | `@crm/mail` → templated send with variable substitution |
+| Seeding | `seedEngineMailTemplates()` (`@crm/admin`) — called from `/setup` |
+| Invites | `@crm/admin` invitations → `/register/invite?token=` |
+| Password reset | `@crm/admin` password-reset → `/reset-password?token=` |
 | Admin UI | `/admin/mail-templates` (`mail:manage`) |
-| Seed | `seedMailTemplates()` — missing only; `SEED_OVERWRITE_TEMPLATES=1` to overwrite |
 
-**Reply-To:** always the user who triggered the action (`actorUserId` / `actorEmail`), else `SMTP_FROM`.
+**Reply-To:** the user who triggered the action, else `SMTP_FROM`. **Env:** `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_SECURE`, `APP_URL` (see `.env.example`).
 
-**Env:** `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_SECURE`, optional `APP_URL`.
-
-When adding user-visible notifications, add a baseline template in `packages/db/src/seed-templates-data.ts`, seed it, and call `sendTemplatedEmail` from `@crm/core` — do not send raw mail from apps.
+When adding a new user-visible notification: add/extend a template via `@crm/admin`'s seed data, seed it, and send through `@crm/mail` — never call Nodemailer directly from `apps/crm`.
 
 ---
 
 ## 8. Data Layer
 
-- **Connection:** Singleton in `packages/db/src/connection.ts`
-- **Models:** `packages/db/src/models/`
-- **Repositories:** `AbstractRepository` base + domain repos
-- **GridFS:** `getUploadsBucket()` for file uploads (Phase 1+)
-- **Seed:** `pnpm --filter @crm/db seed`
+- **Connection:** singleton in `packages/db-core/src/connection.ts`, normalizes `retryWrites=false` for standalone MongoDB automatically
+- **Models:** `packages/db-core/src/models/`
+- **Repositories:** `packages/db-core/src/repositories/` (`AbstractRepository` base)
+- **GridFS:** `getUploadsBucket()` for media uploads
+- **No seed CLI:** first admin + baseline RBAC come from `/setup`, not a seed script
 
 ---
 
@@ -191,7 +213,7 @@ export type FormState =
 export async function myAction(_prev: FormState, formData: FormData): Promise<FormState> {
   await requirePermission('module:write');
   const parsed = schema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { success: false, fieldErrors: ... };
+  if (!parsed.success) return { success: false, fieldErrors: /* ... */ {} };
   await connectDB();
   // mutate
   revalidatePath('/path');
@@ -205,64 +227,37 @@ Client forms use `useActionState(action, initialState)`.
 
 ## 10. Application shell & navigation
 
-The CRM uses a **collapsible sidebar** (`apps/crm/src/components/app-sidebar.tsx`) built on shadcn `Sidebar` + Radix `Collapsible` via `SidebarNavGroup`.
+Collapsible sidebar (`apps/crm/src/components/app-sidebar.tsx`) built on shadcn `Sidebar`. Current groups:
 
-| Group (HU) | Routes | Typical permissions |
-|------------|--------|-------------------|
-| Általános | `/` (dashboard) | authenticated |
-| Készletkezelés | `/inventory`, `/inventory/dashboard`, `/inventory/categories`, `/inventory/suppliers`, `/inventory/builds` | `inventory:read`, `suppliers:*` |
-| Logisztika | `/logistics`, `/logistics/jobs`, `/logistics/vehicles`, `/logistics/movements`, `/logistics/reservations` | `logistics:read` |
-| Értékesítés | `/offers`, `/builds` | `offers:read`, `inventory:read` |
-| Könyvelés és HR | `/accounting`, `/accounting/companies`, `/accounting/employees`, `/accounting/schedule`, `/accounting/requests`, `/accounting/reports`, `/accounting/my` | `accounting:*`, `hr:*` (see [`hr.md`](./hr.md)) |
-| Beállítások | `/account`, `/secrets` (Titoktár) | authenticated; `secrets:read` |
-| Adminisztráció | `/admin/users`, `/admin/permissions`, `/admin/warehouses`, `/admin/mail-templates`, `/admin/branding` | `admin:access` + module keys; `mail:manage` |
+| Group (HU) | Routes | Gate |
+|------------|--------|------|
+| Általános | `/`, `/help` | authenticated |
+| Készletkezelés | `/inventory/dashboard`, `/inventory`, `/inventory/categories`, `/inventory/suppliers` | `inventory:read` (suppliers also accept `suppliers:read` / write / import) |
+| Beállítások | `/account` | authenticated |
+| Adminisztráció | `/admin/users`, `/admin/permissions`, `/admin/mail-templates`, `/admin/warehouses`, `/admin/media`, `/admin/branding` | group hidden unless `admin:access`; warehouses also need `warehouses:read` |
 
-Groups expand/collapse independently; the active route’s group opens by default. Breadcrumb labels are localized in `app-header.tsx` (`translateSegment`).
-
-**Active nav item:** only the **most specific** matching `href` in a group is highlighted (`apps/crm/src/lib/navigation/active-nav.ts`). Example: on `/inventory/builds`, **Termékek** (`/inventory`) is not active — only **Összeszerelések** is. See `.cursor/rules/navigation.mdc`.
-
-**Entity view/edit:** detail pages use inline edit (`/inventory/[sku]?edit=1`, `ProductDetailShell` + `ProductEditPanel`). List row sheets toggle edit in-place — no nested edit sheet. See `.cursor/rules/entity-pages.mdc`.
-
-**Suppliers (beszállítók/partnerek):** managed at `/inventory/suppliers` (`suppliers:read`, `suppliers:manage` — no `admin:access` required). Legacy `/admin/suppliers` redirects here. Each supplier has a unique `key` (slug) used as `crm_supplier_slug` in Excel.
+Branding (`app name`, logo) is read from `@crm/db-core` branding settings via `useBranding()` (`apps/crm/src/components/branding-provider.tsx`), not hardcoded.
 
 ### List & table UI standard (`@crm/ui`)
 
 | Component | Use |
 |-----------|-----|
-| **`DataTable`** | All list / tabular views. Modes: **server** (URL + Mongo via `parseDataTableQuery` / `buildDataTableMongoQuery`) or **client** (in-memory rows). Supports `tableId` + localStorage column prefs, `mongoKey` for nested fields, optional `image` columns, header tooltips, compact toolbar icons (`size-2.5`). |
+| **`DataTable`** | All list/tabular views. Server mode: `parseDataTableQuery` → `buildDataTableMongoQuery` → pass `data`, `query`, `total`, `basePath`, `tableId`. Client mode: in-memory rows. |
 | **`EntitySheet`** | Slide-over panels: filters, sort, columns, create forms, row quick-view. |
 
-**Rules:** Do not add new raw shadcn `Table` list views. Use `variant="compact"` for dashboard snippets.
+**Do not** add new raw shadcn `Table` list views — extend `DataTable`. The only documented exception is the RBAC permission matrix on `/admin/permissions` (role × permission checkbox grid).
 
-**Documented exceptions:** RBAC permission matrix (`/admin/permissions`) — role × permission checkboxes. Product detail sub-grids (BOM, stock by warehouse) may stay static `Table` until migrated.
+### Documentation layers
 
-**Product SKU in UI:** Always show localized name with CRM SKU (`ProductSkuLabel`, `@crm/lib` `formatProductSkuLine`). See `.cursor/rules/product-sku-display.mdc`.
+| Layer | Path | Audience |
+|-------|------|----------|
+| Architecture (this file) | `docs/ARCHITECTURE.md` | Devs / agents |
+| Conventions | `docs/rules.md` | Devs / agents |
+| Design tokens & shell | `docs/design.md` | Devs / agents |
+| Current status, known issues | `docs/AGENT_HANDOFF.md` | Devs / agents (read first) |
+| User guide | `docs/user-guide/*.md` | CRM users, rendered at `/help`; also the content source for the in-app driver.js tour (`apps/crm/src/lib/tour/`) |
 
-**Product images:** Central `Media` collection (`file` with SHA-256 dedup + GridFS, or `link` with URL). `Product.imageIds[]` references Media ids; Excel `bild1`–`bild5` resolve to link Media on import (`externalImageHints` kept for export). UI: Médiatár modal on forms. Serve: `GET /api/inventory/images/[id]` (redirect/stream; legacy GridFS id fallback).
-
-**Import categories:** CRM uses simplified `Category` documents (slug + SKU prefix). Excel import requires `crm_category_slug` per row; shipper taxonomy columns (`cat*Name_*`) are stored on the product as `shipperCategoryPath` only. See [inventory.md](./inventory.md).
-
-**Import SKUs:** `product_id_SM` → CRM SKU (`Product.sku`, unique in tCrm). `product_id` → supplier/manufacturer SKU (`Product.supplierSku`). Do not confuse them in UI or docs.
-
-**Import suppliers:** `crm_supplier_slug` per row (`Supplier.key`), or optional default supplier in the import modal when every row omits the column.
-
-### Documentation layers (living docs)
-
-| Layer | Path | Audience | Content |
-|-------|------|----------|---------|
-| Architecture | `docs/ARCHITECTURE.md` | Devs / agents | Structure, packages, conventions |
-| Operational flows | [`docs/inventory_and_logistics_flows.md`](./inventory_and_logistics_flows.md) | Devs / agents | Mermaid + tables — technical truth |
-| User guide | [`docs/user-guide/`](./user-guide/) | CRM users | Hungarian step-by-step; rendered at `/help` |
-
-Both flow and user docs must stay aligned with the product:
-
-| Trigger | Action |
-|---------|--------|
-| Phase milestone completed | Extend flows §0; add user-guide chapter |
-| Import / logistics / RBAC behavior change | Update flows diagrams + glossary; update user-guide steps |
-| New major routes in sidebar | Update flows §0; add/update user-guide chapter + sidebar Súgó |
-
-Agents: [`.cursor/rules/flows-documentation.mdc`](../.cursor/rules/flows-documentation.mdc) (technical flows), [`.cursor/rules/user-documentation.mdc`](../.cursor/rules/user-documentation.mdc) (user help).
+Keep the user guide and driver.js tour aligned with the real route list in §4 — when a route is added, removed, or re-gated, update the matching `docs/user-guide/*.md` frontmatter (`permissions:`) and, if the route is part of the guided tour, its `data-tour` step.
 
 ---
 
@@ -274,13 +269,7 @@ See [design.md](./design.md) for tokens, typography, layout shell, and component
 
 ## 12. Testing Strategy
 
-| Layer | Tool | CI |
-|-------|------|-----|
-| Utils / validation | Vitest | Yes |
-| Auth helpers | Vitest | Yes |
-| Server Actions | Vitest (schema tests) | Yes |
-| Components | Vitest + Testing Library | Yes |
-| Integration (Mongo) | Vitest + memory server | Local only |
+See [TESTING.md](./TESTING.md) for the current test inventory and commands. Summary: Vitest unit/integration tests co-located per package, one Playwright E2E spec (`apps/crm/e2e/auth.spec.ts`), CI runs lint/typecheck/unit tests/build only (E2E is local-only).
 
 ---
 
@@ -291,28 +280,25 @@ flowchart LR
   push[Push to main] --> ci[GitHub Actions CI]
   ci --> lint[lint]
   ci --> typecheck[typecheck]
-  ci --> test[test]
+  ci --> test[test + verify-button-aschild]
   ci --> build[build]
   push --> docker[docker-publish.yml]
   docker --> ghcr[GHCR image]
-  ghcr --> portainer[Portainer pull]
 ```
 
 Local development:
 
 ```bash
-docker compose -f docker/docker-compose.yml up
+docker compose -f docker/docker-compose.yml up --build
 ```
+
+Brings up MongoDB, Mongo Express (`:8081`), and the CRM app (`:3000`).
 
 ---
 
-## 14. Future Plans
+## 14. Roadmap
 
-| Phase | Scope |
-|-------|-------|
-| Phase 1 | Inventory — product schema, Excel parser, dynamic DataTable |
-| Phase 2 ✓ | Logistics, warehouses, suppliers, builds/BOM, user/account admin, inventory DataTable columns |
-| Phase 3 | Offers, `apps/landing` (tWeb fork), **HR/accounting module** (in progress), multi-tenant SaaS, reporting |
+The original plan (logistics/offers → accounting/multi-tenant SaaS) still holds as the long-term direction. **Phase 1 (inventory) is live** — plan later phases against the current package/route list above.
 
 ---
 
@@ -320,22 +306,19 @@ docker compose -f docker/docker-compose.yml up
 
 ### ADR-001: Auth.js v5 over custom JWT
 
-**Context:** 3SGP uses custom JWT; tWeb uses Auth.js v5.  
-**Decision:** Auth.js v5 with Credentials + JWT strategy.  
-**Rationale:** App Router integration, middleware support, future OAuth ready.
+**Decision:** Auth.js v5 with Credentials + JWT strategy, but permissions resolved from DB on every `session()` call rather than cached in the token.
+**Rationale:** App Router integration, middleware support, and permission changes apply without forcing re-login.
 
-### ADR-002: Dynamic RBAC over role enum
+### ADR-002: Dynamic RBAC over role enum, module registry over hand-maintained seed
 
-**Context:** 3SGP uses hardcoded role strings.  
-**Decision:** Permission keys in DB; roles are permission containers.  
-**Rationale:** Admin can assign access without deploys.
+**Decision:** Permission keys live in code as `PermissionModule` descriptors registered at boot; the `admin` role is always recomputed to cover every registered key rather than hand-maintained in a seed file.
+**Rationale:** New permissions can't silently miss being granted to `admin`; adding a permission is a one-file change plus a sync, not a seed-script edit.
 
 ### ADR-003: Turborepo + pnpm monorepo
 
-**Context:** Multiple apps (crm, landing) and shared packages.  
-**Decision:** Turborepo orchestration, pnpm workspaces.  
-**Rationale:** Cacheable builds, strict dependency graph.
+**Decision:** Turborepo orchestration, pnpm workspaces, one app (`apps/crm`) today.
+**Rationale:** Cacheable builds, strict dependency graph, ready to add a second app later without restructuring.
 
 ---
 
-*Last updated: May 2026*
+*Last updated: 2026-08 (Phase 1 inventory).*

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { connectDB, hasAnyAdminUser } from '@crm/db';
-import { getAppUrl } from '@crm/lib/mail-env';
+import { connectDB, hasAnyAdminUser } from '@crm/db-core';
+import { getAppUrl } from '@crm/mail/env';
 import { applyInitializedCookie } from '@/lib/initialized-cookie';
 
 export const runtime = 'nodejs';

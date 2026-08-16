@@ -1,8 +1,9 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { connectDB, ensureBaselineRbac, Permission, Role } from '@crm/db';
+import { connectDB, Permission, Role } from '@crm/db-core';
 import { requirePermission } from '@crm/auth';
+import { resyncRbac } from '@/lib/rbac-bootstrap';
 
 export type PermissionsFormState =
   | { success: false; message: string }
@@ -107,7 +108,7 @@ export async function syncBaselinePermissionsAction(): Promise<PermissionsFormSt
   await requirePermission('roles:manage');
 
   try {
-    await ensureBaselineRbac();
+    await resyncRbac();
     revalidatePath('/admin/permissions');
     return {
       success: true,

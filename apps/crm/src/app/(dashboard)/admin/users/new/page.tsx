@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { requirePermission, requireAuth } from '@crm/auth';
 import { Container } from '@crm/ui';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@crm/ui';
+import { Card, CardContent, CardHeader, CardTitle } from '@crm/ui';
 import { getUsersEditorData } from '../actions';
 import { UserForm } from '../_components/user-form';
 
@@ -10,7 +10,7 @@ export default async function NewUserPage() {
   await requirePermission('users:write');
   const current = await requireAuth();
   if (!current) return null;
-  const { roles, permissions, companies } = await getUsersEditorData();
+  const { roles, permissions } = await getUsersEditorData();
 
   return (
     <Container className="flex max-w-3xl flex-col gap-4 md:gap-6">
@@ -40,7 +40,6 @@ export default async function NewUserPage() {
             mode="create"
             roles={roles}
             permissions={permissions}
-            companies={companies}
             currentUserId={current.id}
           />
         </CardContent>

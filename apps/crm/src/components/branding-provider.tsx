@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext } from 'react';
-import type { BrandingSettings } from '@crm/db';
+import type { BrandingSettings } from '@crm/db-core';
 
 export type BrandingContextValue = BrandingSettings & {
   logoUrl?: string;
@@ -11,14 +11,18 @@ export type BrandingContextValue = BrandingSettings & {
 
 const BrandingContext = createContext<BrandingContextValue | null>(null);
 
+// Inlined rather than importing `brandingMediaUrl` from @crm/db-core — this is a
+// 'use client' component, and that package pulls in mongoose (server-only).
+function mediaUrl(mediaId: string | undefined): string | undefined {
+  return mediaId ? `/api/media/${mediaId}/file` : undefined;
+}
+
 function withMediaUrls(branding: BrandingSettings): BrandingContextValue {
   return {
     ...branding,
-    logoUrl: branding.logoId ? `/api/uploads/${branding.logoId}` : undefined,
-    faviconUrl: branding.faviconId ? `/api/uploads/${branding.faviconId}` : undefined,
-    loginBackgroundUrl: branding.loginBackgroundId
-      ? `/api/uploads/${branding.loginBackgroundId}`
-      : undefined,
+    logoUrl: mediaUrl(branding.logoId),
+    faviconUrl: mediaUrl(branding.faviconId),
+    loginBackgroundUrl: mediaUrl(branding.loginBackgroundId),
   };
 }
 

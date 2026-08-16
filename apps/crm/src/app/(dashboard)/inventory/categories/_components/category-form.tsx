@@ -4,11 +4,10 @@ import { useActionState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+
 import { createCategoryAction, type CategoryFormState } from '../actions';
 import { cn } from '@/lib/utils';
+import { Button, Input, Label } from '@crm/ui';
 
 const initial: CategoryFormState = { success: false };
 

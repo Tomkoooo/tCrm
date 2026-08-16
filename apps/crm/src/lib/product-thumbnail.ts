@@ -14,7 +14,7 @@ export function resolveProductImageUrls(product: {
 }): string[] {
   const fromMedia = (product.imageIds ?? []).map((id) => {
     const s = typeof id === 'string' ? id : id.toString();
-    return `/api/inventory/images/${s}`;
+    return `/api/media/${s}/file`;
   });
   if (fromMedia.length > 0) return fromMedia;
 
@@ -30,7 +30,7 @@ export function resolveProductThumbnailUrl(product: {
   const firstId = product.imageIds?.[0];
   if (firstId) {
     const id = typeof firstId === 'string' ? firstId : firstId.toString();
-    return `/api/inventory/images/${id}`;
+    return `/api/media/${id}/file`;
   }
   const hint = product.externalImageHints?.[0]?.trim();
   if (hint && /^https?:\/\//i.test(hint)) {

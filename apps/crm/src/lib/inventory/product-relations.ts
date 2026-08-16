@@ -1,5 +1,5 @@
 import type { Types } from 'mongoose';
-import { StockLevel } from '@crm/db';
+import { StockLevel } from '@crm/db-core';
 import { resolveProductThumbnailUrl } from '@/lib/product-thumbnail';
 import { formatProductStockSummary, warehouseDisplayLabel } from './product-table-columns';
 

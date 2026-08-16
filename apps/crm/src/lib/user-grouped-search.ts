@@ -1,7 +1,7 @@
 'use server';
 
 import { requireAuth } from '@crm/auth';
-import { connectDB, Role, User, Warehouse } from '@crm/db';
+import { connectDB, Role, User, Warehouse } from '@crm/db-core';
 
 export type GroupedUserOption = {
   value: string;

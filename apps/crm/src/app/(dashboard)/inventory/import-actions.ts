@@ -14,8 +14,8 @@ import {
   type ImportMatchKey,
   type ImportMergeField,
   type ImportParseConfig,
-} from '@crm/core';
-import { connectDB, Supplier } from '@crm/db';
+} from '@crm/inventory';
+import { connectDB, Supplier } from '@crm/db-core';
 import {
   importMatchKeySchema,
   parseImportConfigJson,

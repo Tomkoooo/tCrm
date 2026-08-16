@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { requirePermission } from '@crm/auth';
-import { connectDB, Warehouse } from '@crm/db';
+import { connectDB, Warehouse } from '@crm/db-core';
 import { parseAssignedUserIdsJson, warehouseSchema } from '@crm/lib/validation';
 import mongoose from 'mongoose';
 

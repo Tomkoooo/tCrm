@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { getAppUrl } from '@crm/lib/mail-env';
+import { getAppUrl } from '@crm/mail/env';
 import { isPublicRegistrationEnabled } from '@crm/lib/env';
 import { hasInitializedCookie } from '@/lib/initialized-cookie';
 

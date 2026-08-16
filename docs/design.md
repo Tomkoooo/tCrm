@@ -20,11 +20,11 @@ Persistent application shell:
 
 Use `bg-background`, `text-foreground`, `bg-primary`, `bg-sidebar`, etc.
 
-> **BRAND COLOR PLACEHOLDER:** `--primary` and `--secondary` in `globals.css` are copied from 3SGP (orange + deep blue). Replace with tCrm brand colors before production.
+> **BRAND COLOR PLACEHOLDER:** `--primary` and `--secondary` in `globals.css` are copied from 3SGP (orange + deep blue). Replace with tCrm brand colors before production, or via **Arculat** (`/admin/branding`) for app name/logo — token colors themselves are still edited in `globals.css`.
 
 ### Permission-aware content
 
-Same shell for all users. Dashboard and nav branch on `user.permissions[]`.
+Same shell for all users. Dashboard and nav branch on `user.permissions[]`, recomputed fresh on every request (see ARCHITECTURE.md §6) — never assume a client-cached permission list.
 
 ---
 
@@ -32,14 +32,15 @@ Same shell for all users. Dashboard and nav branch on `user.permissions[]`.
 
 | Layer | Choice |
 |-------|--------|
-| Framework | Next.js 16.1.6 App Router |
-| UI | React 19.2 |
+| Framework | Next.js 16 App Router |
+| UI | React 19 |
 | Styling | Tailwind CSS v4 |
 | Components | shadcn/ui New York + zinc |
 | Icons | lucide-react |
 | Fonts | Geist Sans + Geist Mono |
 | Toasts | Sonner |
-| Theming | next-themes (wired from Phase 0) |
+| Theming | next-themes |
+| PWA | Web manifest + service worker + install prompt |
 
 ---
 
@@ -53,7 +54,7 @@ Tokens in `apps/crm/src/app/globals.css`. Tailwind v4 bridges via `@theme inline
 | `--secondary` | Deep emphasis |
 | `--radius` | 0.625rem base radius |
 | `--sidebar-*` | Sidebar chrome |
-| `--chart-1`…`5` | Dashboard charts |
+| `--chart-1`…`5` | Reserved for future dashboard charts |
 
 Dark mode: `.dark { … }` + `ThemeProvider attribute="class"` on `<html>`.
 
@@ -97,7 +98,7 @@ flowchart TB
   end
 ```
 
-Auth routes (`/login`, `/register`) use minimal centered layout — **no sidebar**.
+Auth routes (`/login`, `/register`, `/reset-password`) and setup routes (`/setup`) use a minimal centered layout — **no sidebar**.
 
 Sidebar: 16rem desktop, 18rem mobile sheet, toggle shortcut `Ctrl/Cmd+B`.
 
@@ -118,7 +119,9 @@ Install via shadcn CLI with `components.json`: **new-york**, **zinc**, **cssVari
 | `app-sidebar.tsx` | Permission-aware navigation |
 | `app-header.tsx` | Breadcrumbs + theme toggle |
 | `theme-provider.tsx` | next-themes wrapper |
+| `branding-provider.tsx` | App name/logo from `@crm/db-core` branding settings |
 | `dvh-var-setter.tsx` | Mobile viewport height |
+| `pwa-install-prompt.tsx`, `pwa-service-worker.tsx` | PWA install UX |
 
 ---
 
@@ -127,9 +130,7 @@ Install via shadcn CLI with `components.json`: **new-york**, **zinc**, **cssVari
 ### Dashboard home
 
 1. Welcome (`text-3xl`) + subtitle
-2. Stat grid (`grid-cols-1 md:grid-cols-2 lg:grid-cols-4`)
-3. Performance / getting-started card
-4. Quick actions filtered by permission
+2. Quick actions filtered by permission
 
 ### Stat card
 
@@ -147,7 +148,7 @@ Install via shadcn CLI with `components.json`: **new-york**, **zinc**, **cssVari
 
 ### Empty states
 
-**Dashed hero:** `border-2 border-dashed rounded-xl py-20`  
+**Dashed hero:** `border-2 border-dashed rounded-xl py-20`
 **Muted panel:** `bg-muted/10 border rounded-lg py-12` + CTA
 
 ### Forms
@@ -158,7 +159,7 @@ Server Actions + `useActionState`, `gap-6` form, `gap-2` fields, red asterisk on
 
 ## 8. DataTable & EntitySheet (`@crm/ui`)
 
-**DataTable** — mandatory for list views. Compact toolbar: Keresés · Szűrők · Rendezés · Oszlopok (each opens **EntitySheet**). URL drives server filters; `tableId` persists visible columns in `localStorage`.
+**DataTable** — mandatory for list views (currently: Felhasználók, E-mail sablonok). Compact toolbar: Keresés · Szűrők · Rendezés · Oszlopok (each opens **EntitySheet**). URL drives server filters; `tableId` persists visible columns in `localStorage`.
 
 ```typescript
 // Server list page — fetch only; no DataTable here (RSC cannot pass rowHref/render)
@@ -166,43 +167,34 @@ const query = parseDataTableQuery(await searchParams);
 const { filter, sort, skip, limit } = buildDataTableMongoQuery(query, columns);
 // … load rows …
 
-<InventoryTable data={rows} columns={columns} query={query} total={total} />
+<UsersTable data={rows} columns={columns} query={query} total={total} />
 ```
 
-```typescript
-// Client co-located *-table.tsx ('use client')
-<DataTable
-  tableId="inventory-products"
-  data={rows}
-  columns={columns}
-  query={query}
-  total={total}
-  basePath="/inventory"
-  rowHref={(r) => `/inventory/${r.sku}`}
-  rowOpen="sheet"
-  rowDetail={{ title: (r) => r.sku, fields: [...] }}
-/>
-```
+**Column types:** `string` | `number` | `boolean` | `enum` | `date` | `image`.
 
-**Column types:** `string` | `number` | `boolean` | `enum` | `date` | `image` (`thumbnailUrl` + `DataTableImageCell`).
+**EntitySheet** — reusable slide-over (`size`: sm|md|lg|xl) for filters, create forms, row detail.
 
-**EntitySheet** — reusable slide-over (`size`: sm|md|lg|xl) for filters, create forms, row detail. Do not stack large Cards above tables for create flows.
-
-**Client mode:** `mode="client"` for in-memory data (builds, dashboard snippets). Same chrome; filters merge URL + default `query` prop.
+**Client mode:** `mode="client"` for in-memory data. Same chrome; filters merge URL + default `query` prop.
 
 ---
 
-## 9. Navigation Map (forward-looking)
+## 9. Navigation Map (current)
 
 | Path | Module | Permission |
 |------|--------|------------|
 | `/` | Dashboard | authenticated |
-| `/inventory` | Inventory | `inventory:read` |
-| `/logistics` | Logistics | `logistics:read` |
-| `/offers` | Offers | `offers:read` |
-| `/builds` | Builds | `inventory:read` |
-| `/admin/permissions` | RBAC | `roles:manage` |
+| `/account` | Account | authenticated |
+| `/help`, `/help/[slug]` | Súgó | authenticated (individual articles may require a permission via frontmatter) |
 | `/admin/users` | Users | `users:read` |
+| `/admin/permissions` | RBAC | `roles:manage` |
+| `/admin/mail-templates` | Mail templates | `mail:manage` |
+| `/admin/media` | Media library | `media:read` |
+| `/admin/branding` | Branding | `admin:access` |
+| `/inventory` | Products | `inventory:read` |
+| `/inventory/dashboard` | Inventory KPIs | `inventory:read` |
+| `/inventory/categories` | Categories | `inventory:read` |
+| `/inventory/suppliers` | Suppliers | `suppliers:read` (or inventory write/import) |
+| `/admin/warehouses` | Warehouses | `warehouses:read` |
 
 ---
 
@@ -210,20 +202,20 @@ const { filter, sort, skip, limit } = buildDataTableMongoQuery(query, columns);
 
 - Mobile sidebar → Sheet below 768px
 - Breadcrumbs: horizontal scroll, no wrap
-- **No viewport zoom lock** (unlike 3SGP PWA) — better accessibility
+- No viewport zoom lock — accessible pinch-to-zoom
 - Loading spinner: `role="status"` + `sr-only`
 - Dark mode toggle in header
 
 ---
 
-## 11. Bootstrap Checklist
+## 11. Bootstrap Checklist (for a brand-new module)
 
-1. Copy tokens from `globals.css`; set brand colors
-2. shadcn init: new-york + zinc
-3. Shell: Container, AppSidebar, AppHeader, route groups
-4. ThemeProvider + dark toggle
-5. RBAC-aware sidebar groups
-6. Dashboard stat grid template
+1. Confirm the route belongs in §9 — update this table
+2. shadcn components as needed (CLI, new-york + zinc)
+3. Wrap the page in `<Container>`; use `DataTable`/`EntitySheet` for any list
+4. Guard with `requirePermission` in the layout/page and again in every Server Action
+5. Add/update the sidebar entry in `app-sidebar.tsx` behind the matching permission check
+6. Add a `docs/user-guide/*.md` chapter with correct `permissions:` frontmatter
 
 ---
 
@@ -231,13 +223,13 @@ const { filter, sort, skip, limit } = buildDataTableMongoQuery(query, columns);
 
 | 3SGP | tCrm |
 |------|------|
-| Hungarian UI | English (i18n Phase 2) |
-| Custom JWT auth | Auth.js v5 |
-| Role enum | Dynamic permission keys |
+| Custom JWT auth | Auth.js v5, permissions recomputed from DB per request |
+| Role enum | Dynamic permission keys via module registry |
 | Login in full shell | `(auth)` layout without sidebar |
 | Dark mode unwired | ThemeProvider from day one |
 | PWA viewport lock | Standard accessible viewport |
+| No PWA | Installable PWA with service worker |
 
 ---
 
-*Adapted from 3SGP design system — May 2026*
+*Adapted from 3SGP design system — updated 2026-07 (post-rebuild).*

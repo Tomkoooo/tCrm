@@ -3,8 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import mongoose from 'mongoose';
 import { requirePermission } from '@crm/auth';
-import { connectDB, MailTemplate, Role, User } from '@crm/db';
-import { mailTemplateUpdateSchema } from '@crm/lib/validation';
+import { connectDB, MailTemplate, Role, User } from '@crm/db-core';
+import { mailTemplateUpdateSchema } from '@crm/admin/validation';
 
 export type MailTemplateFormState =
   | { success: false; fieldErrors?: Record<string, string[]>; message?: string }

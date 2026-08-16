@@ -1,8 +1,8 @@
 'use server';
 
 import bcrypt from 'bcryptjs';
-import { completePasswordReset } from '@crm/core';
-import { resetPasswordSchema } from '@crm/lib/validation';
+import { completePasswordReset } from '@crm/admin';
+import { resetPasswordSchema } from '@crm/admin/validation';
 
 export type ResetPasswordFormState =
   | { success: false; fieldErrors?: Record<string, string[]>; message?: string }

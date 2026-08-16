@@ -6,8 +6,8 @@ import {
   getWarehouseIdsForUser,
   hasGlobalProductWarehouseScope,
   mergeProductListFilter,
-} from '@crm/core';
-import { connectDB, Warehouse } from '@crm/db';
+} from '@crm/inventory';
+import { connectDB, Warehouse } from '@crm/db-core';
 
 export type InventoryWarehouseScope = {
   isGlobal: boolean;

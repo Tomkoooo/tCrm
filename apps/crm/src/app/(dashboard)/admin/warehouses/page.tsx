@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { hasPermission, requirePermission } from '@crm/auth';
-import { connectDB, Warehouse } from '@crm/db';
+import { connectDB, Warehouse } from '@crm/db-core';
 import { Container, parseDataTableQuery, buildDataTableMongoQuery } from '@crm/ui';
 import type { ColumnDef } from '@crm/ui';
-import { Button } from '@/components/ui/button';
+
 import { WarehousesTable, type WarehouseRow } from './_components/warehouses-table';
+import { Button } from '@crm/ui';
 
 export default async function WarehousesPage({
   searchParams,

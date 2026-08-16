@@ -54,13 +54,13 @@ Sablon: **Sablon letöltése** a készlet oldalon vagy `/inventory/template`.
 ## Gyakori hibák
 
 - **Ismeretlen kategória** — előbb hozd létre a **Termékkategóriák** oldalon.
-- **Beszállító hiányzik** — importálható supplier nélkül is; később [Tömeges módosítás](/help/tomeges-modositas).
+- **Beszállító hiányzik** — importálható supplier nélkül is; később a terméklistán tömegesen is hozzárendelhető.
 - Üres raktár cella = nincs készlet az adott raktárban; `0` = van StockLevel, nulla darab.
 
 ## Kapcsolódó fejezetek
 
 - [Termékkategóriák](/help/kategoriak)
 - [Beszállítók](/help/beszallitok)
-- [Tömeges módosítás](/help/tomeges-modositas)
+- [Terméklista és szűrés](/help/termeklista-es-szures)
 
-*Utolsó frissítés: 2026-06*
+*Utolsó frissítés: 2026-08*

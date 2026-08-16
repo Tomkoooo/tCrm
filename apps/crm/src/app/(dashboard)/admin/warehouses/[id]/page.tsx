@@ -1,20 +1,24 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { hasPermission, requirePermission } from '@crm/auth';
-import { connectDB, Product, StockLevel, Warehouse } from '@crm/db';
+import { connectDB, Product, StockLevel, Warehouse } from '@crm/db-core';
 import { Container } from '@crm/ui';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+import { ProductSkuLabel } from '@/components/product-sku-label';
+import { EditWarehouseForm } from '../_components/edit-warehouse-form';
 import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { ProductSkuLabel } from '@/components/product-sku-label';
-import { EditWarehouseForm } from '../_components/edit-warehouse-form';
+} from '@crm/ui';
 
 export default async function WarehouseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePermission('warehouses:read');

@@ -1,17 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { DownloadIcon, UploadIcon, WrenchIcon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
+
 import { ImportModal } from './import-modal';
 import { BulkUpdateModal } from './bulk-update-modal';
 import { ExportModal } from './export-modal';
 import { WarehouseFilter } from './warehouse-filter';
+import { Button, Checkbox, Label, Separator } from '@crm/ui';
 
 export function InventoryTableToolbar({
   warehouses,

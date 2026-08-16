@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+
 import { cn } from '@/lib/utils';
+import { Button, Label } from '@crm/ui';
 
 const selectClassName = cn(
   'border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-xs',

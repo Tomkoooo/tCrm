@@ -13,10 +13,10 @@ import {
   Code,
   Type,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { cn } from '@/lib/utils';
+import { Button } from '@crm/ui';
+import { Label } from '@crm/ui';
+import { Textarea } from '@crm/ui';
+import { cn } from '@crm/lib';
 
 type RichTextEditorProps = {
   name: string;

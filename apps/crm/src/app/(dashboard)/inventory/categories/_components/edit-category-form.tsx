@@ -3,12 +3,11 @@
 import { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+
 import { updateCategoryAction, type CategoryFormState } from '../actions';
 import { cn } from '@/lib/utils';
 import { OptionalEnDeFields, hasEnDeContent } from '@/components/optional-en-de-fields';
+import { Button, Input, Label } from '@crm/ui';
 
 const selectClassName = cn(
   'border-input bg-background ring-offset-background flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-xs',

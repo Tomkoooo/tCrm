@@ -29,6 +29,6 @@ Gyors KPI-k a termékek és készlet állapotáról: aktív termékek száma, k�
 ## Kapcsolódó fejezetek
 
 - [Készletkezelés áttekintése](/help/keszlet-attekintes)
-- [Összeszerelések](/help/osszeszerelesek)
+- [Terméklista és szűrés](/help/termeklista-es-szures)
 
-*Utolsó frissítés: 2026-06*
+*Utolsó frissítés: 2026-08*

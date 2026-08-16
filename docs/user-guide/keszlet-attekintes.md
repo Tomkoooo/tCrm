@@ -9,7 +9,7 @@ permissions:
 
 ## Mire való
 
-A készlet modul a termékek, kategóriák, beszállítók és összeszerelések (BOM) központi kezelőfelülete.
+A készlet modul a termékek, kategóriák, beszállítók és raktári készletszintek központi kezelőfelülete.
 
 ## Hol találod
 
@@ -19,9 +19,10 @@ A készlet modul a termékek, kategóriák, beszállítók és összeszerelések
 |----------|---------|
 | Termékmenedzsment | `/inventory/dashboard` |
 | Termékek | `/inventory` |
-| Összeszerelések | `/inventory/builds` |
 | Termékkategóriák | `/inventory/categories` |
 | Beszállítók | `/inventory/suppliers` |
+
+Raktárak: **Oldalsáv → Adminisztráció → Raktárak** (`/admin/warehouses`)
 
 ## Szükséges jogosultság
 
@@ -32,16 +33,16 @@ A készlet modul a termékek, kategóriák, beszállítók és összeszerelések
 ## Tipikus munkafolyamat
 
 1. Hozd létre a **kategóriákat** (import előtt kötelező).
-2. **Importáld** vagy manuálisan vedd fel a termékeket.
-3. Rendeld hozzá a **beszállítókat** (import sorban vagy tömegesen).
-4. Állítsd össze az **összeszereléseket** (BOM) alkatrész termékekből.
-5. Kövesd a készletet a **Termékmenedzsment** dashboardon és a logisztika modulban.
+2. Vedd fel a **raktárakat**, ha még nincsenek.
+3. **Importáld** vagy manuálisan vedd fel a termékeket.
+4. Rendeld hozzá a **beszállítókat** (import sorban vagy tömegesen).
+5. Kövesd a készletet a **Termékmenedzsment** dashboardon és a termék adatlapján.
 
 ## Kapcsolódó fejezetek
 
 - [Excel importálás](/help/excel-import)
 - [Terméklista és szűrés](/help/termeklista-es-szures)
 - [Termék szerkesztés](/help/termek-szerkesztes)
-- [Összeszerelések](/help/osszeszerelesek)
+- [Raktárak](/help/admin-raktarak)
 
-*Utolsó frissítés: 2026-06*
+*Utolsó frissítés: 2026-08*

@@ -1,11 +1,8 @@
 import { notFound } from 'next/navigation';
 import { hasAnyPermission, requireAnyPermission } from '@crm/auth';
-import {
-  SUPPLIER_MANAGE_PERMISSION_KEYS,
-  SUPPLIER_READ_PERMISSION_KEYS,
-  normalizeSupplierContacts,
-} from '@crm/lib';
-import { connectDB, Supplier } from '@crm/db';
+import { normalizeSupplierContacts } from '@crm/lib';
+import { SUPPLIER_MANAGE_PERMISSION_KEYS, SUPPLIER_READ_PERMISSION_KEYS } from '@crm/inventory';
+import { connectDB, Supplier } from '@crm/db-core';
 import { Container } from '@crm/ui';
 import { SupplierDetailView } from '../_components/supplier-detail-view';
 

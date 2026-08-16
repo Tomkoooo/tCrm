@@ -11,16 +11,15 @@ import {
   StockLevel,
   Supplier,
   Warehouse,
-} from '@crm/db';
+} from '@crm/db-core';
 import { requirePermission, requireAuth } from '@crm/auth';
 import {
   applyBulkProductOperation,
   setProductStockLevel,
   syncProductWarehouseIds,
   type BulkProductOperation,
-  syncMediaUsage,
-  linkUrlsFromMediaIds,
-} from '@crm/core';
+} from '@crm/inventory';
+import { syncMediaUsage, linkUrlsFromMediaIds } from '@crm/media';
 import {
   parseWarehouseIdsJson,
   productComponentsSchema,

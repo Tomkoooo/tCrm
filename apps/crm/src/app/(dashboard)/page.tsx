@@ -1,18 +1,15 @@
 import Link from 'next/link';
-import {
-  PackageIcon,
-  TruckIcon,
-  FileTextIcon,
-  UsersIcon,
-  ShieldIcon,
-  TrendingUpIcon,
-  ListIcon,
-} from 'lucide-react';
+import { UsersIcon, ShieldIcon, TrendingUpIcon, ListIcon, PackageIcon } from 'lucide-react';
 import { getCurrentUser } from '@crm/auth';
-import { LOGISTICS_READ_PERMISSION_KEYS, hasAnyPermission } from '@crm/lib';
-import { Container } from '@crm/ui';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import {
+  Container,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Button,
+} from '@crm/ui';
 import { PwaInstallPrompt } from '@/components/pwa-install-prompt';
 
 export default async function DashboardPage() {
@@ -20,32 +17,13 @@ export default async function DashboardPage() {
   const permissions = user?.permissions ?? [];
 
   const has = (key: string) => permissions.includes(key);
-  const hasAny = (keys: readonly string[]) => hasAnyPermission(permissions, keys);
-
-  const stats = [
-    { label: 'Termékek', value: '—', icon: PackageIcon, show: has('inventory:read') },
-    { label: 'Nyitott ajánlatok', value: '—', icon: FileTextIcon, show: has('offers:read') },
-    {
-      label: 'Szállítások',
-      value: '—',
-      icon: TruckIcon,
-      show: hasAny(LOGISTICS_READ_PERMISSION_KEYS),
-    },
-    { label: 'Felhasználók', value: '—', icon: UsersIcon, show: has('users:read') },
-  ].filter((s) => s.show);
 
   const quickActions = [
     {
-      label: 'Készlet megtekintése',
+      label: 'Termékek',
       href: '/inventory',
       icon: PackageIcon,
       show: has('inventory:read'),
-    },
-    {
-      label: 'Ajánlat létrehozása',
-      href: '/offers',
-      icon: FileTextIcon,
-      show: has('offers:write'),
     },
     {
       label: 'Szerepkörök kezelése',
@@ -67,28 +45,10 @@ export default async function DashboardPage() {
         <h1 className="text-3xl font-bold">
           Üdv újra{user?.name ? `, ${user.name.split(' ')[0]}` : ''}!
         </h1>
-        <p className="text-muted-foreground text-sm">
-          Működési vezérlőpult — készlet, ajánlatok, logisztika és egyebek.
-        </p>
+        <p className="text-muted-foreground text-sm">tCrm vezérlőpult</p>
       </div>
 
       <PwaInstallPrompt />
-
-      {stats.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat) => (
-            <Card key={stat.label}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{stat.label}</CardTitle>
-                <stat.icon className="text-muted-foreground h-4 w-4" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
 
       <Card>
         <CardHeader>
@@ -97,7 +57,8 @@ export default async function DashboardPage() {
             Első lépések
           </CardTitle>
           <CardDescription>
-            Az alaprendszer kész. A készlet, logisztika és ajánlat modulok folyamatosan bővülnek.
+            Az alaprendszer és a készletmodul kész. A logisztika, HR/könyvelés és ajánlatok modulok
+            a következő fázisokban érkeznek.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">

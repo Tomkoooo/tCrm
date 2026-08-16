@@ -2,9 +2,9 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requirePermission, requireAuth, hasPermission } from '@crm/auth';
 import { Container } from '@crm/ui';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Button } from '@crm/ui';
+import { Card, CardContent, CardHeader, CardTitle } from '@crm/ui';
+import { Badge } from '@crm/ui';
 import { getUserForEdit, getUsersEditorData } from '../actions';
 import { UserForm } from '../_components/user-form';
 import { SendResetEmailButton } from '../_components/send-reset-email-button';
@@ -52,7 +52,6 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
             mode="edit"
             roles={editorData.roles}
             permissions={editorData.permissions}
-            companies={editorData.companies}
             initial={user}
             currentUserId={current.id}
           />

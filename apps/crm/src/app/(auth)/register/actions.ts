@@ -1,14 +1,9 @@
 'use server';
 
-import mongoose from 'mongoose';
-import { connectDB, ensureBaselineRbac, hasAnyAdminUser, Role } from '@crm/db';
-import { provisionUserWithEmployee } from '@crm/core';
+import { connectDB, hasAnyAdminUser, Role } from '@crm/db-core';
+import { registerSchema } from '@crm/auth/validation';
+import { createUser } from '@crm/admin';
 import { isPublicRegistrationEnabled } from '@crm/lib';
-import {
-  registerSchema,
-  parseLinkEmployeeFromForm,
-  employeeProfileFromForm,
-} from '@crm/lib/validation';
 
 export type RegisterFormState =
   | {
@@ -37,8 +32,6 @@ export async function registerAction(
     };
   }
 
-  await ensureBaselineRbac();
-
   const parsed = registerSchema.safeParse({
     name: formData.get('name'),
     email: formData.get('email'),
@@ -56,44 +49,18 @@ export async function registerAction(
     return { success: false, fieldErrors, message: 'Javítsa a hibákat.' };
   }
 
-  const linkEmployee = parseLinkEmployeeFromForm(formData);
-  const profile = employeeProfileFromForm(formData, linkEmployee);
-
-  if (linkEmployee && !profile?.companyId) {
-    return { success: false, message: 'Dolgozóként regisztráláshoz válasszon céget.' };
-  }
-
-  if (profile?.companyId && !mongoose.Types.ObjectId.isValid(profile.companyId)) {
-    return { success: false, message: 'Érvénytelen cég.' };
-  }
-
   try {
     const viewerRole = await Role.findOne({ key: 'viewer' }).exec();
     const roleIds = viewerRole ? [viewerRole._id] : [];
 
-    await provisionUserWithEmployee({
+    await createUser({
       name: parsed.data.name,
       email: parsed.data.email,
       password: parsed.data.password,
       roleIds,
-      skipCompanyScope: true,
-      employee: profile?.companyId
-        ? {
-            companyId: new mongoose.Types.ObjectId(profile.companyId),
-            employeeNumber: profile.employeeNumber,
-            department: profile.department,
-            phone: profile.phone,
-            hrNotes: profile.hrNotes,
-          }
-        : undefined,
     });
 
-    return {
-      success: true,
-      message: profile?.companyId
-        ? 'Fiók és dolgozói profil létrehozva. Bejelentkezhet.'
-        : 'Fiók létrehozva. Bejelentkezhet.',
-    };
+    return { success: true, message: 'Fiók létrehozva. Bejelentkezhet.' };
   } catch (e) {
     return {
       success: false,

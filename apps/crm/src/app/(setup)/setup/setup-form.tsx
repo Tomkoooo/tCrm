@@ -2,10 +2,10 @@
 
 import { useActionState } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Button } from '@crm/ui';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@crm/ui';
+import { Input } from '@crm/ui';
+import { Label } from '@crm/ui';
 import { setupAdminAction, type SetupState } from './actions';
 
 const initialState: SetupState = { success: false };

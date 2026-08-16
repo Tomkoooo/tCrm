@@ -3,11 +3,10 @@
 import { useActionState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+
 import { deleteWarehouseAction, updateWarehouseAction, type WarehouseFormState } from '../actions';
 import { WarehouseStaffSelect } from './warehouse-staff-select';
+import { Button, Input, Label } from '@crm/ui';
 
 const initial: WarehouseFormState = { success: false };
 

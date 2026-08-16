@@ -1,18 +1,10 @@
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { hasPermission, requirePermission } from '@crm/auth';
-import { calculateBomAvailability } from '@crm/core';
-import { connectDB, Product, StockAdjustment, StockLevel, Warehouse } from '@crm/db';
+import { calculateBomAvailability } from '@crm/inventory';
+import { connectDB, Product, StockAdjustment, StockLevel, Warehouse } from '@crm/db-core';
 import { mapProductToTableRow } from '@/lib/inventory/product-table-columns';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+
 import { ProductSkuLabel } from '@/components/product-sku-label';
 import { EnDeReadonlyDetails } from '@/components/en-de-readonly-details';
 import { resolveProductImageUrls } from '@/lib/product-thumbnail';
@@ -27,6 +19,19 @@ import {
 } from '@/lib/inventory/warehouse-scope';
 import { ProductRelationsMap } from '../_components/product-relations-map';
 import { ProductDetailShell } from '../_components/product-detail-shell';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@crm/ui';
 
 export default async function ProductDetailPage({
   params,

@@ -3,9 +3,10 @@
 import { useActionState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+
 import { createSupplierAction, type SupplierFormState } from '../actions';
 import { SupplierFormFields } from './supplier-form-fields';
+import { Button } from '@crm/ui';
 
 const initial: SupplierFormState = { success: false };
 

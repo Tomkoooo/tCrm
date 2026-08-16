@@ -2,8 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireAnyPermission } from '@crm/auth';
-import { SUPPLIER_MANAGE_PERMISSION_KEYS } from '@crm/lib';
-import { connectDB, Supplier } from '@crm/db';
+import { SUPPLIER_MANAGE_PERMISSION_KEYS } from '@crm/inventory';
+import { connectDB, Supplier } from '@crm/db-core';
 import { contactsHaveData, type SupplierContactEntry } from '@crm/lib';
 import { supplierSchema } from '@crm/lib/validation';
 

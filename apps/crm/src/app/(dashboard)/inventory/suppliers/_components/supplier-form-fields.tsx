@@ -1,10 +1,10 @@
 'use client';
 
 import type { SupplierContactEntry } from '@crm/lib';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+
 import { cn } from '@/lib/utils';
 import { SupplierContactsEditor } from './supplier-contacts-editor';
+import { Input, Label } from '@crm/ui';
 
 type SupplierValues = {
   key?: string;

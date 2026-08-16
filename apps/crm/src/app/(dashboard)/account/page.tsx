@@ -1,7 +1,7 @@
 import { requireAuth, getEffectivePermissionKeys } from '@crm/auth';
-import { connectDB, Permission } from '@crm/db';
+import { connectDB, Permission } from '@crm/db-core';
 import { Container } from '@crm/ui';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@crm/ui';
 import { getAccountData } from './actions';
 import { ProfileForm } from './_components/profile-form';
 import { PasswordForm } from './_components/password-form';

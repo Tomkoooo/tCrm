@@ -1,9 +1,18 @@
 'use client';
 
 import { ChevronDownIcon } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+
 import type { ProductEditSectionId } from './use-product-edit-sections';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@crm/ui';
 
 export function ProductEditSection({
   sectionId,
