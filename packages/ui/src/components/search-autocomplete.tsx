@@ -21,6 +21,8 @@ export type SearchAutocompleteProps = {
   disabled?: boolean;
   minChars?: number;
   debounceMs?: number;
+  /** Shown in the field when the user is not typing, so the current choice is visible. */
+  selectedLabel?: string;
 };
 
 export function SearchAutocomplete({
@@ -33,10 +35,12 @@ export function SearchAutocomplete({
   disabled = false,
   minChars = 1,
   debounceMs = 300,
+  selectedLabel,
 }: SearchAutocompleteProps) {
   const listId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState('');
+  const [editing, setEditing] = useState(false);
   const [items, setItems] = useState<SearchItem[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -86,6 +90,7 @@ export function SearchAutocomplete({
   const selectItem = (item: SearchItem) => {
     onSelect(item);
     setQuery('');
+    setEditing(false);
     setItems([]);
     setOpen(false);
     setActiveIndex(-1);
@@ -112,10 +117,21 @@ export function SearchAutocomplete({
     <div ref={containerRef} className={cn('relative w-full', className)}>
       <Input
         type="search"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        value={editing || query !== '' ? query : (selectedLabel ?? '')}
+        onChange={(e) => {
+          setEditing(true);
+          setQuery(e.target.value);
+        }}
         onFocus={() => {
+          setEditing(true);
+          if (query === '' && selectedLabel) setQuery(selectedLabel);
           if (items.length > 0) setOpen(true);
+        }}
+        onBlur={(e) => {
+          const next = e.relatedTarget as Node | null;
+          if (next && containerRef.current?.contains(next)) return;
+          setEditing(false);
+          setQuery('');
         }}
         onKeyDown={onKeyDown}
         placeholder={placeholder}

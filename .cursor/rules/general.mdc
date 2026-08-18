@@ -26,11 +26,11 @@ Next.js 16 App Router · React 19 · TypeScript strict · Tailwind v4 · shadcn 
 
 ## Workspace packages
 
-`@crm/auth` `@crm/db-core` `@crm/lib` `@crm/ui` `@crm/admin` `@crm/rbac` `@crm/mail` `@crm/media` `@crm/inventory` `@crm/logistics` — never import across `apps/*`
+`@crm/auth` `@crm/db-core` `@crm/lib` `@crm/ui` `@crm/admin` `@crm/rbac` `@crm/mail` `@crm/media` `@crm/inventory` `@crm/logistics` `@crm/hr` — never import across `apps/*`
 
 ## Current scope
 
-Phase 0 foundation + Phase 1 inventory + Phase 2 logistics/builds are live. Offers, HR/accounting, and titoktár are later.
+Phase 0 foundation + Phase 1 inventory + Phase 2 logistics/builds + Phase 3 job-first HR are live. Offers, bookkeeping, and titoktár are later.
 
 ## Before push
 

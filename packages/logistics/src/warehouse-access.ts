@@ -40,6 +40,17 @@ export function buildLogisticsJobWarehouseFilter(
   };
 }
 
+export function buildLogisticsJobAccessFilter(
+  warehouseIds: Types.ObjectId[],
+  employeeId?: Types.ObjectId
+): Record<string, unknown> {
+  const warehouseFilter = buildLogisticsJobWarehouseFilter(warehouseIds);
+  if (!employeeId) return warehouseFilter;
+  return {
+    $or: [warehouseFilter, { 'crew.employeeId': employeeId }],
+  };
+}
+
 export async function canAccessPickupWarehouse(
   userId: Types.ObjectId,
   permissions: string[],

@@ -179,13 +179,13 @@ export function GroupedMultiSelect({
             return (
               <span
                 key={id}
-                className="bg-secondary inline-flex max-w-full items-center gap-1 rounded-md px-2 py-0.5 text-xs"
+                className="bg-secondary text-secondary-foreground inline-flex max-w-full items-center gap-1 rounded-md px-2 py-0.5 text-xs"
               >
                 <span className="truncate">{label}</span>
                 {!disabled && (
                   <button
                     type="button"
-                    className="hover:bg-muted rounded p-0.5"
+                    className="hover:bg-secondary-foreground/15 rounded p-0.5"
                     aria-label={`Eltávolítás: ${label}`}
                     onClick={() => remove(id)}
                   >

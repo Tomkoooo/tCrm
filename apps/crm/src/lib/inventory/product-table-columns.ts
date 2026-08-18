@@ -213,7 +213,7 @@ export const INVENTORY_PRODUCT_COLUMNS: Array<ColumnDef<ProductTableRow>> = [
     filterable: false,
     searchable: false,
     defaultVisible: true,
-    headerHint: 'Raktár neve / készlet — csak pozitív készlet jelenik meg (pl. Récsei/20)',
+    headerHint: 'Kattints a készletre: raktáranként módosítható, a változás naplózódik.',
   },
   strCol('warehouseKeys', 'Raktár kulcsok', {
     defaultVisible: false,

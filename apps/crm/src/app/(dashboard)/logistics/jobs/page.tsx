@@ -7,6 +7,7 @@ import {
   buildLogisticsJobWarehouseFilter,
   getWarehouseIdsForUser,
   hasGlobalLogisticsScope,
+  previewPickupWarehouseIssues,
   resolveJobPickups,
 } from '@crm/logistics';
 import { Container, buildDataTableMongoQuery, parseDataTableQuery } from '@crm/ui';
@@ -46,8 +47,30 @@ export default async function LogisticsJobsPage({
     LogisticsJob.countDocuments(listFilter).exec(),
   ]);
 
+  const pickupInputs = items.flatMap((j) => {
+    const pickups = resolveJobPickups(j as unknown as ILogisticsJob);
+    return pickups.map((p) => ({
+      jobId: String(j._id),
+      warehouseId: p.warehouseId,
+      lines: p.lines.map((l) => ({
+        productId: l.productId,
+        requestedQuantity: l.requestedQuantity,
+      })),
+    }));
+  });
+  const warehouseIssues = pickupInputs.length
+    ? await previewPickupWarehouseIssues(pickupInputs)
+    : [];
+  const issueKeys = new Set(
+    warehouseIssues.map((issue) => `${issue.warehouseId}::${issue.productId}`)
+  );
+
   const data: JobRow[] = items.map((j) => {
     const pickups = resolveJobPickups(j as unknown as ILogisticsJob);
+    const kitOverride = (j.demandLines ?? []).some((l) => (l.kit?.components?.length ?? 0) > 0);
+    const hasShortage = pickups.some((p) =>
+      p.lines.some((l) => issueKeys.has(`${String(p.warehouseId)}::${String(l.productId)}`))
+    );
     return {
       _id: String(j._id),
       reference: j.reference,
@@ -56,6 +79,8 @@ export default async function LogisticsJobsPage({
       status: j.status as JobStatus,
       pickupCount: pickups.length,
       createdAt: j.createdAt,
+      kitOverride,
+      hasShortage,
     };
   });
 
@@ -65,7 +90,7 @@ export default async function LogisticsJobsPage({
         <div>
           <h1 className="text-2xl font-bold">Szállítások</h1>
           <p className="text-muted-foreground text-sm">
-            Esemény szállítások — raktártól a helyszínig és vissza.
+            Igénylista, automatikus raktári körök, építőcsapat checklist.
           </p>
         </div>
         {canWrite && (

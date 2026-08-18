@@ -43,6 +43,7 @@ export function resolveJobPickups(job: ILogisticsJob): ILogisticsPickup[] {
       reference: formatPickupReference(job.reference, 1),
       warehouseId: job.sourceWarehouseId,
       vehicleId: job.assignedVehicleId,
+      employeeIds: [],
       teamMemberIds,
       status: job.status,
       lines,

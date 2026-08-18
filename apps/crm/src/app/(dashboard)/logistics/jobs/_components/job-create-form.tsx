@@ -1,368 +1,328 @@
 'use client';
 
-import { useActionState, useCallback, useEffect, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@crm/ui';
-import { Input } from '@crm/ui';
-import { Label } from '@crm/ui';
-import { SearchAutocomplete, type SearchItem } from '@crm/ui';
-import { searchProductsAction } from '../../../inventory/search-actions';
-import {
-  createJobAction,
-  enrichPickupLinesDisplayAction,
-  suggestVehiclesAction,
-  type JobFormState,
-} from '../actions';
-import { PickupLinesList, type PickupLineListItem } from './pickup-lines-list';
+import { Button, Checkbox, Input, Label } from '@crm/ui';
+import { createDemandJobAction, previewPickupPlanAction } from '../plan-actions';
+import { type JobFormState } from '../actions';
 import { TeamMemberSelect } from './team-member-select';
-import { productDisplayName } from '@crm/lib';
-import { cn } from '@/lib/utils';
-
-type Line = { productId: string; sku: string; name: string; quantity: number };
-
-type PickupDraft = {
-  id: string;
-  label: string;
-  warehouseId: string;
-  vehicleId: string;
-  teamMemberIds: string[];
-  contactEmails: string;
-  plannedGatherAt: string;
-  plannedEventAt: string;
-  lines: Line[];
-};
-
-const selectClassName = cn(
-  'border-input bg-background ring-offset-background flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-xs',
-  'focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none'
-);
+import { CREW_ROLE_LABELS, CREW_ROLES } from '@/lib/crew-labels';
+import { JobCreatePartsStep } from './job-create-parts-step';
+import { JobCreateRoundsStep } from './job-create-rounds-step';
+import {
+  type CrewDraft,
+  type DemandLineDraft,
+  type DraftRound,
+  type PlanDemandLine,
+  type PlanProduct,
+  type PlanStockSlice,
+  demandLineIsValid,
+  newLocalId,
+  serializeDemand,
+  serializePickups,
+} from './job-create-types';
 
 const initialState: JobFormState = { success: false };
 
-function newPickup(warehouseId: string): PickupDraft {
-  return {
-    id: crypto.randomUUID(),
-    label: '',
-    warehouseId,
-    vehicleId: '',
-    teamMemberIds: [],
-    contactEmails: '',
-    plannedGatherAt: '',
-    plannedEventAt: '',
-    lines: [],
-  };
-}
+const STEPS = [
+  { id: 0, label: 'Alapadatok' },
+  { id: 1, label: 'Tételek' },
+  { id: 2, label: 'Csapat' },
+  { id: 3, label: 'Átvételi körök' },
+] as const;
 
-export function JobCreateForm({
-  warehouses,
-  vehicles,
-}: {
-  warehouses: Array<{ id: string; name: string; key: string }>;
-  vehicles: Array<{ id: string; name: string; plateNumber: string }>;
-}) {
+export function JobCreateForm() {
   const router = useRouter();
-  const [state, action, pending] = useActionState(createJobAction, initialState);
-  const [pickups, setPickups] = useState<PickupDraft[]>(() => [newPickup(warehouses[0]?.id ?? '')]);
-  const [activePickupId, setActivePickupId] = useState(pickups[0]?.id ?? '');
-  const [productId, setProductId] = useState('');
-  const [productSku, setProductSku] = useState('');
-  const [productName, setProductName] = useState('');
-  const [quantity, setQuantity] = useState('1');
-  const [vehicleSuggestions, setVehicleSuggestions] = useState<
-    Array<{
-      vehicleId: string;
-      name: string;
-      plateNumber: string;
-      fits: boolean;
-      reasons: string[];
-    }>
+  const [state, action, pending] = useActionState(createDemandJobAction, initialState);
+  const [step, setStep] = useState(0);
+  const [eventName, setEventName] = useState('');
+  const [siteAddress, setSiteAddress] = useState('');
+  const [plannedGatherAt, setPlannedGatherAt] = useState('');
+  const [plannedEventAt, setPlannedEventAt] = useState('');
+  const [plannedReturnAt, setPlannedReturnAt] = useState('');
+  const [note, setNote] = useState('');
+  const [demand, setDemand] = useState<DemandLineDraft[]>([]);
+  const [crew, setCrew] = useState<CrewDraft[]>([]);
+  const [rounds, setRounds] = useState<DraftRound[]>([]);
+  const [warehouses, setWarehouses] = useState<Array<{ id: string; name: string; key: string }>>(
+    []
+  );
+  const [vehicles, setVehicles] = useState<
+    Array<{ id: string; name: string; plateNumber: string }>
   >([]);
-  const [displayLines, setDisplayLines] = useState<PickupLineListItem[]>([]);
-
-  const activePickup = pickups.find((p) => p.id === activePickupId) ?? pickups[0];
-
-  const refreshSuggestions = useCallback(async (lines: Line[]) => {
-    if (!lines.length) {
-      setVehicleSuggestions([]);
-      return;
-    }
-    const linesJson = JSON.stringify(
-      lines.map((l) => ({ productId: l.productId, requestedQuantity: l.quantity }))
-    );
-    const result = await suggestVehiclesAction(linesJson);
-    if (result.success) {
-      setVehicleSuggestions(result.suggestions);
-    }
-  }, []);
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [roundsError, setRoundsError] = useState<string | undefined>();
+  const [roundsLoading, setRoundsLoading] = useState(false);
+  const [previewKey, setPreviewKey] = useState('');
+  const [products, setProducts] = useState<PlanProduct[]>([]);
+  const [stock, setStock] = useState<PlanStockSlice[]>([]);
+  const [planDemand, setPlanDemand] = useState<PlanDemandLine[]>([]);
 
   useEffect(() => {
-    if (activePickup) void refreshSuggestions(activePickup.lines);
-  }, [activePickup?.lines, activePickup?.id, refreshSuggestions]);
-
-  useEffect(() => {
-    if (!activePickup?.lines.length) {
-      setDisplayLines([]);
-      return;
-    }
-    void (async () => {
-      const res = await enrichPickupLinesDisplayAction(
-        activePickup.lines.map((l) => ({ productId: l.productId, quantity: l.quantity }))
-      );
-      if (res.success) setDisplayLines(res.lines);
-    })();
-  }, [activePickup?.lines, activePickup?.id]);
-
-  useEffect(() => {
-    if (state.success && state.id) {
-      router.push(`/logistics/jobs/${state.id}`);
-    }
+    if (state.success && state.id) router.push(`/logistics/jobs/${state.id}`);
   }, [state, router]);
 
-  const updatePickup = (id: string, patch: Partial<PickupDraft>) => {
-    setPickups((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+  const directorCount = crew.filter((c) => c.roles.includes('director')).length;
+  const detailsOk = eventName.trim().length > 0 && siteAddress.trim().length > 0;
+  const demandOk = demand.length > 0 && demand.every(demandLineIsValid);
+  const crewOk = crew.length > 0 && directorCount === 1;
+  const canSubmit = demandOk && crewOk && detailsOk;
+
+  const demandJson = JSON.stringify(serializeDemand(demand));
+  const crewJson = JSON.stringify(crew.map((c) => ({ employeeId: c.employeeId, roles: c.roles })));
+  const pickupsJson = JSON.stringify(serializePickups(rounds));
+
+  const loadRounds = async () => {
+    setRoundsLoading(true);
+    setRoundsError(undefined);
+    const key = `${demandJson}|${plannedGatherAt}|${plannedEventAt}|${plannedReturnAt}`;
+    try {
+      const result = await previewPickupPlanAction({
+        demandJson,
+        plannedEventAt: plannedEventAt || undefined,
+        plannedGatherAt: plannedGatherAt || undefined,
+        plannedReturnAt: plannedReturnAt || undefined,
+      });
+      if (!('rounds' in result)) {
+        setRoundsError(result.error);
+        setRounds([]);
+        setWarnings([]);
+        setProducts([]);
+        setStock([]);
+        setPlanDemand([]);
+        return;
+      }
+      setRounds(
+        result.rounds.map((round) => ({
+          localId: newLocalId(),
+          warehouseId: round.warehouseId,
+          vehicleId: round.vehicleId ?? '',
+          vehicleWarning: round.vehicleWarning,
+          lines: round.lines,
+        }))
+      );
+      setWarehouses(result.warehouses);
+      setVehicles(result.vehicles);
+      setProducts(result.products ?? []);
+      setStock(result.stock ?? []);
+      setPlanDemand(result.demand ?? []);
+      setWarnings(result.warnings);
+      setPreviewKey(key);
+    } finally {
+      setRoundsLoading(false);
+    }
   };
 
-  const addLineToActive = () => {
-    if (!productId || !activePickup) return;
-    const line: Line = {
-      productId,
-      sku: productSku,
-      name: productName,
-      quantity: Number(quantity) || 1,
-    };
-    updatePickup(activePickup.id, {
-      lines: [...activePickup.lines.filter((l) => l.productId !== productId), line],
-    });
-    setProductId('');
-    setProductSku('');
-    setProductName('');
-    setQuantity('1');
+  const goNext = async () => {
+    if (step === 0 && !detailsOk) return;
+    if (step === 1 && !demandOk) return;
+    if (step === 2 && !crewOk) return;
+    const next = Math.min(step + 1, STEPS.length - 1);
+    if (next === 3) {
+      const key = `${demandJson}|${plannedGatherAt}|${plannedEventAt}|${plannedReturnAt}`;
+      if (key !== previewKey) await loadRounds();
+    }
+    setStep(next);
   };
-
-  const pickupsJson = JSON.stringify(
-    pickups.map((p) => ({
-      label: p.label || undefined,
-      warehouseId: p.warehouseId,
-      vehicleId: p.vehicleId || undefined,
-      teamMemberIds: p.teamMemberIds,
-      contactEmails: p.contactEmails
-        .split(/[,;]/)
-        .map((e) => e.trim())
-        .filter(Boolean),
-      plannedGatherAt: p.plannedGatherAt || undefined,
-      plannedEventAt: p.plannedEventAt || undefined,
-      lines: p.lines.map((l) => ({ productId: l.productId, requestedQuantity: l.quantity })),
-    }))
-  );
-
-  const canSubmit = pickups.every((p) => p.warehouseId && p.lines.length > 0);
 
   return (
-    <form action={action} className="flex flex-col gap-6">
+    <form
+      action={action}
+      onSubmit={(e) => {
+        if (step !== 3 || !canSubmit) e.preventDefault();
+      }}
+      className="flex flex-col gap-6"
+    >
+      <input type="hidden" name="eventName" value={eventName} />
+      <input type="hidden" name="siteAddress" value={siteAddress} />
+      <input type="hidden" name="plannedGatherAt" value={plannedGatherAt} />
+      <input type="hidden" name="plannedEventAt" value={plannedEventAt} />
+      <input type="hidden" name="plannedReturnAt" value={plannedReturnAt} />
+      <input type="hidden" name="note" value={note} />
+      <input type="hidden" name="demandJson" value={demandJson} />
+      <input type="hidden" name="crewJson" value={crewJson} />
       <input type="hidden" name="pickupsJson" value={pickupsJson} />
 
+      <ol className="flex flex-wrap gap-2">
+        {STEPS.map((item) => (
+          <li key={item.id}>
+            <Button
+              type="button"
+              size="sm"
+              variant={step === item.id ? 'default' : 'outline'}
+              onClick={() => {
+                if (item.id <= step) setStep(item.id);
+              }}
+            >
+              {item.id + 1}. {item.label}
+            </Button>
+          </li>
+        ))}
+      </ol>
+
       {state.message && !state.success && (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {state.message}
         </p>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="eventName">Esemény neve</Label>
-          <Input id="eventName" name="eventName" required />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="siteAddress">Helyszín címe</Label>
-          <Input id="siteAddress" name="siteAddress" required />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="plannedEventAt">Helyszíni időpont (esemény)</Label>
-          <Input id="plannedEventAt" name="plannedEventAt" type="datetime-local" />
-        </div>
-        <div className="flex flex-col gap-2 md:col-span-2">
-          <Label htmlFor="note">Megjegyzés (esemény)</Label>
-          <Input id="note" name="note" />
-        </div>
-      </div>
+      {step === 0 && (
+        <section className="grid gap-4 md:grid-cols-2">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="eventName">Esemény neve</Label>
+            <Input
+              id="eventName"
+              value={eventName}
+              onChange={(e) => setEventName(e.target.value)}
+              required
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="siteAddress">Helyszín címe</Label>
+            <Input
+              id="siteAddress"
+              value={siteAddress}
+              onChange={(e) => setSiteAddress(e.target.value)}
+              required
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="plannedGatherAt">Összeszedés (raktár)</Label>
+            <Input
+              id="plannedGatherAt"
+              type="datetime-local"
+              value={plannedGatherAt}
+              onChange={(e) => setPlannedGatherAt(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="plannedEventAt">Helyszíni időpont</Label>
+            <Input
+              id="plannedEventAt"
+              type="datetime-local"
+              value={plannedEventAt}
+              onChange={(e) => setPlannedEventAt(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="plannedReturnAt">Visszaérkezés (raktár)</Label>
+            <Input
+              id="plannedReturnAt"
+              type="datetime-local"
+              value={plannedReturnAt}
+              onChange={(e) => setPlannedReturnAt(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="note">Megjegyzés</Label>
+            <Input id="note" value={note} onChange={(e) => setNote(e.target.value)} />
+          </div>
+        </section>
+      )}
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-medium">Átvételi körök</h3>
+      {step === 1 && <JobCreatePartsStep demand={demand} onChange={setDemand} />}
+
+      {step === 2 && (
+        <section className="flex flex-col gap-3">
+          <h3 className="font-medium">Építőcsapat és szerepek</h3>
+          <p className="text-muted-foreground text-sm">
+            Nincs külön raktáros. Az átvétel és a leadás az építőcsapat feladata. Pontosan egy
+            építésvezető kell.
+          </p>
+          <TeamMemberSelect
+            selected={crew.map((c) => c.employeeId)}
+            onLabels={(labels) => {
+              setCrew((prev) =>
+                prev.map((c) => ({
+                  ...c,
+                  name: labels[c.employeeId] ?? c.name,
+                }))
+              );
+            }}
+            onChange={(ids, labels) => {
+              setCrew((prev) => {
+                const keep = new Map(prev.map((c) => [c.employeeId, c]));
+                return ids.map((id) => {
+                  const existing = keep.get(id);
+                  const name = labels[id] ?? existing?.name ?? id;
+                  if (existing) return { ...existing, name };
+                  return { employeeId: id, name, roles: ['builder'] };
+                });
+              });
+            }}
+          />
+          {crew.map((member) => (
+            <div key={member.employeeId} className="rounded-md border p-3">
+              <p className="mb-2 text-sm font-medium">{member.name}</p>
+              <div className="flex flex-wrap gap-3">
+                {CREW_ROLES.map((role) => (
+                  <label key={role} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={member.roles.includes(role)}
+                      onCheckedChange={(checked) => {
+                        setCrew((prev) =>
+                          prev.map((c) => {
+                            if (c.employeeId !== member.employeeId) return c;
+                            const next = checked
+                              ? [...new Set([...c.roles, role])]
+                              : c.roles.filter((r) => r !== role);
+                            return { ...c, roles: next };
+                          })
+                        );
+                      }}
+                    />
+                    {CREW_ROLE_LABELS[role]}
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+          {crew.length > 0 && directorCount !== 1 && (
+            <p className="text-sm text-amber-700">Pontosan egy építésvezetőt jelölj ki.</p>
+          )}
+        </section>
+      )}
+
+      {step === 3 && (
+        <JobCreateRoundsStep
+          rounds={rounds}
+          warehouses={warehouses}
+          vehicles={vehicles}
+          products={products}
+          stock={stock}
+          demand={planDemand}
+          warnings={warnings}
+          loading={roundsLoading}
+          error={roundsError}
+          onChange={setRounds}
+          onRegenerate={() => void loadRounds()}
+        />
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Button
           type="button"
           variant="outline"
-          size="sm"
-          onClick={() => {
-            const p = newPickup(warehouses[0]?.id ?? '');
-            setPickups((prev) => [...prev, p]);
-            setActivePickupId(p.id);
-          }}
+          disabled={step === 0}
+          onClick={() => setStep((s) => Math.max(0, s - 1))}
         >
-          + Átvételi kör
+          Vissza
         </Button>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {pickups.map((p, i) => (
+        {step < 3 ? (
           <Button
-            key={p.id}
             type="button"
-            variant={p.id === activePickupId ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setActivePickupId(p.id)}
+            disabled={
+              (step === 0 && !detailsOk) || (step === 1 && !demandOk) || (step === 2 && !crewOk)
+            }
+            onClick={() => void goNext()}
           >
-            {p.label || `Kör ${i + 1}`} ({p.lines.length})
+            Tovább
           </Button>
-        ))}
-      </div>
-
-      {activePickup && (
-        <div className="rounded-lg border p-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="flex flex-col gap-2">
-              <Label>Megnevezés (pl. csapat)</Label>
-              <Input
-                value={activePickup.label}
-                onChange={(e) => updatePickup(activePickup.id, { label: e.target.value })}
-                placeholder="Építőcsapat A"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label>Raktár</Label>
-              <select
-                className={selectClassName}
-                value={activePickup.warehouseId}
-                onChange={(e) => updatePickup(activePickup.id, { warehouseId: e.target.value })}
-              >
-                {warehouses.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name} ({w.key})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label>Jármű</Label>
-              <select
-                className={selectClassName}
-                value={activePickup.vehicleId}
-                onChange={(e) => updatePickup(activePickup.id, { vehicleId: e.target.value })}
-              >
-                <option value="">— válasszon —</option>
-                {vehicles.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.name} ({v.plateNumber})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label>Értesítési e-mailek (vesszővel)</Label>
-              <Input
-                value={activePickup.contactEmails}
-                onChange={(e) => updatePickup(activePickup.id, { contactEmails: e.target.value })}
-                placeholder="team@example.com"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label>Összeszedés időpontja (raktár)</Label>
-              <Input
-                type="datetime-local"
-                value={activePickup.plannedGatherAt}
-                onChange={(e) => updatePickup(activePickup.id, { plannedGatherAt: e.target.value })}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label>Helyszíni időpont (felülírhatja az eseményét)</Label>
-              <Input
-                type="datetime-local"
-                value={activePickup.plannedEventAt}
-                onChange={(e) => updatePickup(activePickup.id, { plannedEventAt: e.target.value })}
-              />
-            </div>
-            <div className="flex flex-col gap-2 md:col-span-2">
-              <Label>Építőcsapat</Label>
-              <p className="text-muted-foreground text-xs">
-                Keresés szerepkör szerint csoportosítva. Raktárváltáskor a raktárhoz rendelt
-                munkatársak automatikusan kitöltődnek.
-              </p>
-              <TeamMemberSelect
-                warehouseId={activePickup.warehouseId}
-                selected={activePickup.teamMemberIds}
-                onChange={(teamMemberIds) => updatePickup(activePickup.id, { teamMemberIds })}
-              />
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <Label className="mb-2 block">Tételek ehhez a körhöz</Label>
-            <div className="flex flex-wrap items-end gap-2">
-              <div className="min-w-[200px] flex-1">
-                <SearchAutocomplete
-                  placeholder="CRM SKU / név"
-                  onSearch={searchProductsAction}
-                  onSelect={(item: SearchItem) => {
-                    const raw = item.raw as { sku?: string; names?: { hu?: string; en?: string } };
-                    const sku = raw?.sku ?? item.sublabel ?? item.label;
-                    setProductId(item.value);
-                    setProductSku(sku);
-                    setProductName(productDisplayName(raw?.names, sku));
-                  }}
-                />
-              </div>
-              <Input
-                type="number"
-                min={0.000001}
-                step="any"
-                className="w-24"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-              />
-              <Button type="button" variant="secondary" size="sm" onClick={addLineToActive}>
-                Hozzáadás
-              </Button>
-            </div>
-            <PickupLinesList lines={displayLines} />
-          </div>
-
-          {vehicleSuggestions.length > 0 && (
-            <div className="bg-muted/30 mt-4 rounded-md border p-3 text-sm">
-              <p className="mb-2 font-medium">Jármű javaslat (ehhez a körhöz)</p>
-              <ul className="space-y-1">
-                {vehicleSuggestions.slice(0, 3).map((s) => (
-                  <li key={s.vehicleId}>
-                    {s.name} ({s.plateNumber}){s.fits ? ' ✓' : ' — nem alkalmas'}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {pickups.length > 1 && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="mt-3 text-red-600"
-              onClick={() => {
-                const next = pickups.filter((p) => p.id !== activePickup.id);
-                setPickups(next);
-                setActivePickupId(next[0]?.id ?? '');
-              }}
-            >
-              Kör törlése
-            </Button>
-          )}
-        </div>
-      )}
-
-      <div className="flex flex-wrap gap-2">
-        <Button type="submit" name="publish" value="" disabled={pending || !canSubmit}>
-          Mentés tervezetként
-        </Button>
-        <Button type="submit" name="publish" value="true" disabled={pending || !canSubmit}>
-          Közzététel (ütemezés)
-        </Button>
+        ) : (
+          <Button type="submit" disabled={pending || !canSubmit}>
+            Mentés tervezetként
+          </Button>
+        )}
       </div>
     </form>
   );

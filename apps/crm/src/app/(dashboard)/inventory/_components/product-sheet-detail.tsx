@@ -10,6 +10,7 @@ import { formatProductSkuLine } from '@crm/lib';
 import type { ProductTableRow } from '@/lib/inventory/product-table-columns';
 import { deleteProductAction } from '../actions';
 import { ProductEditPanel } from './product-edit-panel';
+import { StockCountButton } from './stock-count-dialog';
 import { Button } from '@crm/ui';
 
 const SKU_HINT =
@@ -65,7 +66,14 @@ export function ProductSheetDetail({
         <dt className="text-muted-foreground">EAN</dt>
         <dd className="font-mono">{row.ean ?? '—'}</dd>
         <dt className="text-muted-foreground">Raktár / készlet</dt>
-        <dd>{row.stockSummary ?? '—'}</dd>
+        <dd>
+          <StockCountButton
+            sku={row.sku}
+            name={title}
+            summary={row.stockSummary}
+            canWrite={canWrite}
+          />
+        </dd>
         <dt className="text-muted-foreground">Aktív</dt>
         <dd>{row.isActive ? 'Igen' : 'Nem'}</dd>
       </dl>

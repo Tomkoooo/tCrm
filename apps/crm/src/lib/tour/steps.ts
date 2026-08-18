@@ -24,6 +24,12 @@ export const shellTourSteps: TourStep[] = [
       'Lépésről lépésre útmutatók minden funkcióhoz. Ha elakadsz, mindig ide gyere vissza.',
   },
   {
+    selector: '[data-tour="my-tasks"]',
+    title: 'Saját feladataim',
+    description:
+      'A rád bízott szállítások, naptár és szabadság. Akkor jelenik meg, ha van dolgozó profilod — jogosultság nélkül is. Több cég esetén fent válthatsz.',
+  },
+  {
     selector: '[data-tour="account"]',
     title: 'Fiók',
     description: 'Profilod, jelszavad és a jogosultságaid összesítője.',
@@ -32,13 +38,19 @@ export const shellTourSteps: TourStep[] = [
     selector: '[data-tour="inventory"]',
     title: 'Készletkezelés',
     description:
-      'Termékek, összeszerelések, kategóriák, beszállítók és készletszintek — csak azoknak látszik, akiknek van készlet jogosultságuk.',
+      'Termékek, gyors felvétel, készlet a listán, összeszerelések, kategóriák és beszállítók — csak azoknak látszik, akiknek van készlet jogosultságuk.',
   },
   {
     selector: '[data-tour="logistics"]',
     title: 'Logisztika',
     description:
       'Készletmozgások, foglalások, szállítások és járműflotta — jogosultság függvényében jelenik meg.',
+  },
+  {
+    selector: '[data-tour="hr"]',
+    title: 'HR',
+    description:
+      'Dolgozók, szabadság, és a szállításokból következő naptár / órák — jogosultság függvényében.',
   },
   {
     selector: '[data-tour="admin"]',

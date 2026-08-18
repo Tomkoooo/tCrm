@@ -13,15 +13,84 @@ export type JobStatus =
 
 export type PickupStatus = JobStatus;
 
+export const CREW_ROLES = ['director', 'pickup', 'driver', 'builder', 'dropoff'] as const;
+export type CrewRole = (typeof CREW_ROLES)[number];
+
+export type JobPlanStatus = 'draft' | 'proposed' | 'locked';
+
+export type JobActivityKind =
+  | 'demand_created'
+  | 'demand_changed'
+  | 'item_request'
+  | 'item_request_resolved'
+  | 'feedback'
+  | 'plan_proposed'
+  | 'plan_locked'
+  | 'plan_regenerated'
+  | 'handoff';
+
+export type JobItemRequestStatus = 'pending' | 'accepted' | 'rejected';
+
+export interface IDemandKitComponent {
+  productId: Types.ObjectId;
+  quantity: number;
+  note?: string;
+}
+
+/** Job-local BOM. Never written back to Product.components. */
+export interface IDemandKit {
+  name?: string;
+  substitutionNote?: string;
+  components: IDemandKitComponent[];
+}
+
+export interface IDemandLine {
+  productId?: Types.ObjectId;
+  requestedQuantity: number;
+  isOptional?: boolean;
+  note?: string;
+  kit?: IDemandKit;
+}
+
+export interface IJobCrewMember {
+  employeeId: Types.ObjectId;
+  roles: CrewRole[];
+}
+
+export interface IJobActivity {
+  _id: Types.ObjectId;
+  kind: JobActivityKind;
+  at: Date;
+  actorUserId: Types.ObjectId;
+  message?: string;
+}
+
+export interface IJobItemRequest {
+  _id: Types.ObjectId;
+  productId?: Types.ObjectId;
+  quantity?: number;
+  note: string;
+  status: JobItemRequestStatus;
+  requestedByUserId: Types.ObjectId;
+  createdAt: Date;
+  resolvedByUserId?: Types.ObjectId;
+  resolvedAt?: Date;
+}
+
 export interface IJobLine {
   productId: Types.ObjectId;
   requestedQuantity: number;
+  isOptional?: boolean;
   gatheredQuantity: number;
   installedQuantity: number;
   installedLocation?: string;
   returnedQuantity: number;
   checkedQuantity: number;
   lostQuantity: number;
+  /** Qty already on the truck from a previous event — do not pick again from warehouse. */
+  inboundHandoffQuantity?: number;
+  returnWarehouseId?: Types.ObjectId;
+  handoffJobId?: Types.ObjectId;
 }
 
 /** Future email / PDF integration metadata (extensible). */
@@ -53,6 +122,9 @@ export interface ILogisticsPickup {
   label?: string;
   warehouseId: Types.ObjectId;
   vehicleId?: Types.ObjectId;
+  /** Assigned crew as Employee ids (HR people directory). */
+  employeeIds: Types.ObjectId[];
+  /** Derived User ids from Employee.userId — kept for mail/documents. */
   teamMemberIds: Types.ObjectId[];
   status: PickupStatus;
   lines: IJobLine[];
@@ -60,11 +132,15 @@ export interface ILogisticsPickup {
   note?: string;
   pickMovementId?: Types.ObjectId;
   returnMovementId?: Types.ObjectId;
+  vehicleBookingId?: Types.ObjectId;
+  /** Set when the suggested vehicle was already booked or cargo does not fit. */
+  vehicleWarning?: string;
   notifications?: ILogisticsPickupNotifications;
   documents?: ILogisticsPickupDocuments;
   scheduledAt?: Date;
   plannedGatherAt?: Date;
   plannedEventAt?: Date;
+  plannedReturnAt?: Date;
   gatheredAt?: Date;
   pickedUpAt?: Date;
   deliveredAt?: Date;
@@ -81,6 +157,16 @@ export interface ILogisticsJob extends Document {
   pickups: ILogisticsPickup[];
   note?: string;
   plannedEventAt?: Date;
+  plannedGatherAt?: Date;
+  plannedReturnAt?: Date;
+  planStatus: JobPlanStatus;
+  demandLines: IDemandLine[];
+  /** Frozen copy of demand at first lock — used for original vs changed. */
+  originalDemandLines: IDemandLine[];
+  crew: IJobCrewMember[];
+  activities: IJobActivity[];
+  itemRequests: IJobItemRequest[];
+  feedback?: string;
   createdBy: Types.ObjectId;
   scheduledAt?: Date;
   gatheredAt?: Date;
@@ -104,12 +190,16 @@ const JobLineSchema = new Schema<IJobLine>(
   {
     productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
     requestedQuantity: { type: Number, required: true, min: 0.000001 },
+    isOptional: { type: Boolean, default: false },
     gatheredQuantity: { type: Number, default: 0, min: 0 },
     installedQuantity: { type: Number, default: 0, min: 0 },
     installedLocation: { type: String, maxlength: 500 },
     returnedQuantity: { type: Number, default: 0, min: 0 },
     checkedQuantity: { type: Number, default: 0, min: 0 },
     lostQuantity: { type: Number, default: 0, min: 0 },
+    inboundHandoffQuantity: { type: Number, default: 0, min: 0 },
+    returnWarehouseId: { type: Schema.Types.ObjectId, ref: 'Warehouse' },
+    handoffJobId: { type: Schema.Types.ObjectId, ref: 'LogisticsJob' },
   },
   { _id: false }
 );
@@ -141,6 +231,7 @@ const LogisticsPickupSchema = new Schema<ILogisticsPickup>(
     label: { type: String, maxlength: 200 },
     warehouseId: { type: Schema.Types.ObjectId, ref: 'Warehouse', required: true },
     vehicleId: { type: Schema.Types.ObjectId, ref: 'Vehicle' },
+    employeeIds: [{ type: Schema.Types.ObjectId, ref: 'Employee' }],
     teamMemberIds: [{ type: Schema.Types.ObjectId, ref: 'User' }],
     status: {
       type: String,
@@ -162,16 +253,89 @@ const LogisticsPickupSchema = new Schema<ILogisticsPickup>(
     note: { type: String, maxlength: 2000 },
     pickMovementId: { type: Schema.Types.ObjectId, ref: 'StockMovement' },
     returnMovementId: { type: Schema.Types.ObjectId, ref: 'StockMovement' },
+    vehicleBookingId: { type: Schema.Types.ObjectId, ref: 'VehicleBooking' },
+    vehicleWarning: { type: String, maxlength: 500 },
     notifications: { type: PickupNotificationsSchema, default: () => ({}) },
     documents: { type: PickupDocumentsSchema, default: () => ({}) },
     scheduledAt: { type: Date },
     plannedGatherAt: { type: Date },
     plannedEventAt: { type: Date },
+    plannedReturnAt: { type: Date },
     gatheredAt: { type: Date },
     pickedUpAt: { type: Date },
     deliveredAt: { type: Date },
     returningAt: { type: Date },
     completedAt: { type: Date },
+  },
+  { _id: true, strict: false }
+);
+
+const DemandKitComponentSchema = new Schema<IDemandKitComponent>(
+  {
+    productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
+    quantity: { type: Number, required: true, min: 0.000001 },
+    note: { type: String, maxlength: 500 },
+  },
+  { _id: false }
+);
+
+const DemandKitSchema = new Schema<IDemandKit>(
+  {
+    name: { type: String, maxlength: 300 },
+    substitutionNote: { type: String, maxlength: 2000 },
+    components: { type: [DemandKitComponentSchema], default: [] },
+  },
+  { _id: false }
+);
+
+const DemandLineSchema = new Schema<IDemandLine>(
+  {
+    productId: { type: Schema.Types.ObjectId, ref: 'Product' },
+    requestedQuantity: { type: Number, required: true, min: 0.000001 },
+    isOptional: { type: Boolean, default: false },
+    note: { type: String, maxlength: 500 },
+    kit: { type: DemandKitSchema },
+  },
+  { _id: false }
+);
+
+const JobCrewMemberSchema = new Schema<IJobCrewMember>(
+  {
+    employeeId: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
+    roles: {
+      type: [String],
+      enum: ['director', 'pickup', 'driver', 'builder', 'dropoff'],
+      default: [],
+    },
+  },
+  { _id: false }
+);
+
+const JobActivitySchema = new Schema<IJobActivity>(
+  {
+    kind: { type: String, required: true, maxlength: 64 },
+    at: { type: Date, required: true, default: Date.now },
+    actorUserId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    message: { type: String, maxlength: 4000 },
+  },
+  { _id: true }
+);
+
+const JobItemRequestSchema = new Schema<IJobItemRequest>(
+  {
+    productId: { type: Schema.Types.ObjectId, ref: 'Product' },
+    quantity: { type: Number, min: 0 },
+    note: { type: String, required: true, maxlength: 2000 },
+    status: {
+      type: String,
+      required: true,
+      enum: ['pending', 'accepted', 'rejected'],
+      default: 'pending',
+    },
+    requestedByUserId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    createdAt: { type: Date, required: true, default: Date.now },
+    resolvedByUserId: { type: Schema.Types.ObjectId, ref: 'User' },
+    resolvedAt: { type: Date },
   },
   { _id: true }
 );
@@ -200,6 +364,21 @@ const LogisticsJobSchema = new Schema<ILogisticsJob>(
     pickups: { type: [LogisticsPickupSchema], default: [] },
     note: { type: String, maxlength: 2000 },
     plannedEventAt: { type: Date },
+    plannedGatherAt: { type: Date },
+    plannedReturnAt: { type: Date },
+    planStatus: {
+      type: String,
+      required: true,
+      enum: ['draft', 'proposed', 'locked'],
+      default: 'draft',
+      index: true,
+    },
+    demandLines: { type: [DemandLineSchema], default: [] },
+    originalDemandLines: { type: [DemandLineSchema], default: [] },
+    crew: { type: [JobCrewMemberSchema], default: [] },
+    activities: { type: [JobActivitySchema], default: [] },
+    itemRequests: { type: [JobItemRequestSchema], default: [] },
+    feedback: { type: String, maxlength: 8000 },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     scheduledAt: { type: Date },
     gatheredAt: { type: Date },
@@ -215,7 +394,7 @@ const LogisticsJobSchema = new Schema<ILogisticsJob>(
     pickMovementId: { type: Schema.Types.ObjectId, ref: 'StockMovement' },
     returnMovementId: { type: Schema.Types.ObjectId, ref: 'StockMovement' },
   },
-  { timestamps: true }
+  { timestamps: true, strict: false }
 );
 
 LogisticsJobSchema.index({ status: 1, createdAt: -1 });
@@ -223,7 +402,10 @@ LogisticsJobSchema.index({ eventName: 'text', siteAddress: 'text', reference: 't
 LogisticsJobSchema.index({ 'pickups.reference': 1 });
 LogisticsJobSchema.index({ 'pickups.warehouseId': 1 });
 LogisticsJobSchema.index({ 'pickups.teamMemberIds': 1 });
+LogisticsJobSchema.index({ 'pickups.employeeIds': 1 });
 LogisticsJobSchema.index({ 'pickups.lines.productId': 1 });
+LogisticsJobSchema.index({ 'crew.employeeId': 1 });
+LogisticsJobSchema.index({ planStatus: 1, createdAt: -1 });
 
 export const LogisticsJob =
   (mongoose.models.LogisticsJob as mongoose.Model<ILogisticsJob>) ||

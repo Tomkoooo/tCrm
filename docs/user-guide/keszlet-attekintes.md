@@ -37,12 +37,13 @@ Raktárak: **Oldalsáv → Adminisztráció → Raktárak** (`/admin/warehouses`
 2. Vedd fel a **raktárakat**, ha még nincsenek.
 3. **Importáld** vagy manuálisan vedd fel a termékeket.
 4. Rendeld hozzá a **beszállítókat** (import sorban vagy tömegesen).
-5. Kövesd a készletet a **Termékmenedzsment** dashboardon és a termék adatlapján.
+5. Kövesd a készletet a **Termékek** listán (kattints a készletszámra) és a termék adatlapján.
 
 ## Kapcsolódó fejezetek
 
 - [Excel importálás](/help/excel-import)
 - [Terméklista és szűrés](/help/termeklista-es-szures)
+- [Leltár és gyors felvétel](/help/leltar)
 - [Összeszerelések](/help/osszeszerelesek)
 - [Termék szerkesztés](/help/termek-szerkesztes)
 - [Raktárak](/help/admin-raktarak)

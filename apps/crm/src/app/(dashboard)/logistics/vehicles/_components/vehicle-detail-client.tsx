@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { format } from 'date-fns';
 import { hu } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@crm/ui';
@@ -117,12 +116,6 @@ function OverviewTab({
               ) : (
                 <p className="text-muted-foreground">Nincs egyedi cég adat.</p>
               )}
-              <Link
-                href={`/accounting/companies/${company._id}`}
-                className="text-primary mt-2 inline-block text-sm hover:underline"
-              >
-                Cég megnyitása
-              </Link>
             </>
           ) : (
             <p className="text-muted-foreground">Nincs hozzárendelt cég.</p>

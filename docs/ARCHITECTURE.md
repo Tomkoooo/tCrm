@@ -10,7 +10,7 @@ Single source of truth for system design, boundaries, and conventions.
 
 ## 1. Vision & Goals
 
-**tCrm** is an internal CRM with a live foundation (auth, RBAC, admin), inventory, logistics, and builds, with a path toward offers, accounting, and multi-tenant SaaS.
+**tCrm** is an internal CRM with a live foundation (auth, RBAC, admin), inventory, logistics, builds, and job-first HR, with a path toward offers, bookkeeping, and multi-tenant SaaS.
 
 | Goal | Approach |
 |------|----------|
@@ -40,7 +40,7 @@ flowchart LR
   packages --> media["media/ media library service"]
   packages --> inventory["inventory/ products, Excel import, stock"]
   packages --> logistics["logistics/ movements, jobs, vehicles"]
-  packages --> employeecore["employee-core/ scaffolding, not yet wired"]
+  packages --> hr["hr/ people, leave, schedule sync"]
 ```
 
 ### Package responsibilities
@@ -50,15 +50,15 @@ flowchart LR
 | `@crm/app` (`apps/crm`) | Main Next.js application — routes, app-specific UI |
 | `@crm/ui` | Shared shadcn primitives, `Container`, `DataTable`, `EntitySheet` |
 | `@crm/lib` | `cn()`, Zod schemas, env helpers (`isPublicRegistrationEnabled`, etc.) |
-| `@crm/db-core` | Mongoose connection, models (User/Role/Permission, Product/Category/Supplier/Warehouse/StockLevel/StockAdjustment, Reservation/StockMovement/LogisticsJob/Vehicle/VehicleIncident, MailTemplate, Media, Branding, Counter), repositories, branding/system/user helpers |
+| `@crm/db-core` | Mongoose connection, models (User/Role/Permission, Product/Category/Supplier/Warehouse/StockLevel/StockAdjustment, Reservation/StockMovement/LogisticsJob/Vehicle/VehicleIncident, Employee/TimeOff/ScheduleEntry, MailTemplate, Media, Branding, Counter), repositories, branding/system/user helpers |
 | `@crm/auth` | Auth.js v5 config, session helpers (`requireAuth`, `requirePermission`, `getCurrentUser`), `getEffectivePermissionKeys` |
 | `@crm/rbac` | Permission-module registry (`registerPermissionModule`) + `ensurePermissionsSynced` baseline sync |
 | `@crm/admin` | Engine permission module (`enginePermissions`), users/invitations/password-reset business logic, mail-template seeding |
 | `@crm/mail` | Nodemailer wrapper, templated send, recipient resolution |
 | `@crm/media` | Media library service (upload, dedup by hash, link-based media) + permission keys |
 | `@crm/inventory` | Products, categories, suppliers, warehouses/stock, Excel import/export, inventory permission module |
-| `@crm/logistics` | Stock movements, reservations, event jobs/pickups, vehicle fleet, logistics permission module |
-| `@crm/employee-core` | Schedule/employee helper functions — **exists but is not imported by any route yet**; do not assume an HR feature is live because this package exists |
+| `@crm/logistics` | Stock movements, reservations, demand-first event jobs (propose/lock pickup rounds), vehicle bookings, logistics permission module |
+| `@crm/hr` | People directory, time off, schedule entries, monthly hours; HR permission module |
 | `@crm/eslint-config`, `@crm/tsconfig` | Shared configs |
 
 **Rule:** Cross-app shared code → `packages/`. Single-app code stays in `apps/crm/src/`. There is currently only one app (`apps/crm`); do not create `apps/landing` or similar without an explicit ask.
@@ -94,12 +94,13 @@ Everything that exists in the rebuilt app today. If a doc, comment, or plan refe
 | Dashboard | `/` — permission-filtered quick actions |
 | Account | `/account` — profile, password change, effective-permissions summary |
 | Help | `/help`, `/help/[slug]` — renders `docs/user-guide/*.md` |
-| Inventory | `/inventory`, `/inventory/dashboard`, `/inventory/new`, `/inventory/[sku]`, `/inventory/builds`, `/inventory/builds/new`, `/inventory/categories`, `/inventory/suppliers`, `/inventory/suppliers/[id]`, `/inventory/template`, `/inventory/export` |
+| Inventory | `/inventory`, `/inventory/dashboard`, `/inventory/new`, `/inventory/count`, `/inventory/[sku]`, `/inventory/builds`, `/inventory/builds/new`, `/inventory/categories`, `/inventory/suppliers`, `/inventory/suppliers/[id]`, `/inventory/template`, `/inventory/export` |
 | Logistics | `/logistics`, `/logistics/movements`, `/logistics/movements/new/{grn,pick,transfer}`, `/logistics/movements/[id]`, `/logistics/reservations`, `/logistics/jobs`, `/logistics/jobs/new`, `/logistics/jobs/[id]`, `/logistics/vehicles`, `/logistics/vehicles/[id]` |
+| HR | `/hr`, `/hr/companies`, `/hr/people`, `/hr/people/[id]`, `/hr/calendar`, `/hr/leave`, `/hr/leave-summary`, `/hr/leave-summary/import`, `/hr/hours`, `/hr/me` |
 | Admin | `/admin/users`, `/admin/users/new`, `/admin/users/invite`, `/admin/users/invitations`, `/admin/users/[id]`, `/admin/permissions`, `/admin/mail-templates`, `/admin/mail-templates/[id]`, `/admin/media`, `/admin/branding`, `/admin/warehouses`, `/admin/warehouses/[id]` |
 | PWA | Web app manifest (`/manifest.webmanifest`), service worker, install prompt on dashboard |
 
-Offers, accounting, HR, and secrets/titoktár are not built yet. `_legacy-core-reference/` holds remaining HR/accounting business logic as porting reference.
+Offers, bookkeeping, and secrets/titoktár are not built yet. `_legacy-core-reference/` holds leftover pre-rebuild HR/accounting logic as historical reference only — do not port teams/shifts/leave-import.
 
 ---
 
@@ -162,7 +163,7 @@ Effective permissions = union of all role permissions + `directPermissionKeys` (
 
 ### Permission modules & the baseline sync
 
-Permission keys are declared as `PermissionModule` objects (`packages/rbac/src/types.ts`) and registered at process start via `registerPermissionModule` — see `apps/crm/src/lib/rbac-bootstrap.ts`, which currently registers three modules: `enginePermissions`, `mediaPermissions`, and `inventoryPermissions`.
+Permission keys are declared as `PermissionModule` objects (`packages/rbac/src/types.ts`) and registered at process start via `registerPermissionModule` — see `apps/crm/src/lib/rbac-bootstrap.ts`, which currently registers `enginePermissions`, `mediaPermissions`, `inventoryPermissions`, `logisticsPermissions`, and `hrPermissions`.
 
 `ensurePermissionsSynced` (`packages/rbac/src/bootstrap.ts`) upserts every registered permission, then rebuilds the `admin` system role so it always contains **every currently registered key** — recomputed on each sync, never hand-maintained. Each module's own `roleTemplates` (e.g. a baseline `viewer` role) are merged in the same pass.
 
@@ -234,9 +235,10 @@ Collapsible sidebar (`apps/crm/src/components/app-sidebar.tsx`) built on shadcn 
 
 | Group (HU) | Routes | Gate |
 |------------|--------|------|
-| Általános | `/`, `/help` | authenticated |
-| Készletkezelés | `/inventory/dashboard`, `/inventory`, `/inventory/builds`, `/inventory/categories`, `/inventory/suppliers` | `inventory:read` (suppliers also accept `suppliers:read` / write / import) |
-| Logisztika | `/logistics`, `/logistics/movements`, `/logistics/reservations`, `/logistics/jobs`, `/logistics/vehicles` | `logistics:read` (vehicles also accept `logistics:vehicles:read`) |
+| Általános | `/`, `/help`, `/hr/me` | authenticated; `/hr/me` also needs a linked employee profile (no permission key) |
+| Készletkezelés | `/inventory/dashboard`, `/inventory`, `/inventory/count`, `/inventory/builds`, `/inventory/categories`, `/inventory/suppliers` | `inventory:read` (suppliers also accept `suppliers:read` / write / import) |
+| Logisztika | `/logistics`, `/logistics/movements`, `/logistics/reservations`, `/logistics/jobs`, `/logistics/vehicles` | `logistics:read` (vehicles also accept `logistics:vehicles:read`); job checklists also open for assigned crew |
+| HR | `/hr`, `/hr/people`, `/hr/calendar`, `/hr/leave`, `/hr/leave-summary`, `/hr/hours`, `/hr/companies` | any of `hr:read` / `hr:write` / `hr:approve` (`/hr/companies` needs `hr:write`) |
 | Beállítások | `/account` | authenticated |
 | Adminisztráció | `/admin/users`, `/admin/permissions`, `/admin/mail-templates`, `/admin/warehouses`, `/admin/media`, `/admin/branding` | group hidden unless `admin:access`; warehouses also need `warehouses:read` |
 
@@ -302,7 +304,7 @@ Brings up MongoDB, Mongo Express (`:8081`), and the CRM app (`:3000`).
 
 ## 14. Roadmap
 
-The original plan (offers → accounting/multi-tenant SaaS) still holds as the long-term direction. **Phase 1 (inventory) and Phase 2 (logistics + builds) are live** — plan later phases against the current package/route list above.
+The original plan (offers → accounting/multi-tenant SaaS) still holds as the long-term direction. **Phase 1 (inventory), Phase 2 (logistics + builds), and Phase 3 (job-first HR) are live.** Jobs are demand-first: logistics writes a flat item list, the optimizer proposes warehouse/vehicle rounds, lock reserves stock and books vehicles, and the build crew (director / pickup / driver / builder / drop-off) owns field checklists. HR `/hr/me` deep-links into those tasks.
 
 ---
 
@@ -325,4 +327,4 @@ The original plan (offers → accounting/multi-tenant SaaS) still holds as the l
 
 ---
 
-*Last updated: 2026-08 (Phase 2 logistics + builds).*
+*Last updated: 2026-08 (demand-first logistics jobs + job-first HR).*

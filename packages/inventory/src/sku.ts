@@ -4,6 +4,51 @@ export type CategorySkuSettings = {
   padChar?: string;
 };
 
+/** Fallback when a category has no SKU prefix — sequential `Q` + digits. */
+export const QUICK_SKU_FALLBACK: CategorySkuSettings = {
+  prefix: 'Q',
+  totalLength: 8,
+};
+
+export type CategorySkuSource = {
+  skuPrefix?: string | null;
+  skuTotalLength?: number | null;
+  skuPadChar?: string | null;
+};
+
+export function skuSettingsFromCategory(category?: CategorySkuSource | null): CategorySkuSettings {
+  const prefix = String(category?.skuPrefix ?? '').trim();
+  if (!prefix) return { ...QUICK_SKU_FALLBACK };
+
+  const requestedLength = Number(category?.skuTotalLength);
+  const minLength = prefix.length + 1;
+  const totalLength =
+    Number.isFinite(requestedLength) && requestedLength >= minLength
+      ? requestedLength
+      : prefix.length + 6;
+
+  return {
+    prefix,
+    totalLength,
+    padChar: category?.skuPadChar ?? undefined,
+  };
+}
+
+/** Sequential CRM SKU from a category prefix (or `Q` fallback) + integer sequence. */
+export function formatSequentialSku(settings: CategorySkuSettings, sequence: number): string {
+  if (!Number.isInteger(sequence) || sequence < 1) {
+    throw new Error('A SKU sorszámnak pozitív egésznek kell lennie.');
+  }
+  const skuPartLength = settings.totalLength - String(settings.prefix ?? '').trim().length;
+  if (!Number.isFinite(skuPartLength) || skuPartLength < 1) {
+    throw new Error('Invalid category SKU total length');
+  }
+  if (String(sequence).length > skuPartLength) {
+    throw new Error('A kategória SKU számtartománya betelt.');
+  }
+  return generateInternalSku(settings, String(sequence));
+}
+
 export function normalizeDigits(value: string): string {
   return value.replace(/\D+/g, '');
 }

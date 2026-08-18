@@ -18,7 +18,7 @@
     "@crm/admin": "workspace:*",
     "@crm/auth": "workspace:*",
     "@crm/db-core": "workspace:*",
-    "@crm/employee-core": "workspace:*",
+    "@crm/hr": "workspace:*",
     "@crm/inventory": "workspace:*",
     "@crm/logistics": "workspace:*",
     "@crm/lib": "workspace:*",

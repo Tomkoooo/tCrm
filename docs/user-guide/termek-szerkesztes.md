@@ -55,5 +55,6 @@ Egy termék teljes adatainak megtekintése és módosítása: azonosítók, kés
 
 - [Excel importálás](/help/excel-import)
 - [Terméklista és szűrés](/help/termeklista-es-szures)
+- [Leltár és gyors felvétel](/help/leltar)
 
 *Utolsó frissítés: 2026-08*

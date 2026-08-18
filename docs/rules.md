@@ -43,7 +43,8 @@ Single source of truth for frontend, backend, and team conventions in the rebuil
 | `@crm/lib` | `packages/lib` |
 | `@crm/inventory` | `packages/inventory` |
 | `@crm/logistics` | `packages/logistics` |
-| `@crm/employee-core` | `packages/employee-core` (not yet wired into any HR route) |
+| `@crm/hr` | `packages/hr` |
+| `@crm/eslint-config` | `packages/eslint-config` |
 | `@/*` | `apps/crm/src/*` |
 
 There is no `@crm/core` or `@crm/db` in the rebuilt app — if you see either in old notes or comments, they refer to the pre-rebuild codebase (`_legacy-core-reference/`), not something to import.

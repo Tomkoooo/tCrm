@@ -10,17 +10,11 @@ Internal CRM + future SaaS platform. Turborepo monorepo with Next.js 16 CRM app,
 cp .env.example apps/crm/.env.local
 pnpm install
 
-# Seed database (requires MongoDB running)
-pnpm --filter @crm/db seed
-
 # Start dev server
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Default admin after seed:
-
-- Email: `admin@tcrm.local`
-- Password: `admin123456`
+Open [http://localhost:3000](http://localhost:3000). On an empty database the app sends you to `/setup` to create the first administrator — there is no seed script.
 
 ### Docker (full stack)
 
@@ -44,7 +38,7 @@ packages/lib/          Utils + Zod validation + env helpers
 packages/ui/           Shared Container, DataTable, EntitySheet, shadcn primitives
 packages/inventory/     Products, Excel import, stock
 packages/logistics/     Movements, reservations, jobs, vehicles
-packages/employee-core/ Schedule/employee helpers (not yet wired to a route)
+packages/hr/            People, leave, schedule sync, monthly hours
 docker/                Docker Compose for local dev
 docs/                  Architecture, rules, design system, user guide
 ```
@@ -58,10 +52,11 @@ docs/                  Architecture, rules, design system, user guide
 | `pnpm lint` | ESLint across workspace |
 | `pnpm typecheck` | TypeScript check |
 | `pnpm test` | Vitest unit tests |
-| `pnpm --filter @crm/db seed` | Seed permissions, roles, admin user |
+| First admin | Empty DB → `/setup` (RBAC baseline syncs on dashboard load) |
 
 ## Documentation
 
+- [erp-motor.md](./docs/erp-motor.md) — **ERP-motor (HU)** — moduláris konstruktor, testreszabási rétegek, új cég bevezetése
 - [AGENT_HANDOFF.md](./docs/AGENT_HANDOFF.md) — current status, known issues, **copy-paste prompt for next agent** (§8) — **read this first**
 - [ARCHITECTURE.md](./docs/ARCHITECTURE.md) — system design, RBAC, CI/CD
 - [rules.md](./docs/rules.md) — coding conventions
@@ -69,14 +64,16 @@ docs/                  Architecture, rules, design system, user guide
 - [TESTING.md](./docs/TESTING.md) — test inventory and commands
 - [inventory.md](./docs/inventory.md) — Phase 1 product/import notes
 - [logistics.md](./docs/logistics.md) — Phase 2 movements, jobs, vehicles
+- [hr.md](./docs/hr.md) — Phase 3 job-first HR
 - [user-guide/](./docs/user-guide/) — end-user help articles, rendered at `/help` and used by the in-app guided tour
 
 ## Phase roadmap
 
 - **Phase 0:** Foundation — monorepo, auth, dynamic RBAC, admin (users, roles, mail templates, media, branding), help center, PWA.
 - **Phase 1:** Inventory — products, categories, suppliers, warehouses/stock, Excel import/export, DataTable.
-- **Phase 2 (current):** Logistics (movements, reservations, jobs, vehicles) and builds (`/inventory/builds`). Offers and `apps/landing` are still later.
-- **Phase 3:** Accounting, multi-tenant SaaS, reporting
+- **Phase 2:** Logistics (movements, reservations, jobs, vehicles) and builds (`/inventory/builds`).
+- **Phase 3 (current):** Job-first HR — people, leave, calendar from logistics jobs, monthly hours. Not a port of old `/accounting`.
+- **Later:** Offers, bookkeeping, titoktár, multi-tenant SaaS.
 
 ## Tech stack
 

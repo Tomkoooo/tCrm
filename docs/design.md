@@ -191,6 +191,7 @@ const { filter, sort, skip, limit } = buildDataTableMongoQuery(query, columns);
 | `/admin/media` | Media library | `media:read` |
 | `/admin/branding` | Branding | `admin:access` |
 | `/inventory` | Products | `inventory:read` |
+| `/inventory/count` | Optional warehouse list (not in sidebar; primary count is the stock dialog on `/inventory`) | `inventory:read` (write to edit qty) |
 | `/inventory/dashboard` | Inventory KPIs | `inventory:read` |
 | `/inventory/categories` | Categories | `inventory:read` |
 | `/inventory/builds` | BOM kits | `inventory:read` |
@@ -200,6 +201,8 @@ const { filter, sort, skip, limit } = buildDataTableMongoQuery(query, columns);
 | `/logistics/reservations` | Reservations | `logistics:read` |
 | `/logistics/jobs` | Event shipments | `logistics:read` |
 | `/logistics/vehicles` | Vehicle fleet | `logistics:vehicles:read` |
+| HR | `/hr`, `/hr/people`, `/hr/calendar`, `/hr/leave`, `/hr/leave-summary`, `/hr/hours`, `/hr/companies` | `hr:read` / `hr:write` |
+| Saját feladataim | `/hr/me` | linked employee profile (no permission) |
 
 ---
 
@@ -237,4 +240,4 @@ const { filter, sort, skip, limit } = buildDataTableMongoQuery(query, columns);
 
 ---
 
-*Adapted from 3SGP design system — updated 2026-07 (post-rebuild).*
+*Adapted from 3SGP design system — updated 2026-08 (Phase 3 HR).*

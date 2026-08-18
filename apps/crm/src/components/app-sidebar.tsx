@@ -22,7 +22,12 @@ import {
   ArrowRightLeftIcon,
   LockIcon,
   ClipboardListIcon,
+  ClipboardCheckIcon,
+  ListChecksIcon,
   CarIcon,
+  CalendarIcon,
+  ClockIcon,
+  UserRoundIcon,
 } from 'lucide-react';
 import {
   SUPPLIER_READ_PERMISSION_KEYS,
@@ -32,6 +37,7 @@ import {
   LOGISTICS_READ_PERMISSION_KEYS,
   LOGISTICS_VEHICLES_READ_PERMISSION_KEYS,
 } from '@crm/logistics/permissions';
+import { HR_NAV_PERMISSION_KEYS, HR_READ_PERMISSION_KEYS } from '@crm/hr/permissions';
 import { MEDIA_READ_PERMISSION_KEYS } from '@crm/media/permissions';
 import { getInitials, hasAnyPermission } from '@crm/lib';
 import {
@@ -60,6 +66,7 @@ type SidebarUser = {
   email: string;
   name: string;
   permissions: string[];
+  hasEmployeeProfile?: boolean;
 };
 
 export function MenuItem({
@@ -94,6 +101,7 @@ export function MenuItem({
 export function AppSidebar({ serverUser }: { serverUser?: SidebarUser }) {
   const { user: clientUser, isLoading } = useAuth();
   const user = serverUser ?? clientUser ?? null;
+  const hasEmployeeProfile = Boolean(serverUser?.hasEmployeeProfile);
   const authLoading = isLoading && !user;
   const branding = useBranding();
   const { setOpenMobile } = useSidebar();
@@ -118,6 +126,11 @@ export function AppSidebar({ serverUser }: { serverUser?: SidebarUser }) {
         href: '/inventory',
         icon: <PackageIcon className="h-4 w-4" />,
         label: 'Termékek',
+      });
+      items.push({
+        href: '/inventory/count',
+        icon: <ListChecksIcon className="h-4 w-4" />,
+        label: 'Leltár',
       });
       items.push({
         href: '/inventory/builds',
@@ -171,6 +184,54 @@ export function AppSidebar({ serverUser }: { serverUser?: SidebarUser }) {
         href: '/logistics/vehicles',
         icon: <CarIcon className="h-4 w-4" />,
         label: 'Járműflotta',
+      });
+    }
+    return items;
+  }, [user?.permissions]);
+
+  const hrItems = useMemo((): SidebarNavItem[] => {
+    if (!hasAny(HR_NAV_PERMISSION_KEYS)) return [];
+    const items: SidebarNavItem[] = [
+      {
+        href: '/hr',
+        icon: <UsersIcon className="h-4 w-4" />,
+        label: 'Áttekintés',
+      },
+    ];
+    if (hasAny(HR_READ_PERMISSION_KEYS)) {
+      items.push(
+        {
+          href: '/hr/people',
+          icon: <UserRoundIcon className="h-4 w-4" />,
+          label: 'Dolgozók',
+        },
+        {
+          href: '/hr/calendar',
+          icon: <CalendarIcon className="h-4 w-4" />,
+          label: 'Naptár',
+        },
+        {
+          href: '/hr/leave',
+          icon: <ClipboardListIcon className="h-4 w-4" />,
+          label: 'Szabadság',
+        },
+        {
+          href: '/hr/leave-summary',
+          icon: <ClipboardListIcon className="h-4 w-4" />,
+          label: 'Szabadság összesítő',
+        },
+        {
+          href: '/hr/hours',
+          icon: <ClockIcon className="h-4 w-4" />,
+          label: 'Órák',
+        }
+      );
+    }
+    if (hasPermission('hr:write')) {
+      items.push({
+        href: '/hr/companies',
+        icon: <Building2Icon className="h-4 w-4" />,
+        label: 'Cégek',
       });
     }
     return items;
@@ -256,6 +317,15 @@ export function AppSidebar({ serverUser }: { serverUser?: SidebarUser }) {
                 onClick={linkClick}
                 tourId="help"
               />
+              {hasEmployeeProfile ? (
+                <MenuItem
+                  href="/hr/me"
+                  icon={<ClipboardCheckIcon className="h-4 w-4" />}
+                  label="Saját feladataim"
+                  onClick={linkClick}
+                  tourId="my-tasks"
+                />
+              ) : null}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -273,6 +343,8 @@ export function AppSidebar({ serverUser }: { serverUser?: SidebarUser }) {
           onLinkClick={linkClick}
           tourId="logistics"
         />
+
+        <SidebarNavGroup label="HR" items={hrItems} onLinkClick={linkClick} tourId="hr" />
 
         <SidebarGroup>
           <SidebarGroupLabel>Beállítások</SidebarGroupLabel>

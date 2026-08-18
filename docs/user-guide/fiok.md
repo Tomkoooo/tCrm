@@ -28,5 +28,6 @@ A változás **azonnal** érvénybe lép a következő oldalfrissítésnél — 
 
 - [Szerepkörök és jogosultságok](/help/admin-szerepkorok)
 - [Felhasználók kezelése](/help/admin-felhasznalok)
+- [Saját feladataim](/help/sajat-feladataim)
 
-*Utolsó frissítés: 2026-07*
+*Utolsó frissítés: 2026-08*

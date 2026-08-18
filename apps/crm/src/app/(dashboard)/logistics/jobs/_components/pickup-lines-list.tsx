@@ -21,6 +21,7 @@ export type PickupLineListItem = {
   name: string;
   quantity: number;
   isPrebuild: boolean;
+  isOptional?: boolean;
   bomComponents: PickupBomComponentView[];
 };
 
@@ -142,6 +143,11 @@ export function PickupLineWorkflowRow({
                   {line.isConsumable && (
                     <span className="text-muted-foreground ml-1 text-xs font-normal">(fogyó)</span>
                   )}
+                  {line.isOptional && (
+                    <span className="bg-muted text-muted-foreground ml-1.5 inline rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide">
+                      opcionális
+                    </span>
+                  )}
                 </span>
               </CollapsibleTrigger>
               <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
@@ -158,6 +164,11 @@ export function PickupLineWorkflowRow({
             <ProductSkuLabel sku={line.sku} name={line.name} layout="inline" />
             {line.isConsumable && (
               <span className="text-muted-foreground ml-1 text-xs font-normal">(fogyó)</span>
+            )}
+            {line.isOptional && (
+              <span className="bg-muted text-muted-foreground ml-1.5 inline rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide">
+                opcionális
+              </span>
             )}
           </div>
         )}

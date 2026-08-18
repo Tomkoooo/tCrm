@@ -4,7 +4,7 @@ import mongoose from 'mongoose';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUser, requireAnyPermission, requirePermission } from '@crm/auth';
 import { LOGISTICS_READ_PERMISSION_KEYS } from '@crm/logistics/permissions';
-import { connectDB, Vehicle, Warehouse } from '@crm/db-core';
+import { connectDB, CREW_ROLES, LogisticsJob, Vehicle, Warehouse } from '@crm/db-core';
 import {
   buildLogisticsPickupDocument,
   canAccessPickupWarehouse,
@@ -37,10 +37,12 @@ import {
   suggestVehiclesSchema,
 } from '@crm/lib/validation';
 import { parseHrDateTime } from '@crm/lib';
+import type { SearchItem } from '@crm/ui';
+import { checkAssignmentConflicts, resolveUserIdsFromEmployees } from '@crm/hr';
+import { requireCrewActor } from './plan-actions';
+import type { JobFormState } from './job-form-state';
 
-export type JobFormState =
-  | { success: false; fieldErrors?: Record<string, string[]>; message?: string }
-  | { success: true; message?: string; id?: string };
+export type { JobFormState } from './job-form-state';
 
 function zodToFieldErrors(issues: Array<{ path: PropertyKey[]; message: string }>) {
   const fieldErrors: Record<string, string[]> = {};
@@ -114,31 +116,75 @@ export async function createJobAction(
   }
 
   try {
+    const acceptDoubleJob = formData.get('acceptDoubleJob') === 'true';
+
+    for (const p of pickups) {
+      const employeeIds = (p.employeeIds?.length ? p.employeeIds : p.teamMemberIds) ?? [];
+      if (!employeeIds.length) continue;
+      const gather = parseOptionalDateTime(p.plannedGatherAt);
+      const event =
+        parseOptionalDateTime(p.plannedEventAt) ??
+        parseOptionalDateTime(parsed.data.plannedEventAt);
+      if (!gather && !event) continue;
+      const start = gather ?? event!;
+      const end = event && event > start ? event : new Date(start.getTime() + 4 * 60 * 60 * 1000);
+      const { blockers, warnings } = await checkAssignmentConflicts({
+        employeeIds,
+        start,
+        end,
+      });
+      if (blockers.length) {
+        return {
+          success: false,
+          message: blockers.map((b) => b.message).join(' '),
+        };
+      }
+      if (warnings.length && !acceptDoubleJob) {
+        return {
+          success: false,
+          message:
+            'Figyelem: átfedő feladat-hozzárendelés. Mentéshez erősítse meg (acceptDoubleJob). ' +
+            warnings.map((w) => w.message).join(' '),
+          fieldErrors: { acceptDoubleJob: ['true'] },
+        };
+      }
+    }
+
     const job = await createLogisticsJob({
       eventName: parsed.data.eventName,
       siteAddress: parsed.data.siteAddress,
       note: parsed.data.note,
       plannedEventAt: parseOptionalDateTime(parsed.data.plannedEventAt),
-      pickups: pickups.map((p) => ({
-        label: p.label,
-        warehouseId: new mongoose.Types.ObjectId(p.warehouseId),
-        vehicleId: p.vehicleId ? new mongoose.Types.ObjectId(p.vehicleId) : undefined,
-        teamMemberIds: p.teamMemberIds.map((id) => new mongoose.Types.ObjectId(id)),
-        contactEmails: p.contactEmails,
-        note: p.note,
-        plannedGatherAt: parseOptionalDateTime(p.plannedGatherAt),
-        plannedEventAt: parseOptionalDateTime(p.plannedEventAt),
-        lines: p.lines.map((l) => ({
-          productId: new mongoose.Types.ObjectId(l.productId),
-          requestedQuantity: l.requestedQuantity,
-        })),
-      })),
+      pickups: await Promise.all(
+        pickups.map(async (p) => {
+          const employeeIds = ((p.employeeIds?.length ? p.employeeIds : p.teamMemberIds) ?? []).map(
+            (id) => new mongoose.Types.ObjectId(id)
+          );
+          const teamMemberIds = await resolveUserIdsFromEmployees(employeeIds);
+          return {
+            label: p.label,
+            warehouseId: new mongoose.Types.ObjectId(p.warehouseId),
+            vehicleId: p.vehicleId ? new mongoose.Types.ObjectId(p.vehicleId) : undefined,
+            employeeIds,
+            teamMemberIds,
+            contactEmails: p.contactEmails,
+            note: p.note,
+            plannedGatherAt: parseOptionalDateTime(p.plannedGatherAt),
+            plannedEventAt: parseOptionalDateTime(p.plannedEventAt),
+            lines: p.lines.map((l) => ({
+              productId: new mongoose.Types.ObjectId(l.productId),
+              requestedQuantity: l.requestedQuantity,
+            })),
+          };
+        })
+      ),
       createdBy: new mongoose.Types.ObjectId(userId),
       publish: parsed.data.publish,
     });
 
     revalidatePath('/logistics/jobs');
     revalidatePath('/logistics');
+    revalidatePath('/hr/calendar');
     return {
       success: true,
       message: `Esemény ${job.reference} létrehozva (${pickups.length} átvétel).`,
@@ -172,7 +218,7 @@ export async function gatherPickupAction(
   _prev: JobFormState,
   formData: FormData
 ): Promise<JobFormState> {
-  const userId = await actorId();
+  const { actor } = await requireCrewActor(jobId, ['pickup']);
   const parsed = gatherJobLinesSchema.safeParse({
     pickupId: formData.get('pickupId'),
     linesJson: formData.get('linesJson'),
@@ -196,11 +242,12 @@ export async function gatherPickupAction(
         productId: new mongoose.Types.ObjectId(l.productId),
         gatheredQuantity: l.gatheredQuantity,
       })),
-      new mongoose.Types.ObjectId(userId)
+      new mongoose.Types.ObjectId(actor.userId)
     );
     revalidatePath(`/logistics/jobs/${jobId}`);
     revalidatePath('/logistics');
     revalidatePath('/inventory');
+    revalidatePath('/hr/me');
     return { success: true, message: 'Összeszedés rögzítve, készlet csökkentve.' };
   } catch (err) {
     return {
@@ -211,7 +258,7 @@ export async function gatherPickupAction(
 }
 
 export async function pickupPickupAction(jobId: string, pickupId: string): Promise<JobFormState> {
-  await actorId();
+  await requireCrewActor(jobId, ['driver']);
   try {
     await confirmPickupPickup(
       new mongoose.Types.ObjectId(jobId),
@@ -228,7 +275,7 @@ export async function pickupPickupAction(jobId: string, pickupId: string): Promi
 }
 
 export async function deliverPickupAction(jobId: string, pickupId: string): Promise<JobFormState> {
-  await actorId();
+  await requireCrewActor(jobId, ['driver']);
   try {
     await confirmPickupDelivery(
       new mongoose.Types.ObjectId(jobId),
@@ -249,7 +296,7 @@ export async function installPickupAction(
   _prev: JobFormState,
   formData: FormData
 ): Promise<JobFormState> {
-  await actorId();
+  await requireCrewActor(jobId, ['builder']);
   const parsed = installJobLinesSchema.safeParse({
     pickupId: formData.get('pickupId'),
     linesJson: formData.get('linesJson'),
@@ -290,7 +337,7 @@ export async function returnPickupAction(
   _prev: JobFormState,
   formData: FormData
 ): Promise<JobFormState> {
-  await actorId();
+  await requireCrewActor(jobId, ['driver', 'dropoff']);
   const parsed = returnJobLinesSchema.safeParse({
     pickupId: formData.get('pickupId'),
     linesJson: formData.get('linesJson'),
@@ -330,7 +377,7 @@ export async function checkInPickupAction(
   _prev: JobFormState,
   formData: FormData
 ): Promise<JobFormState> {
-  const userId = await actorId();
+  const { actor } = await requireCrewActor(jobId, ['dropoff']);
   const parsed = checkInJobLinesSchema.safeParse({
     pickupId: formData.get('pickupId'),
     linesJson: formData.get('linesJson'),
@@ -353,10 +400,16 @@ export async function checkInPickupAction(
       lines.map((l) => ({
         productId: new mongoose.Types.ObjectId(l.productId),
         checkedQuantity: l.checkedQuantity,
+        destinationKind: l.destinationKind,
+        warehouseId: l.warehouseId ? new mongoose.Types.ObjectId(l.warehouseId) : undefined,
+        jobId: l.jobId ? new mongoose.Types.ObjectId(l.jobId) : undefined,
       })),
-      new mongoose.Types.ObjectId(userId)
+      new mongoose.Types.ObjectId(actor.userId)
     );
     revalidatePath(`/logistics/jobs/${jobId}`);
+    for (const line of lines) {
+      if (line.jobId) revalidatePath(`/logistics/jobs/${line.jobId}`);
+    }
     revalidatePath('/logistics');
     revalidatePath('/inventory');
     return { success: true, message: 'Visszáru ellenőrizve, készlet frissítve.' };
@@ -389,7 +442,7 @@ export async function getPickupDocumentPayloadAction(
   pickupId: string,
   documentType: 'packing_list' | 'pickup_slip' | 'return_slip'
 ) {
-  await requireAnyPermission([...LOGISTICS_READ_PERMISSION_KEYS]);
+  await requireCrewActor(jobId, [...CREW_ROLES]);
   try {
     const payload = await buildLogisticsPickupDocument(
       new mongoose.Types.ObjectId(jobId),
@@ -484,4 +537,40 @@ export async function loadJobFormOptionsAction() {
       plateNumber: v.plateNumber,
     })),
   };
+}
+
+export async function searchHandoffJobsAction(
+  query: string,
+  excludeJobId: string
+): Promise<SearchItem[]> {
+  await requireAnyPermission([...LOGISTICS_READ_PERMISSION_KEYS]);
+  await connectDB();
+
+  const q = query.trim();
+  if (!q) return [];
+
+  const filter: Record<string, unknown> = {
+    status: { $nin: ['completed', 'cancelled'] },
+    $or: [
+      { eventName: { $regex: q, $options: 'i' } },
+      { reference: { $regex: q, $options: 'i' } },
+      { siteAddress: { $regex: q, $options: 'i' } },
+    ],
+  };
+  if (mongoose.Types.ObjectId.isValid(excludeJobId)) {
+    filter._id = { $ne: new mongoose.Types.ObjectId(excludeJobId) };
+  }
+
+  const jobs = await LogisticsJob.find(filter)
+    .select({ eventName: 1, reference: 1, siteAddress: 1, status: 1, plannedEventAt: 1 })
+    .sort({ plannedEventAt: 1, createdAt: -1 })
+    .limit(20)
+    .lean()
+    .exec();
+
+  return jobs.map((job) => ({
+    value: String(job._id),
+    label: job.eventName,
+    sublabel: [job.reference, job.siteAddress].filter(Boolean).join(' · '),
+  }));
 }

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { productComponentsSchema, productSchema, productStockLevelsSchema } from './inventory';
+import {
+  productComponentsSchema,
+  productSchema,
+  productStockLevelsSchema,
+  quickProductSchema,
+} from './inventory';
 
 describe('productSchema components', () => {
   it('rejects mongoose BOM lines (productId only)', () => {
@@ -50,5 +55,25 @@ describe('productStockLevelsSchema', () => {
     expect(productStockLevelsSchema.safeParse([{ warehouseId: 'wh1', quantity: -1 }]).success).toBe(
       false
     );
+  });
+});
+
+describe('quickProductSchema', () => {
+  it('requires Hungarian name and category', () => {
+    expect(quickProductSchema.safeParse({ nameHu: '', categorySlug: 'sator' }).success).toBe(false);
+    expect(quickProductSchema.safeParse({ nameHu: 'Sátor', categorySlug: '' }).success).toBe(false);
+    expect(quickProductSchema.safeParse({ nameHu: 'Sátor', categorySlug: 'sator' }).success).toBe(
+      true
+    );
+  });
+
+  it('treats empty quantity as unset', () => {
+    const parsed = quickProductSchema.safeParse({
+      nameHu: 'Sátor',
+      categorySlug: 'sator',
+      quantity: '',
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.quantity).toBeUndefined();
   });
 });

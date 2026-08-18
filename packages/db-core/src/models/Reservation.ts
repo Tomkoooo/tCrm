@@ -1,6 +1,6 @@
 import mongoose, { Schema, type Document, type Types } from 'mongoose';
 
-export type ReservationSourceType = 'order' | 'build' | 'manual';
+export type ReservationSourceType = 'order' | 'build' | 'manual' | 'event';
 export type ReservationStatus = 'active' | 'released' | 'fulfilled' | 'cancelled';
 
 export interface IReservation extends Document {
@@ -29,7 +29,7 @@ const ReservationSchema = new Schema<IReservation>(
     sourceType: {
       type: String,
       required: true,
-      enum: ['order', 'build', 'manual'],
+      enum: ['order', 'build', 'manual', 'event'],
     },
     sourceId: { type: Schema.Types.ObjectId },
     sourceRef: { type: String },

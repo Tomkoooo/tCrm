@@ -2,12 +2,10 @@
 
 import { useActionState, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@crm/ui';
-import { Input } from '@crm/ui';
-import type { PickupStatus } from '@crm/db-core';
+import { Button, Checkbox, Input } from '@crm/ui';
+import type { CrewRole, PickupStatus } from '@crm/db-core';
 import {
   cancelJobAction,
-  checkInPickupAction,
   deliverPickupAction,
   gatherPickupAction,
   getPickupDocumentPayloadAction,
@@ -17,6 +15,7 @@ import {
   scheduleJobAction,
   type JobFormState,
 } from '../actions';
+import { CheckInLineForm } from './check-in-form';
 import { JOB_STATUS_LABELS } from './job-status-labels';
 import {
   PickupLineWorkflowRow,
@@ -30,6 +29,7 @@ export type JobLineView = {
   name: string;
   isConsumable: boolean;
   isPrebuild: boolean;
+  isOptional?: boolean;
   bomComponents: PickupBomComponentView[];
   requestedQuantity: number;
   gatheredQuantity: number;
@@ -38,9 +38,12 @@ export type JobLineView = {
   returnedQuantity: number;
   checkedQuantity: number;
   lostQuantity: number;
+  inboundHandoffQuantity?: number;
 };
 
-function toListItem(line: JobLineView): PickupLineListItem & { isConsumable?: boolean } {
+function toListItem(
+  line: JobLineView
+): PickupLineListItem & { isConsumable?: boolean; isOptional?: boolean } {
   return {
     productId: line.productId,
     sku: line.sku,
@@ -49,6 +52,7 @@ function toListItem(line: JobLineView): PickupLineListItem & { isConsumable?: bo
     isPrebuild: line.isPrebuild,
     bomComponents: line.bomComponents,
     isConsumable: line.isConsumable,
+    isOptional: line.isOptional,
   };
 }
 
@@ -56,6 +60,7 @@ export type PickupView = {
   pickupId: string;
   reference: string;
   label?: string;
+  warehouseId: string;
   warehouseName: string;
   vehicleLabel: string;
   teamLabels: string[];
@@ -172,15 +177,106 @@ function LineQuantityForm({
   );
 }
 
+function CheckboxLineForm({
+  jobId,
+  pickupId,
+  lines,
+  field,
+  action,
+  submitLabel,
+}: {
+  jobId: string;
+  pickupId: string;
+  lines: JobLineView[];
+  field: 'gatheredQuantity' | 'returnedQuantity' | 'checkedQuantity' | 'installedQuantity';
+  action: (jobId: string, prev: JobFormState, fd: FormData) => Promise<JobFormState>;
+  submitLabel: string;
+}) {
+  const router = useRouter();
+  const [state, formAction, pending] = useActionState(
+    (prev: JobFormState, fd: FormData) => action(jobId, prev, fd),
+    initialState
+  );
+  const [checked, setChecked] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(lines.map((l) => [l.productId, !l.isOptional]))
+  );
+
+  const linesJson = JSON.stringify(
+    lines.map((l) => ({
+      productId: l.productId,
+      [field]: checked[l.productId] ? l.requestedQuantity : 0,
+    }))
+  );
+
+  if (state.success) router.refresh();
+
+  const required = lines.filter((l) => !l.isOptional);
+  const optional = lines.filter((l) => l.isOptional);
+
+  const renderLine = (l: JobLineView) => {
+    const inbound = field === 'gatheredQuantity' ? (l.inboundHandoffQuantity ?? 0) : 0;
+    const fromWarehouse = Math.max(0, l.requestedQuantity - inbound);
+    return (
+      <PickupLineWorkflowRow key={l.productId} line={toListItem(l)}>
+        <label className="flex min-h-11 items-center gap-3 text-sm">
+          <Checkbox
+            className="size-6"
+            checked={Boolean(checked[l.productId])}
+            onCheckedChange={(v) => setChecked((prev) => ({ ...prev, [l.productId]: v === true }))}
+          />
+          <span className="flex flex-col">
+            <span>Megvan ({l.requestedQuantity})</span>
+            {inbound > 0 ? (
+              <span className="text-muted-foreground text-xs">
+                {inbound} db már a kocsin (átadásból)
+                {fromWarehouse > 0 ? ` · raktárból ${fromWarehouse}` : ' · raktárból nem kell'}
+              </span>
+            ) : null}
+          </span>
+        </label>
+      </PickupLineWorkflowRow>
+    );
+  };
+
+  return (
+    <form action={formAction} className="flex flex-col gap-3">
+      <input type="hidden" name="pickupId" value={pickupId} />
+      <input type="hidden" name="linesJson" value={linesJson} />
+      {state.message && (
+        <p className={state.success ? 'text-sm text-green-700' : 'text-sm text-red-600'}>
+          {state.message}
+        </p>
+      )}
+      {required.length > 0 && <ul className="space-y-3">{required.map(renderLine)}</ul>}
+      {optional.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+            Opcionális — pipáld, ha tényleg felmegy
+          </p>
+          <ul className="space-y-3">{optional.map(renderLine)}</ul>
+        </div>
+      )}
+      <Button type="submit" size="sm" loading={pending} disabled={pending}>
+        {submitLabel}
+      </Button>
+    </form>
+  );
+}
+
 function PickupWorkflowCard({
   jobId,
   pickup,
   canWrite,
+  crewRoles,
+  warehouses,
 }: {
   jobId: string;
   pickup: PickupView;
   canWrite: boolean;
+  crewRoles: CrewRole[];
+  warehouses: Array<{ id: string; name: string }>;
 }) {
+  const can = (role: CrewRole) => canWrite || crewRoles.includes(role);
   const router = useRouter();
   const [docMsg, setDocMsg] = useState<string | null>(null);
   const [docLoading, setDocLoading] = useState<'packing_list' | 'return_slip' | null>(null);
@@ -201,7 +297,15 @@ function PickupWorkflowCard({
     }
   };
 
-  if (!canWrite) {
+  const canAct =
+    canWrite ||
+    can('pickup') ||
+    can('driver') ||
+    can('builder') ||
+    can('dropoff') ||
+    can('director');
+
+  if (!canAct) {
     return (
       <div className="text-muted-foreground text-sm">
         {pickup.reference} — {JOB_STATUS_LABELS[pickup.status]}
@@ -211,12 +315,13 @@ function PickupWorkflowCard({
 
   return (
     <div className="flex flex-col gap-3">
-      {pickup.status === 'scheduled' && (
+      {pickup.status === 'scheduled' && can('pickup') && (
         <>
           <p className="text-muted-foreground text-xs">
-            Összeszedés után a készlet azonnal csökken ebből a raktárból.
+            Pipáld ki, ami megvan. A készlet a megerősítéskor csökken. Ami előző eseményről jött, az
+            már a kocsin van — azt nem szedjük újra a raktárból.
           </p>
-          <LineQuantityForm
+          <CheckboxLineForm
             jobId={jobId}
             pickupId={pickup.pickupId}
             lines={pickup.lines}
@@ -226,7 +331,7 @@ function PickupWorkflowCard({
           />
         </>
       )}
-      {pickup.status === 'gathered' && (
+      {pickup.status === 'gathered' && can('driver') && (
         <Button
           type="button"
           size="sm"
@@ -235,10 +340,10 @@ function PickupWorkflowCard({
             if (res.success) router.refresh();
           }}
         >
-          Átvétel rögzítése
+          Felrakva / elindultunk
         </Button>
       )}
-      {pickup.status === 'picked_up' && (
+      {pickup.status === 'picked_up' && can('driver') && (
         <Button
           type="button"
           size="sm"
@@ -247,10 +352,10 @@ function PickupWorkflowCard({
             if (res.success) router.refresh();
           }}
         >
-          Kiszállítás a helyszínre
+          Megérkeztünk a helyszínre
         </Button>
       )}
-      {(pickup.status === 'delivered' || pickup.status === 'returning') && (
+      {(pickup.status === 'delivered' || pickup.status === 'returning') && can('builder') && (
         <>
           <p className="text-sm font-medium">Telepítés (opcionális)</p>
           <LineQuantityForm
@@ -264,10 +369,10 @@ function PickupWorkflowCard({
           />
         </>
       )}
-      {pickup.status === 'delivered' && (
+      {pickup.status === 'delivered' && (can('driver') || can('dropoff')) && (
         <>
           <p className="text-sm font-medium">Visszaszállítás</p>
-          <LineQuantityForm
+          <CheckboxLineForm
             jobId={jobId}
             pickupId={pickup.pickupId}
             lines={pickup.lines}
@@ -277,18 +382,18 @@ function PickupWorkflowCard({
           />
         </>
       )}
-      {pickup.status === 'returning' && (
+      {pickup.status === 'returning' && can('dropoff') && (
         <>
           <p className="text-muted-foreground text-xs">
-            Ellenőrzés után a visszaérkezett mennyiség visszakerül a raktárba.
+            Add meg, mi érkezett vissza, és hova kerül: raktár (akár másik), vagy a következő
+            esemény.
           </p>
-          <LineQuantityForm
+          <CheckInLineForm
             jobId={jobId}
             pickupId={pickup.pickupId}
+            originWarehouseId={pickup.warehouseId}
+            warehouses={warehouses}
             lines={pickup.lines}
-            field="checkedQuantity"
-            action={checkInPickupAction}
-            submitLabel="Bevételezés és lezárás"
           />
         </>
       )}
@@ -298,6 +403,7 @@ function PickupWorkflowCard({
             <PickupLineWorkflowRow key={l.productId} line={toListItem(l)}>
               <p className="text-muted-foreground text-xs">
                 Összeszedve {l.gatheredQuantity}, vissza {l.checkedQuantity}
+                {l.inboundHandoffQuantity ? ` · átadásból ${l.inboundHandoffQuantity}` : ''}
                 {!l.isConsumable && l.lostQuantity > 0 && (
                   <span className="text-amber-700"> · hiány {l.lostQuantity}</span>
                 )}
@@ -344,11 +450,17 @@ export function JobWorkflowPanel({
   jobStatus,
   pickups,
   canWrite,
+  crewRoles,
+  substitutionNotes = [],
+  warehouses,
 }: {
   jobId: string;
   jobStatus: PickupStatus;
   pickups: PickupView[];
   canWrite: boolean;
+  crewRoles: CrewRole[];
+  substitutionNotes?: Array<{ name: string; note: string }>;
+  warehouses: Array<{ id: string; name: string }>;
 }) {
   const router = useRouter();
   const [msg, setMsg] = useState<string | null>(null);
@@ -360,6 +472,19 @@ export function JobWorkflowPanel({
         kör
       </p>
       {msg && <p className="text-muted-foreground text-sm">{msg}</p>}
+      {substitutionNotes.length > 0 && (
+        <div className="rounded-md border p-3">
+          <p className="mb-1 text-sm font-medium">Cserék a csapatnak</p>
+          <ul className="space-y-1 text-sm">
+            {substitutionNotes.map((row) => (
+              <li key={`${row.name}-${row.note}`}>
+                <span className="font-medium">{row.name}: </span>
+                {row.note}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {jobStatus === 'draft' && canWrite && (
         <div className="flex flex-wrap gap-2">
@@ -414,7 +539,13 @@ export function JobWorkflowPanel({
             </div>
             <span className="text-sm font-medium">{JOB_STATUS_LABELS[pickup.status]}</span>
           </div>
-          <PickupWorkflowCard jobId={jobId} pickup={pickup} canWrite={canWrite} />
+          <PickupWorkflowCard
+            jobId={jobId}
+            pickup={pickup}
+            canWrite={canWrite}
+            crewRoles={crewRoles}
+            warehouses={warehouses}
+          />
         </div>
       ))}
     </div>

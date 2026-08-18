@@ -13,7 +13,8 @@ export default async function NewProductPage() {
       <div>
         <h1 className="text-2xl font-bold">Új termék</h1>
         <p className="text-muted-foreground text-sm">
-          Excel import mezők szerint — beszállító és kategória keresővel.
+          Teljes Excel mezők. Gyors felvételhez a Termékek oldalon az <strong>Új termék</strong>{' '}
+          gomb elég (magyar név + kategória).
         </p>
       </div>
       <ProductForm

@@ -19,23 +19,25 @@ A tCrm belső üzemeltetői rendszer. Ez az útmutató lépésről lépésre seg
 2. Jelentkezz be a szervezeti e-mail címeddel és jelszavaddal a bejelentkezési oldalon.
 3. A **Vezérlőpult** (`/`) mutatja a számodra elérhető gyors műveleteket — csak azok jelennek meg, amelyekhez jogosultságod van.
 4. A bal oldali menü csoportokban található:
-   - **Általános** — Vezérlőpult, Súgó
+   - **Általános** — Vezérlőpult, Súgó, Saját feladataim (ha van dolgozó profilod)
    - **Készletkezelés** — termékek, összeszerelések, kategóriák, beszállítók (jogosultság függvényében)
    - **Logisztika** — készletmozgások, foglalások, szállítások, járműflotta
+   - **HR** — dolgozók, naptár, szabadság, órák (jogosultság függvényében)
    - **Beállítások** — Fiók
    - **Adminisztráció** — csak akkor látszik, ha van hozzá jogosultságod (lásd [Fiókod és jogosultságaid](/help/fiok))
 
 ## Mit látsz a menüben?
 
-A menüpontok **jogosultságtól függenek**. Ha nem látsz egy modult, kérd a rendszergazdától a megfelelő szerepkört. Részletek: [Fiókod és jogosultságaid](/help/fiok).
+A menüpontok **jogosultságtól függenek**, kivéve a **Saját feladataim** sort: az akkor jelenik meg, ha a fiókodhoz dolgozó profil tartozik. Ha egy modult nem látsz, kérd a rendszergazdától a megfelelő szerepkört. Részletek: [Fiókod és jogosultságaid](/help/fiok).
 
 ## Modulok röviden
 
 | Terület | Fő feladat |
 |---------|------------|
-| Fiók | Saját adatok, jelszó, jogosultságok áttekintése |
-| Készlet | Termékek, összeszerelések, kategóriák, beszállítók, Excel import, raktári készlet |
+| Fiók | Saját adatok, jelszó, jogosultságok; [Saját feladataim](/help/sajat-feladataim) |
+| Készlet | Termékek, gyors felvétel, leltár, összeszerelések, kategóriák, beszállítók, Excel import, raktári készlet |
 | Logisztika | Készletmozgások, foglalások, esemény szállítások, járműflotta |
+| HR | Dolgozók, szabadság, szállításokból következő naptár és órák |
 | Felhasználók | Munkatársak meghívása, fiókok kezelése |
 | Szerepkörök és jogosultságok | Ki mihez fér hozzá — kódmódosítás nélkül állítható |
 | E-mail sablonok | Rendszerüzenetek (meghívó, jelszó-visszaállítás) szövegének szerkesztése |
@@ -46,10 +48,12 @@ A menüpontok **jogosultságtól függenek**. Ha nem látsz egy modult, kérd a 
 ## Kapcsolódó fejezetek
 
 - [Fiókod és jogosultságaid](/help/fiok)
+- [Saját feladataim](/help/sajat-feladataim)
 - [Felhasználók kezelése](/help/admin-felhasznalok)
 - [Szerepkörök és jogosultságok](/help/admin-szerepkorok)
 
 - [Készletkezelés áttekintése](/help/keszlet-attekintes)
 - [Logisztika áttekintés](/help/logisztika-attekintes)
+- [HR áttekintés](/help/hr-attekintes)
 
 *Utolsó frissítés: 2026-08*

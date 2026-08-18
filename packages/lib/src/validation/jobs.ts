@@ -13,6 +13,8 @@ export const createPickupInputSchema = z.object({
   label: z.string().max(200).optional(),
   warehouseId: objectIdSchema,
   vehicleId: z.string().optional(),
+  employeeIds: z.array(objectIdSchema).default([]),
+  /** @deprecated Prefer employeeIds; kept for older clients. */
   teamMemberIds: z.array(objectIdSchema).default([]),
   contactEmails: z.array(emailSchema).default([]),
   note: z.string().max(2000).optional(),
@@ -20,6 +22,91 @@ export const createPickupInputSchema = z.object({
   plannedEventAt: z.string().optional(),
   lines: z.array(jobLineInputSchema).min(1, 'Legalább egy tétel szükséges'),
 });
+
+export const CREW_ROLES = ['director', 'pickup', 'driver', 'builder', 'dropoff'] as const;
+
+export const demandKitComponentSchema = z.object({
+  productId: objectIdSchema,
+  quantity: positiveQty,
+  note: z.string().max(500).optional(),
+});
+
+export const demandKitSchema = z.object({
+  name: z.string().max(300).optional(),
+  substitutionNote: z.string().max(2000).optional(),
+  components: z.array(demandKitComponentSchema).min(1, 'Legalább egy alkatrész kell'),
+});
+
+export const demandLineInputSchema = z
+  .object({
+    productId: objectIdSchema.optional(),
+    requestedQuantity: positiveQty,
+    isOptional: z.boolean().optional(),
+    note: z.string().max(500).optional(),
+    kit: demandKitSchema.optional(),
+  })
+  .superRefine((line, ctx) => {
+    if (!line.productId && !line.kit) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Termék vagy egyedi összeállítás kell.',
+      });
+    }
+  });
+
+export const crewMemberInputSchema = z.object({
+  employeeId: objectIdSchema,
+  roles: z.array(z.enum(CREW_ROLES)).min(1, 'Legalább egy szerep kell'),
+});
+
+export const createDemandJobSchema = z.object({
+  eventName: z.string().min(1).max(300),
+  siteAddress: z.string().min(1).max(500),
+  note: z.string().max(2000).optional(),
+  plannedEventAt: z.string().optional(),
+  plannedGatherAt: z.string().optional(),
+  plannedReturnAt: z.string().optional(),
+  demandJson: z.string().min(1, 'Legalább egy tétel szükséges'),
+  crewJson: z.string().min(1, 'Legalább egy csapattag szükséges'),
+  pickupsJson: z.string().optional(),
+});
+
+export const itemRequestSchema = z.object({
+  note: z.string().min(1).max(2000),
+  productId: z.string().optional(),
+  quantity: z.coerce.number().min(0).optional(),
+});
+
+export const jobFeedbackSchema = z.object({
+  feedback: z.string().min(1).max(8000),
+});
+
+export const draftPickupRoundSchema = z.object({
+  warehouseId: objectIdSchema,
+  vehicleId: z.string().optional(),
+  vehicleWarning: z.string().max(500).optional(),
+  lines: z
+    .array(
+      z.object({
+        productId: objectIdSchema,
+        requestedQuantity: positiveQty,
+        isOptional: z.boolean().optional(),
+      })
+    )
+    .min(1),
+});
+
+export function parseDemandJson(json: string): z.infer<typeof demandLineInputSchema>[] {
+  return z.array(demandLineInputSchema).min(1).parse(JSON.parse(json));
+}
+
+export function parseDraftPickupRoundsJson(json: string): z.infer<typeof draftPickupRoundSchema>[] {
+  return z.array(draftPickupRoundSchema).parse(JSON.parse(json));
+}
+
+export function parseCrewJson(json: string): z.infer<typeof crewMemberInputSchema>[] {
+  return z.array(crewMemberInputSchema).min(1).parse(JSON.parse(json));
+}
 
 export const createJobSchema = z.object({
   eventName: z.string().min(1).max(300),
@@ -73,10 +160,24 @@ export const returnLineSchema = z.object({
   returnedQuantity: z.coerce.number().min(0),
 });
 
-export const checkInLineSchema = z.object({
-  productId: objectIdSchema,
-  checkedQuantity: z.coerce.number().min(0),
-});
+export const checkInLineSchema = z
+  .object({
+    productId: objectIdSchema,
+    checkedQuantity: z.coerce.number().min(0),
+    destinationKind: z.enum(['warehouse', 'job']).optional().default('warehouse'),
+    warehouseId: objectIdSchema.optional(),
+    jobId: objectIdSchema.optional(),
+  })
+  .superRefine((line, ctx) => {
+    if (line.checkedQuantity <= 0) return;
+    if (line.destinationKind === 'job' && !line.jobId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Válaszd ki a következő eseményt.',
+        path: ['jobId'],
+      });
+    }
+  });
 
 export const vehicleSchema = z.object({
   name: z.string().min(1).max(200),

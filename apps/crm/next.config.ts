@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
     '@crm/admin',
     '@crm/auth',
     '@crm/db-core',
-    '@crm/employee-core',
+    '@crm/hr',
     '@crm/inventory',
     '@crm/logistics',
     '@crm/lib',

@@ -13,6 +13,7 @@ import { toggleProductActiveAction } from '../actions';
 import { InventoryTableToolbar } from './inventory-toolbar';
 import { ProductBomBadges } from './product-bom-badges';
 import { ProductSheetDetail } from './product-sheet-detail';
+import { StockCountButton } from './stock-count-dialog';
 import { Checkbox } from '@crm/ui';
 
 export type InventoryTableRow = ProductTableRow;
@@ -109,6 +110,19 @@ export function InventoryTable({
             ),
           };
         }
+        if (column.key === 'stockSummary') {
+          return {
+            ...column,
+            render: (_value: unknown, row: InventoryTableRow) => (
+              <StockCountButton
+                sku={row.sku}
+                name={productTableRowDisplayName(row)}
+                summary={row.stockSummary}
+                canWrite={canWrite}
+              />
+            ),
+          };
+        }
         if (column.key === 'bomRole') {
           return {
             ...column,
@@ -119,7 +133,7 @@ export function InventoryTable({
         }
         return column;
       }),
-    [columns, canEditActive]
+    [columns, canEditActive, canWrite]
   );
 
   return (

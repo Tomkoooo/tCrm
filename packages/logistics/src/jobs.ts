@@ -2,12 +2,13 @@ import {
   connectDB,
   LogisticsJob,
   Product,
+  Reservation,
   type IJobLine,
   type ILogisticsJob,
   type JobStatus,
   type PickupStatus,
 } from '@crm/db-core';
-import type { Types } from 'mongoose';
+import mongoose, { type Types } from 'mongoose';
 import { formatPickupReference, generateJobReference } from './job-references';
 import {
   assertPickupStatus,
@@ -17,8 +18,12 @@ import {
   syncJobStatusFromPickups,
 } from './job-pickups';
 import { createMovement, confirmMovement } from './movements';
+import { groupCheckInDestinations, warehousePickQuantity } from './check-in';
 import { enqueueLogisticsNotification } from './notifications';
 import { syncLogisticsJobToEmployeeSchedules } from './logistics-schedule-sync';
+import { cancelVehicleBookingsForJob } from './vehicle-bookings';
+import { releaseReservation } from './reservations';
+import { resolveUserIdsFromEmployees } from '@crm/hr';
 
 export type JobLineInput = {
   productId: Types.ObjectId;
@@ -29,6 +34,9 @@ export type CreatePickupParams = {
   label?: string;
   warehouseId: Types.ObjectId;
   vehicleId?: Types.ObjectId;
+  /** HR people assigned to this pickup. */
+  employeeIds?: Types.ObjectId[];
+  /** Derived User ids — filled automatically from Employee.userId when omitted. */
   teamMemberIds?: Types.ObjectId[];
   contactEmails?: string[];
   note?: string;
@@ -66,6 +74,9 @@ export type ReturnLineInput = {
 export type CheckInLineInput = {
   productId: Types.ObjectId;
   checkedQuantity: number;
+  destinationKind?: 'warehouse' | 'job';
+  warehouseId?: Types.ObjectId;
+  jobId?: Types.ObjectId;
 };
 
 function mapLines(inputs: JobLineInput[]): IJobLine[] {
@@ -77,6 +88,7 @@ function mapLines(inputs: JobLineInput[]): IJobLine[] {
     returnedQuantity: 0,
     checkedQuantity: 0,
     lostQuantity: 0,
+    inboundHandoffQuantity: 0,
   }));
 }
 
@@ -101,22 +113,29 @@ export async function createLogisticsJob(params: CreateJobParams): Promise<ILogi
   const publish = Boolean(params.publish);
   const now = publish ? new Date() : undefined;
 
-  const pickups = params.pickups.map((p, index) => ({
-    reference: formatPickupReference(reference, index + 1),
-    label: p.label,
-    warehouseId: p.warehouseId,
-    vehicleId: p.vehicleId,
-    teamMemberIds: p.teamMemberIds ?? [],
-    contactEmails: p.contactEmails ?? [],
-    note: p.note,
-    status: initialPickupStatus(publish),
-    lines: mapLines(p.lines),
-    notifications: {},
-    documents: {},
-    scheduledAt: now,
-    plannedGatherAt: p.plannedGatherAt,
-    plannedEventAt: p.plannedEventAt,
-  }));
+  const pickups = await Promise.all(
+    params.pickups.map(async (p, index) => {
+      const employeeIds = p.employeeIds ?? [];
+      const teamMemberIds = p.teamMemberIds ?? (await resolveUserIdsFromEmployees(employeeIds));
+      return {
+        reference: formatPickupReference(reference, index + 1),
+        label: p.label,
+        warehouseId: p.warehouseId,
+        vehicleId: p.vehicleId,
+        employeeIds,
+        teamMemberIds,
+        contactEmails: p.contactEmails ?? [],
+        note: p.note,
+        status: initialPickupStatus(publish),
+        lines: mapLines(p.lines),
+        notifications: {},
+        documents: {},
+        scheduledAt: now,
+        plannedGatherAt: p.plannedGatherAt,
+        plannedEventAt: p.plannedEventAt,
+      };
+    })
+  );
 
   const [job] = await LogisticsJob.create([
     {
@@ -157,16 +176,13 @@ export async function scheduleLogisticsJob(id: Types.ObjectId): Promise<ILogisti
 
   const pickups = normalizeJobPickups(job);
   const now = new Date();
+  const notifyPickupIds: Types.ObjectId[] = [];
 
   for (const pickup of pickups) {
     if (pickup.status === 'draft') {
       pickup.status = 'scheduled';
       pickup.scheduledAt = now;
-      await enqueueLogisticsNotification({
-        kind: 'job_scheduled',
-        jobId: job._id,
-        pickupId: pickup._id,
-      });
+      notifyPickupIds.push(pickup._id);
     }
   }
 
@@ -174,6 +190,15 @@ export async function scheduleLogisticsJob(id: Types.ObjectId): Promise<ILogisti
   syncJobStatusFromPickups(job);
   job.markModified('pickups');
   await job.save();
+
+  for (const pickupId of notifyPickupIds) {
+    await enqueueLogisticsNotification({
+      kind: 'job_scheduled',
+      jobId: job._id,
+      pickupId,
+    });
+  }
+
   await syncLogisticsJobToEmployeeSchedules(job, job.createdBy);
   return job;
 }
@@ -196,13 +221,24 @@ export async function confirmPickupGathering(
     pickup.lines[idx].gatheredQuantity = Math.max(0, input.gatheredQuantity);
   }
 
-  const pickLines = pickup.lines
-    .filter((l) => l.gatheredQuantity > 0)
-    .map((l) => ({
+  const pickLines = [];
+  for (const l of pickup.lines) {
+    const pickQty = warehousePickQuantity(l.gatheredQuantity, l.inboundHandoffQuantity ?? 0);
+    if (pickQty <= 0) continue;
+    const reservation = await Reservation.findOne({
+      sourceType: 'event',
+      sourceId: job._id,
       productId: l.productId,
-      quantity: l.gatheredQuantity,
+      warehouseId: pickup.warehouseId,
+      status: 'active',
+    }).exec();
+    pickLines.push({
+      productId: l.productId,
+      quantity: pickQty,
       fromWarehouseId: pickup.warehouseId,
-    }));
+      ...(reservation ? { reservationId: reservation._id } : {}),
+    });
+  }
 
   if (pickLines.length) {
     const movement = await createMovement({
@@ -339,6 +375,85 @@ export async function confirmPickupReturnDeparture(
   return job;
 }
 
+async function applyHandoffToJob(params: {
+  sourceJob: ILogisticsJob;
+  sourceWarehouseId: Types.ObjectId;
+  targetJobId: Types.ObjectId;
+  lines: Array<{ productId: Types.ObjectId; quantity: number }>;
+  userId: Types.ObjectId;
+}): Promise<void> {
+  const target = await LogisticsJob.findById(params.targetJobId);
+  if (!target) throw new Error('A cél szállítás nem található.');
+  if (target.status === 'cancelled' || target.status === 'completed') {
+    throw new Error('A cél szállítás már lezárt vagy törölt.');
+  }
+
+  normalizeJobPickups(target);
+  const open = target.pickups.filter((p) => p.status !== 'completed' && p.status !== 'cancelled');
+  const rolling = open.find((p) =>
+    ['gathered', 'picked_up', 'delivered', 'returning'].includes(p.status)
+  );
+  let pickup = rolling ?? open[0];
+
+  if (!pickup) {
+    target.pickups.push({
+      _id: new mongoose.Types.ObjectId(),
+      reference: formatPickupReference(target.reference, target.pickups.length + 1),
+      label: `Átadás: ${params.sourceJob.eventName}`,
+      warehouseId: params.sourceWarehouseId,
+      employeeIds: [],
+      teamMemberIds: [],
+      status: target.status === 'draft' ? 'draft' : 'scheduled',
+      lines: [],
+    });
+    pickup = target.pickups[target.pickups.length - 1]!;
+  }
+
+  const alreadyRolling = ['gathered', 'picked_up', 'delivered', 'returning'].includes(
+    pickup.status
+  );
+
+  for (const line of params.lines) {
+    const existing = pickup.lines.find((l) => String(l.productId) === String(line.productId));
+    if (existing) {
+      existing.requestedQuantity += line.quantity;
+      existing.inboundHandoffQuantity = (existing.inboundHandoffQuantity ?? 0) + line.quantity;
+      if (alreadyRolling) existing.gatheredQuantity += line.quantity;
+    } else {
+      pickup.lines.push({
+        productId: line.productId,
+        requestedQuantity: line.quantity,
+        gatheredQuantity: alreadyRolling ? line.quantity : 0,
+        installedQuantity: 0,
+        returnedQuantity: 0,
+        checkedQuantity: 0,
+        lostQuantity: 0,
+        inboundHandoffQuantity: line.quantity,
+      });
+    }
+  }
+
+  const summary = params.lines.map((l) => `${l.quantity} db`).join(', ');
+  target.activities.push({
+    _id: new mongoose.Types.ObjectId(),
+    kind: 'handoff',
+    at: new Date(),
+    actorUserId: params.userId,
+    message: `Átadás ${params.sourceJob.reference} (${params.sourceJob.eventName}): ${summary}`,
+  });
+  params.sourceJob.activities.push({
+    _id: new mongoose.Types.ObjectId(),
+    kind: 'handoff',
+    at: new Date(),
+    actorUserId: params.userId,
+    message: `Tételek átadva: ${target.reference} (${target.eventName})`,
+  });
+
+  target.markModified('pickups');
+  target.markModified('activities');
+  await target.save();
+}
+
 export async function confirmPickupCheckIn(
   jobId: Types.ObjectId,
   pickupId: Types.ObjectId,
@@ -367,32 +482,63 @@ export async function confirmPickupCheckIn(
     const isConsumable = consumableMap.get(String(input.productId)) ?? false;
     const gathered = pickup.lines[idx].gatheredQuantity;
     pickup.lines[idx].lostQuantity = isConsumable ? 0 : Math.max(0, gathered - checked);
+    pickup.lines[idx].returnWarehouseId = undefined;
+    pickup.lines[idx].handoffJobId = undefined;
+    if (checked > 0 && input.destinationKind === 'job' && input.jobId) {
+      pickup.lines[idx].handoffJobId = input.jobId;
+    } else if (checked > 0) {
+      pickup.lines[idx].returnWarehouseId = input.warehouseId ?? pickup.warehouseId;
+    }
   }
 
-  const returnLines = pickup.lines
-    .filter((l) => l.checkedQuantity > 0)
-    .map((l) => ({
-      productId: l.productId,
-      quantity: l.checkedQuantity,
-      toWarehouseId: pickup.warehouseId,
-    }));
+  const grouped = groupCheckInDestinations(
+    checkInLines.map((l) => ({
+      productId: String(l.productId),
+      checkedQuantity: Math.max(0, l.checkedQuantity),
+      destinationKind: l.destinationKind,
+      warehouseId: l.warehouseId ? String(l.warehouseId) : undefined,
+      jobId: l.jobId ? String(l.jobId) : undefined,
+    })),
+    String(pickup.warehouseId)
+  );
 
-  if (returnLines.length) {
+  for (const group of grouped.warehouseReturns) {
     const movement = await createMovement({
       type: 'return',
-      toWarehouseId: pickup.warehouseId,
+      toWarehouseId: new mongoose.Types.ObjectId(group.warehouseId),
       note: `Visszáru ${pickup.reference}`,
-      lines: returnLines,
+      lines: group.lines.map((l) => ({
+        productId: new mongoose.Types.ObjectId(l.productId),
+        quantity: l.quantity,
+        toWarehouseId: new mongoose.Types.ObjectId(group.warehouseId),
+      })),
       createdBy: userId,
     });
     await confirmMovement(movement._id, userId);
     pickup.returnMovementId = movement._id;
   }
 
+  for (const group of grouped.jobHandoffs) {
+    if (group.jobId === String(job._id)) {
+      throw new Error('Az átadás célja nem lehet ugyanez a szállítás.');
+    }
+    await applyHandoffToJob({
+      sourceJob: job,
+      sourceWarehouseId: pickup.warehouseId,
+      targetJobId: new mongoose.Types.ObjectId(group.jobId),
+      lines: group.lines.map((l) => ({
+        productId: new mongoose.Types.ObjectId(l.productId),
+        quantity: l.quantity,
+      })),
+      userId,
+    });
+  }
+
   pickup.status = 'completed';
   pickup.completedAt = new Date();
   syncJobStatusFromPickups(job);
   job.markModified('pickups');
+  job.markModified('activities');
   await job.save();
 
   await enqueueLogisticsNotification({
@@ -420,10 +566,18 @@ export async function cancelLogisticsJob(id: Types.ObjectId): Promise<ILogistics
   syncJobStatusFromPickups(job);
   job.markModified('pickups');
   await job.save();
+  await cancelVehicleBookingsForJob(job._id);
+  const activeRes = await Reservation.find({
+    sourceType: 'event',
+    sourceId: job._id,
+    status: 'active',
+  }).exec();
+  for (const r of activeRes) {
+    await releaseReservation(r._id, 'cancelled', job.createdBy);
+  }
+  await syncLogisticsJobToEmployeeSchedules(job, job.createdBy);
   return job;
 }
-
-// --- Backward-compatible aliases (job-level → first pickup) — deprecated ---
 
 function firstPickupId(job: ILogisticsJob): Types.ObjectId {
   const pickups = normalizeJobPickups(job);

@@ -91,9 +91,15 @@ export {
   deriveSupplierSkuFromCrmSku,
   deriveSupplierSkuFromSm,
   normalizeDigits,
+  formatSequentialSku,
+  skuSettingsFromCategory,
+  QUICK_SKU_FALLBACK,
   type CategorySkuSettings,
+  type CategorySkuSource,
   type SupplierSkuCutOptions,
 } from './sku';
+
+export { allocateNextProductSku } from './allocate-sku';
 
 export {
   inventoryPermissions,

@@ -41,7 +41,9 @@ Az összes termék listázása, keresése, szűrése és gyors megtekintése.
 ### Új termék
 
 1. Kattints az **Új termék** gombra (`inventory:write`).
-2. Töltsd ki az űrlapot, majd mentsd.
+2. A panelen add meg a **Név (HU)** és **Kategória** mezőket — a CRM SKU automatikusan készül.
+3. **Mentés és újabb** a következő tételhez; a teljes Excel-űrlap a **Teljes űrlap** linken van.
+4. Raktári darabszám: a listán kattints a **Raktár / készlet** cellára. Részletek: [Leltár és gyors felvétel](/help/leltar).
 
 ### Import és export
 
@@ -56,6 +58,6 @@ Az összes termék listázása, keresése, szűrése és gyors megtekintése.
 ## Kapcsolódó fejezetek
 
 - [Termék szerkesztés](/help/termek-szerkesztes)
-- [Tömeges módosítás](/help/tomeges-modositas)
+- [Leltár és gyors felvétel](/help/leltar)
 
-*Utolsó frissítés: 2026-06*
+*Utolsó frissítés: 2026-08*

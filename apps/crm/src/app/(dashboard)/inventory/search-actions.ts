@@ -1,6 +1,6 @@
 'use server';
 
-import { requirePermission } from '@crm/auth';
+import { requireAnyPermission, requirePermission } from '@crm/auth';
 import { connectDB, Category, Product, Supplier } from '@crm/db-core';
 import { productDisplayName } from '@crm/lib';
 
@@ -8,7 +8,7 @@ import { buildScopedProductFilter } from '@/lib/inventory/warehouse-scope';
 import type { SearchItem } from '@crm/ui';
 
 export async function searchProductsAction(query: string): Promise<SearchItem[]> {
-  await requirePermission('inventory:read');
+  await requireAnyPermission(['inventory:read', 'logistics:write', 'logistics:read']);
   await connectDB();
 
   const q = query.trim();

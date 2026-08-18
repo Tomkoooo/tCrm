@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { generateInternalSku, deriveSupplierSkuFromCrmSku, deriveSupplierSkuFromSm } from './sku';
+import {
+  generateInternalSku,
+  deriveSupplierSkuFromCrmSku,
+  deriveSupplierSkuFromSm,
+  formatSequentialSku,
+  skuSettingsFromCategory,
+  QUICK_SKU_FALLBACK,
+} from './sku';
 
 describe('generateInternalSku', () => {
   it('pads and prefixes to total length', () => {
@@ -37,6 +44,45 @@ describe('deriveSupplierSkuFromSm', () => {
 
   it('requires supplier SKU length', () => {
     expect(() => deriveSupplierSkuFromSm(settings, '100003301')).toThrow(/hossz/);
+  });
+});
+
+describe('skuSettingsFromCategory', () => {
+  it('falls back to Q prefix when category has no skuPrefix', () => {
+    expect(skuSettingsFromCategory({})).toEqual(QUICK_SKU_FALLBACK);
+    expect(skuSettingsFromCategory(null)).toEqual(QUICK_SKU_FALLBACK);
+  });
+
+  it('uses category prefix and pads total length when missing', () => {
+    expect(skuSettingsFromCategory({ skuPrefix: '1' })).toEqual({
+      prefix: '1',
+      totalLength: 7,
+      padChar: undefined,
+    });
+  });
+
+  it('keeps an explicit total length', () => {
+    expect(skuSettingsFromCategory({ skuPrefix: '1', skuTotalLength: 9 })).toEqual({
+      prefix: '1',
+      totalLength: 9,
+      padChar: undefined,
+    });
+  });
+});
+
+describe('formatSequentialSku', () => {
+  it('pads Alutent-style numeric SKUs', () => {
+    expect(formatSequentialSku({ prefix: '1', totalLength: 9 }, 1)).toBe('100000001');
+    expect(formatSequentialSku({ prefix: '1', totalLength: 9 }, 3301)).toBe('100003301');
+  });
+
+  it('builds Q-prefix SKUs for categories without a prefix', () => {
+    expect(formatSequentialSku(QUICK_SKU_FALLBACK, 1)).toBe('Q0000001');
+    expect(formatSequentialSku(QUICK_SKU_FALLBACK, 42)).toBe('Q0000042');
+  });
+
+  it('rejects a sequence that no longer fits the digit budget', () => {
+    expect(() => formatSequentialSku({ prefix: '1', totalLength: 3 }, 100)).toThrow(/betelt/);
   });
 });
 

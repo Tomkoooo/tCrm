@@ -50,7 +50,7 @@ export const createReservationSchema = z.object({
   productId: objectIdSchema,
   warehouseId: objectIdSchema,
   quantity: positiveQty,
-  sourceType: z.enum(['order', 'build', 'manual']).default('manual'),
+  sourceType: z.enum(['order', 'build', 'manual', 'event']).default('manual'),
   sourceRef: z.string().max(128).optional(),
   note: z.string().max(2000).optional(),
   expiresAt: z.string().optional(),
@@ -68,7 +68,7 @@ export const reservationLineSchema = z.object({
 
 export const createReservationsBatchSchema = z.object({
   warehouseId: objectIdSchema,
-  sourceType: z.enum(['order', 'build', 'manual']).default('manual'),
+  sourceType: z.enum(['order', 'build', 'manual', 'event']).default('manual'),
   sourceRef: z.string().min(1).max(128),
   note: z.string().max(2000).optional(),
   linesJson: z.string().min(1, 'Legalább egy tétel szükséges'),

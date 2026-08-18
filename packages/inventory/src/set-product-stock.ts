@@ -13,7 +13,7 @@ function assertWarehouseAllowed(warehouseId: Types.ObjectId, scope: BulkUpdateSc
 
 export type SetProductStockLevelOptions = {
   note?: string;
-  reason?: 'physical_count' | 'correction';
+  reason?: 'physical_count' | 'correction' | 'initial_load';
   session?: ClientSession;
 };
 

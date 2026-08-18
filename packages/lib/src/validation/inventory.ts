@@ -241,6 +241,28 @@ export const productStockLevelInputSchema = z.object({
 
 export const productStockLevelsSchema = z.array(productStockLevelInputSchema);
 
+export const quickProductSchema = z.object({
+  nameHu: z.string().trim().min(1, 'A magyar név kötelező.').max(500),
+  categorySlug: z.string().trim().min(1, 'A kategória kötelező.'),
+  warehouseId: emptyToUndefined(z.string().min(1)),
+  quantity: z.preprocess((v) => {
+    if (v === null || v === undefined) return undefined;
+    if (typeof v === 'string' && v.trim() === '') return undefined;
+    return v;
+  }, z.coerce.number().min(0, 'A készlet nem lehet negatív.').optional()),
+});
+
+export const warehouseStockSetSchema = z.object({
+  productId: z.string().min(1, 'A termék kötelező.'),
+  warehouseId: z.string().min(1, 'A raktár kötelező.'),
+  quantity: z.coerce.number().min(0, 'A készlet nem lehet negatív.'),
+});
+
+export const warehouseStockBatchSchema = z.object({
+  sku: z.string().min(1),
+  levels: productStockLevelsSchema,
+});
+
 export const buildKitSchema = z
   .object({
     sku: skuSchema,

@@ -33,7 +33,7 @@ Készletmozgások, foglalások, esemény szállítások és járműflotta kezel�
 
 1. **Foglalás** készítése ajánlat vagy összeszerelés hivatkozással.
 2. **Készletmozgás** (bevételezés, kiadás, átadás) draft → megerősítés.
-3. **Szállítás** létrehozása eseményre — raktár összeszed → építő átvétel → kiszállítás → visszaszállítás → raktár bevételezés.
+3. **Szállítás:** alapadatok → tételek (készletjelzés, helyi összeállítás) → csapat → javasolt körök → tervezet → zárolás → checklist. Leadáskor a cél lehet másik raktár vagy a következő esemény.
 
 ## Kapcsolódó fejezetek
 

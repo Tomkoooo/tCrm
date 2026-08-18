@@ -1,6 +1,7 @@
 'use client';
 
 import { DataTable } from '@crm/ui';
+import { Badge } from '@crm/ui';
 import type { ColumnDef, DataTableQuery } from '@crm/ui';
 import { JOB_STATUS_LABELS } from './job-status-labels';
 import type { JobStatus } from '@crm/db-core';
@@ -13,6 +14,8 @@ export type JobRow = {
   status: JobStatus;
   pickupCount: number;
   createdAt: Date;
+  kitOverride?: boolean;
+  hasShortage?: boolean;
 };
 
 const columns: Array<ColumnDef<JobRow>> = [
@@ -54,6 +57,22 @@ const columns: Array<ColumnDef<JobRow>> = [
     type: 'number',
     sortable: false,
     filterable: false,
+  },
+  {
+    key: 'kitOverride',
+    label: 'Figyelmeztetés',
+    type: 'string',
+    sortable: false,
+    filterable: false,
+    render: (_value, row) => (
+      <span className="flex flex-wrap gap-1">
+        {row.kitOverride ? <Badge variant="secondary">helyi BOM</Badge> : null}
+        {row.hasShortage ? <Badge variant="destructive">raktári hiány</Badge> : null}
+        {!row.kitOverride && !row.hasShortage ? (
+          <span className="text-muted-foreground">—</span>
+        ) : null}
+      </span>
+    ),
   },
   { key: 'createdAt', label: 'Létrehozva', type: 'date', sortable: true },
 ];

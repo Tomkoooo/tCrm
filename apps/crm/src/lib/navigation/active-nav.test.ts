@@ -4,6 +4,7 @@ import { isNavItemActive, resolveActiveNavHref } from './active-nav';
 const inventoryHrefs = [
   '/inventory/dashboard',
   '/inventory',
+  '/inventory/count',
   '/inventory/builds',
   '/inventory/categories',
   '/inventory/suppliers',
@@ -16,6 +17,7 @@ describe('resolveActiveNavHref', () => {
     expect(resolveActiveNavHref('/inventory/dashboard', inventoryHrefs)).toBe(
       '/inventory/dashboard'
     );
+    expect(resolveActiveNavHref('/inventory/count', inventoryHrefs)).toBe('/inventory/count');
     expect(resolveActiveNavHref('/inventory/100003301', inventoryHrefs)).toBe('/inventory');
     expect(resolveActiveNavHref('/inventory', inventoryHrefs)).toBe('/inventory');
   });

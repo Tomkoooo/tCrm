@@ -15,6 +15,9 @@ export {
   buildComponentSchema,
   productComponentsSchema,
   productStockLevelsSchema,
+  quickProductSchema,
+  warehouseStockSetSchema,
+  warehouseStockBatchSchema,
   importMatchKeySchema,
   importMergeFieldSchema,
   parseImportMergeFieldsJson,
@@ -62,6 +65,27 @@ export {
   parseInstallLinesJson,
   parseReturnLinesJson,
   parseCheckInLinesJson,
+  createDemandJobSchema,
+  demandLineInputSchema,
+  crewMemberInputSchema,
+  itemRequestSchema,
+  jobFeedbackSchema,
+  parseDemandJson,
+  parseDraftPickupRoundsJson,
+  parseCrewJson,
 } from './jobs';
 
 export type { VehicleInput, VehicleIncidentInput, CreatePickupInput } from './jobs';
+
+export {
+  companySchema,
+  employeeSchema,
+  timeOffRequestSchema,
+  timeOffReviewSchema,
+  rosterShiftSchema,
+  scheduleChangeRequestSchema,
+  scheduleChangeReviewSchema,
+  leaveYearUpsertSchema,
+} from './hr';
+
+export type { CompanyInput, EmployeeInput, TimeOffRequestInput, RosterShiftInput } from './hr';

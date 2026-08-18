@@ -13,6 +13,8 @@ export interface IUser extends Document {
   resetToken?: string;
   resetTokenExpires?: Date;
   employeeOnboardingCompletedAt?: Date;
+  /** Active HR membership (Employee._id) for self-service — no cookie. */
+  activeEmployeeId?: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,8 +32,10 @@ const UserSchema = new Schema<IUser>(
     resetToken: { type: String },
     resetTokenExpires: { type: Date },
     employeeOnboardingCompletedAt: { type: Date },
+    activeEmployeeId: { type: Schema.Types.ObjectId, ref: 'Employee', sparse: true },
   },
-  { timestamps: true }
+  // Preserve extra fields from the main-branch user profile (lastLoginAt, defaultCompanyId, …).
+  { timestamps: true, strict: false }
 );
 
 export const User =

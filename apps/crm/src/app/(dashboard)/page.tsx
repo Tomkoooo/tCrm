@@ -6,8 +6,11 @@ import {
   ListIcon,
   PackageIcon,
   TruckIcon,
+  UserRoundIcon,
+  ClipboardCheckIcon,
 } from 'lucide-react';
 import { getCurrentUser } from '@crm/auth';
+import { userHasEmployeeProfile } from '@crm/hr';
 import {
   Container,
   Card,
@@ -25,7 +28,15 @@ export default async function DashboardPage() {
 
   const has = (key: string) => permissions.includes(key);
 
+  const hasEmployeeProfile = user ? await userHasEmployeeProfile(user.id) : false;
+
   const quickActions = [
+    {
+      label: 'Saját feladataim',
+      href: '/hr/me',
+      icon: ClipboardCheckIcon,
+      show: hasEmployeeProfile,
+    },
     {
       label: 'Termékek',
       href: '/inventory',
@@ -37,6 +48,12 @@ export default async function DashboardPage() {
       href: '/logistics/jobs',
       icon: TruckIcon,
       show: has('logistics:read') || has('logistics:write') || has('logistics:scope_all'),
+    },
+    {
+      label: 'HR',
+      href: '/hr',
+      icon: UserRoundIcon,
+      show: has('hr:read') || has('hr:write') || has('hr:approve'),
     },
     {
       label: 'Szerepkörök kezelése',
@@ -70,8 +87,8 @@ export default async function DashboardPage() {
             Első lépések
           </CardTitle>
           <CardDescription>
-            Az alaprendszer, a készlet- és a logisztikai modul kész. A HR/könyvelés és ajánlatok
-            modulok a következő fázisokban érkeznek.
+            Az alaprendszer, a készlet, a logisztika és a HR modul kész. Az ajánlatok és a könyvelés
+            a következő fázisokban érkeznek.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">

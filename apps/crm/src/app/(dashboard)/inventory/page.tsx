@@ -1,8 +1,8 @@
-import Link from 'next/link';
 import { hasPermission, requirePermission } from '@crm/auth';
 import { classifyProductBomRoles } from '@crm/lib';
-import { connectDB, Product, StockLevel, Warehouse } from '@crm/db-core';
+import { connectDB, Category, Product, StockLevel, Warehouse } from '@crm/db-core';
 import { Container, buildDataTableMongoQuery, parseDataTableQuery } from '@crm/ui';
+import { flattenCategoryOptions } from '@/lib/inventory/category-options';
 
 import { resolveProductThumbnailUrl } from '@/lib/product-thumbnail';
 import {
@@ -22,7 +22,7 @@ import {
   getInventoryWarehouseScope,
 } from '@/lib/inventory/warehouse-scope';
 import { InventoryTable } from './_components/inventory-table';
-import { Button } from '@crm/ui';
+import { QuickProductEntry } from './_components/quick-product-entry';
 
 function inventorySummary(
   total: number,
@@ -83,7 +83,7 @@ export default async function InventoryPage({
 
   const warehouseNameById = new Map(scope.warehouses.map((w) => [w.id, w.name]));
 
-  const [items, total] = await Promise.all([
+  const [items, total, categoryDocs] = await Promise.all([
     Product.find(listFilter)
       .sort(sort)
       .skip(skip)
@@ -92,6 +92,7 @@ export default async function InventoryPage({
       .select({ ...INVENTORY_PRODUCT_SELECT, warehouseIds: 1 })
       .exec(),
     Product.countDocuments(listFilter).exec(),
+    Category.find().sort({ level: 1, slug: 1 }).lean().exec(),
   ]);
 
   const productIds = items.map((p) => p._id);
@@ -160,9 +161,11 @@ export default async function InventoryPage({
           </p>
         </div>
         {canWrite && (
-          <Button asChild>
-            <Link href="/inventory/new">Új termék</Link>
-          </Button>
+          <QuickProductEntry
+            categories={flattenCategoryOptions(categoryDocs)}
+            warehouses={scope.warehouses}
+            defaultWarehouseId={warehouseIdParam}
+          />
         )}
       </div>
 

@@ -47,3 +47,6 @@ pnpm-debug.log*
 # Docker (repo-root volume only — not Next.js API routes)
 /uploads/
 docker-compose.portainer.yml
+
+# Local Mongo dumps (prod clones — never commit)
+/backups/

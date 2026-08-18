@@ -16,12 +16,13 @@ export {
 } from './movements';
 
 export {
-  calculateBomAvailability,
-  getBulkAvailability,
-  computeBomAvailabilityFromComponents,
-  type BomAvailability,
-  type ComponentAvailability,
-} from './availability';
+  previewDemandAvailability,
+  previewPickupWarehouseIssues,
+  loadCatalogBom,
+  type DemandAvailabilityRow,
+  type DemandAvailabilityComponent,
+  type PickupWarehouseIssue,
+} from './demand-availability';
 
 export {
   suggestVehiclesForCargo,
@@ -65,7 +66,10 @@ export {
   type CreateJobParams,
   type CreatePickupParams,
   type JobLineInput,
+  type CheckInLineInput,
 } from './jobs';
+
+export { warehousePickQuantity, groupCheckInDestinations } from './check-in';
 
 export {
   normalizeJobPickups,
@@ -106,8 +110,55 @@ export {
   hasGlobalLogisticsScope,
   getWarehouseIdsForUser,
   buildLogisticsJobWarehouseFilter,
+  buildLogisticsJobAccessFilter,
   canAccessPickupWarehouse,
 } from './warehouse-access';
+
+export {
+  syncLogisticsJobToEmployeeSchedules,
+  resolvePickupScheduleWindow,
+} from './logistics-schedule-sync';
+
+export { explodeDemandLines, catalogComponentsForProduct } from './demand-explode';
+
+export {
+  createDemandJob,
+  proposeJobPlan,
+  previewPickupPlan,
+  lockJobPlan,
+  updateJobDemand,
+  requestJobItems,
+  resolveJobItemRequest,
+  submitJobFeedback,
+  updatePickupVehicle,
+  crewRolesOnJob,
+  crewRolesOnJobForEmployees,
+  findEventReservation,
+  type CreateDemandJobParams,
+  type DemandLineInput,
+  type CrewMemberInput,
+  type PreviewPickupPlanResult,
+  type DraftPickupRoundInput,
+} from './job-plan';
+
+export { CREW_ROLE_LABELS, CREW_ROLES, isCrewRole, assertValidCrew, memberHasRole } from './crew';
+
+export {
+  resolveFieldActor,
+  canPerformCrewRole,
+  assertCanPerformCrewRole,
+  loadJobOrThrow,
+  type FieldActor,
+} from './field-access';
+
+export {
+  isVehicleBooked,
+  createVehicleBooking,
+  cancelVehicleBookingsForJob,
+  listBookingsForJob,
+} from './vehicle-bookings';
+
+export type { CrewRole, JobPlanStatus, JobActivityKind } from '@crm/db-core';
 
 export {
   logisticsPermissions,

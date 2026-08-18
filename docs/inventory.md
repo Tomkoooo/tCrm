@@ -24,7 +24,8 @@ Register: `inventoryPermissions` in `apps/crm/src/lib/rbac-bootstrap.ts`. After 
 |------|---------|
 | `/inventory/dashboard` | KPI overlay |
 | `/inventory` | Product DataTable, import/export/bulk |
-| `/inventory/new` | Create product |
+| `/inventory/new` | Create product (full Excel-style form) |
+| `/inventory/count` | Optional full warehouse list (not in sidebar). Primary count: click **Raktár / készlet** on `/inventory` |
 | `/inventory/[sku]` | Detail + inline edit (`?edit=1`) |
 | `/inventory/categories` | Category tree |
 | `/inventory/suppliers` | Supplier partners |
@@ -37,6 +38,8 @@ Register: `inventoryPermissions` in `apps/crm/src/lib/rbac-bootstrap.ts`. After 
 Canonical columns: `packages/inventory/src/excel-columns.ts`. Import commit: `commitInventoryImport`. Stock columns `warehouse 1./2./3.` map to warehouse keys `kispest` / `erzsebet` / `recsei`.
 
 CRM SKU (`product_id_SM`) is generated from category prefix + supplier SKU (`generateInternalSku`). Always show localized name with SKU in UI (`ProductSkuLabel`).
+
+Quick product create (`quickCreateProductAction`) allocates SKU from the category prefix. Stock edits from the product list call `setProductStockLevel` (`physical_count` / `Leltár`) so `StockAdjustment` history can revert the previous on-hand.
 
 ## Out of scope
 

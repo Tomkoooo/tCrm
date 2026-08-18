@@ -12,10 +12,18 @@ async function upsertRole(
 
   const existing = await Role.findOne({ key: role.key }).exec();
   if (existing) {
-    existing.permissionIds = permissionIds as unknown as typeof existing.permissionIds;
-    existing.name = role.name;
-    existing.description = role.description;
-    await existing.save();
+    // updateOne casts string ids → ObjectId and always persists the array.
+    // DocumentArray assignment + save() can skip change detection (admin missing new keys).
+    await Role.updateOne(
+      { _id: existing._id },
+      {
+        $set: {
+          permissionIds,
+          name: role.name,
+          description: role.description,
+        },
+      }
+    ).exec();
   } else {
     await Role.create({
       key: role.key,

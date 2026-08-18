@@ -13,6 +13,17 @@ export {
   HR_TIMEZONE,
 } from './datetime';
 export {
+  eachDayInRange,
+  dedupeDates,
+  formatDatesLabel,
+  daysByMonthInYear,
+  parseLeaveDateLabel,
+  leaveDatesFromDayNumbers,
+  resolveEmployeeScheduleColor,
+  scheduleKindFallbackColor,
+} from './leave-days';
+export { scheduleEventStyles } from './schedule-styles';
+export {
   productDisplayName,
   formatProductSkuLine,
   productNameFromParts,

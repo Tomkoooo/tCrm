@@ -41,5 +41,6 @@ A belső termékkategória fa kezelése. Minden importált termékhez kötelező
 ## Kapcsolódó fejezetek
 
 - [Excel importálás](/help/excel-import)
+- [Leltár és gyors felvétel](/help/leltar)
 
-*Utolsó frissítés: 2026-06*
+*Utolsó frissítés: 2026-08*
