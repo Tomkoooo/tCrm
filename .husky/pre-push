@@ -1,5 +1,15 @@
 #!/bin/sh
 # Fast gate before push (matches CI). E2E is opt-in: RUN_E2E=1 git push or pnpm preflight:e2e
+
+# Git on this machine is often an x86_64 binary. Child Node then uses the x64 slice of a
+# universal binary and misses arm64 optional native bindings (rolldown/rollup). Re-exec
+# the hook as arm64 on Apple Silicon so preflight matches `pnpm preflight` in the shell.
+if [ -z "$TCRM_PREPUSH_ARM64" ] && sysctl -n hw.optional.arm64 2>/dev/null | grep -q 1; then
+  TCRM_PREPUSH_ARM64=1
+  export TCRM_PREPUSH_ARM64
+  exec arch -arm64 /bin/sh "$0" "$@"
+fi
+
 pnpm run preflight
 
 if [ "$RUN_E2E" = "1" ]; then
