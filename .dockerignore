@@ -16,6 +16,7 @@ playwright-report
 test-results
 blob-report
 apps/crm/e2e
+apps/crm/playwright.config.ts
 
 .env
 .env.*
