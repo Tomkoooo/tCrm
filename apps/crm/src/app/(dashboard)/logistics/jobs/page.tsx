@@ -2,14 +2,13 @@ import Link from 'next/link';
 import mongoose from 'mongoose';
 import { getCurrentUser, hasPermission, requireAnyPermission } from '@crm/auth';
 import { LOGISTICS_READ_PERMISSION_KEYS } from '@crm/logistics/permissions';
-import { connectDB, LogisticsJob, type ILogisticsJob } from '@crm/db-core';
+import { connectDB, Employee, LogisticsJob } from '@crm/db-core';
 import {
-  buildLogisticsJobWarehouseFilter,
+  buildLogisticsJobAccessFilter,
   getWarehouseIdsForUser,
   hasGlobalLogisticsScope,
-  previewPickupWarehouseIssues,
-  resolveJobPickups,
 } from '@crm/logistics';
+import { listMembershipsForUser } from '@crm/hr';
 import { Container, buildDataTableMongoQuery, parseDataTableQuery } from '@crm/ui';
 import { Button } from '@crm/ui';
 import { JobsTable, type JobRow } from './_components/jobs-table';
@@ -38,7 +37,9 @@ export default async function LogisticsJobsPage({
   let listFilter: Record<string, unknown> = filter;
   if (user && !hasGlobalLogisticsScope(user.permissions)) {
     const warehouseIds = await getWarehouseIdsForUser(new mongoose.Types.ObjectId(user.id));
-    const scopeFilter = buildLogisticsJobWarehouseFilter(warehouseIds);
+    const memberships = await listMembershipsForUser(user.id);
+    const employeeId = memberships[0]?._id;
+    const scopeFilter = buildLogisticsJobAccessFilter(warehouseIds, employeeId);
     listFilter = { $and: [filter, scopeFilter] };
   }
 
@@ -47,40 +48,35 @@ export default async function LogisticsJobsPage({
     LogisticsJob.countDocuments(listFilter).exec(),
   ]);
 
-  const pickupInputs = items.flatMap((j) => {
-    const pickups = resolveJobPickups(j as unknown as ILogisticsJob);
-    return pickups.map((p) => ({
-      jobId: String(j._id),
-      warehouseId: p.warehouseId,
-      lines: p.lines.map((l) => ({
-        productId: l.productId,
-        requestedQuantity: l.requestedQuantity,
-      })),
-    }));
-  });
-  const warehouseIssues = pickupInputs.length
-    ? await previewPickupWarehouseIssues(pickupInputs)
+  const employeeIds = [
+    ...new Set(
+      items.flatMap((j) => [j.pickupEmployeeId, j.dropoffEmployeeId].filter(Boolean).map(String))
+    ),
+  ];
+  const employees = employeeIds.length
+    ? await Employee.find({ _id: { $in: employeeIds } })
+        .select({ name: 1 })
+        .lean()
+        .exec()
     : [];
-  const issueKeys = new Set(
-    warehouseIssues.map((issue) => `${issue.warehouseId}::${issue.productId}`)
-  );
+  const employeeMap = new Map(employees.map((e) => [String(e._id), e.name]));
 
   const data: JobRow[] = items.map((j) => {
-    const pickups = resolveJobPickups(j as unknown as ILogisticsJob);
     const kitOverride = (j.demandLines ?? []).some((l) => (l.kit?.components?.length ?? 0) > 0);
-    const hasShortage = pickups.some((p) =>
-      p.lines.some((l) => issueKeys.has(`${String(p.warehouseId)}::${String(l.productId)}`))
-    );
     return {
       _id: String(j._id),
       reference: j.reference,
       eventName: j.eventName,
       siteAddress: j.siteAddress,
       status: j.status as JobStatus,
-      pickupCount: pickups.length,
+      pickupEmployeeName: j.pickupEmployeeId
+        ? employeeMap.get(String(j.pickupEmployeeId))
+        : undefined,
+      dropoffEmployeeName: j.dropoffEmployeeId
+        ? employeeMap.get(String(j.dropoffEmployeeId))
+        : undefined,
       createdAt: j.createdAt,
       kitOverride,
-      hasShortage,
     };
   });
 
@@ -90,7 +86,7 @@ export default async function LogisticsJobsPage({
         <div>
           <h1 className="text-2xl font-bold">Szállítások</h1>
           <p className="text-muted-foreground text-sm">
-            Igénylista, automatikus raktári körök, építőcsapat checklist.
+            Igénylista, átvételért és leadásért felelős dolgozó, csapat visszajelzés.
           </p>
         </div>
         {canWrite && (

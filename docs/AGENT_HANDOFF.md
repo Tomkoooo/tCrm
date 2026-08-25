@@ -31,7 +31,7 @@ The CRM was **rebuilt from scratch** per the architectural plan in the root [REA
 
 See [ARCHITECTURE.md §4](./ARCHITECTURE.md#4-current-feature-surface). Summary: auth, `/setup`, dashboard, `/account`, `/help`, admin, inventory, logistics + builds, **HR** (`/hr`, people, calendar, leave, hours, me).
 
-Pickup crew uses HR `employeeIds`; job windows sync to `ScheduleEntry`. Dual modes: logistics vs roster. Companies + leave-year matrix live. Hours = job + shift durations.
+Job pickup/drop-off/crew employees sync to `ScheduleEntry` (one per employee per job). Dual modes: logistics vs roster. Companies + leave-year matrix live. Hours = job + shift durations.
 
 ---
 

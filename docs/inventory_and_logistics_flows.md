@@ -36,7 +36,7 @@ flowchart TB
   subgraph log [Logisztika]
     mov[Készletmozgások draft → confirmed]
     res[Foglalások sourceRef csoport]
-    jobs[Szállítás igény → javaslat → zárolás]
+    jobs[Szállítás igény → ütemezés → átvétel/leadás]
     products --> mov
     products --> res
     products --> jobs
@@ -254,48 +254,41 @@ flowchart TD
 
 ## 5. Esemény szállítások (`LogisticsJob`)
 
-Logisztikai vezető **igénylistát** ír (termékek + job-helyi BOM), a motor **köröket javasol** raktár/jármű alapján, zárolás lefoglalja a készletet és a furgont, majd szinkronizál a HR naptárra. Raktáros összeszed, építő átvesz és kiszállít, opcionálisan telepít, visszaszállít, raktáros ellenőriz.
+Egyszerű, szándékosan minimál flow (2026-08-24-es újraépítés — a korábbi automatikus tervező
+motor archívuma: [`logistics-jobs-legacy.md`](./logistics-jobs-legacy.md)). Logisztika ír egy
+**igénylistát** (termékek + job-helyi BOM, raktár soronként), kijelöl egy **átvételért felelős**
+és egy **leadásért felelős** dolgozót (lehet ugyanaz), plusz opcionálisan egyéb csapattagokat és
+egy járművet. Ütemezéskor a rendszer e-mailt küld a két felelősnek és szinkronizálja a HR
+naptárat. Az átvételért felelős bejelenti, mit szedett össze (készlet csökken), a leadásért
+felelős bejelenti, mi jött vissza (készlet nő, hiány = tartós terméknél `gathered − checked`).
 
 ```mermaid
 stateDiagram-v2
   [*] --> draft: Létrehozás
-  draft --> scheduled: Közzététel
-  scheduled --> gathered: Raktár összeszedés
-  gathered --> picked_up: Építő átvétel
-  picked_up --> delivered: Helyszínen
-  delivered --> returning: Visszaszállítás indul
-  returning --> completed: Raktár bevételezés
+  draft --> scheduled: Ütemezés (e-mail + HR szinkron)
+  scheduled --> picked_up: Átvétel rögzítése (pick mozgás)
+  picked_up --> completed: Leadás rögzítése (return mozgás)
   draft --> cancelled: Törlés
   scheduled --> cancelled: Törlés
   completed --> [*]
   cancelled --> [*]
 ```
 
-| Lépés | Szerepkör | Készlet hatás |
-|-------|-----------|---------------|
-| Összeszedés megerősítése | Raktár | `pick` mozgás → **− készlet** forrás raktár |
-| Átvétel / kiszállítás | Építő | Csak állapot (nincs készletmozgás) |
-| Telepítés (opc.) | Építő | `installedQuantity`, `installedLocation` |
-| Visszaszállítás | Építő | `returnedQuantity` |
-| Bevételezés ellenőrzés | Raktár | `return` mozgás → **+ készlet**; hiány = `gathered − checked` (tartós) |
-
 | Mező / jog | Jelentés |
 |------------|----------|
-| `LogisticsJob.reference` | `JOB-ÉÉÉÉ-NNNN` (esemény) |
-| `LogisticsJob.pickups[]` | Több átvételi kör / eseményenként: raktár, jármű, csapat, tételek |
-| `pickup.reference` | `JOB-ÉÉÉÉ-NNNN-P01` — PDF/e-mail hivatkozás |
-| `pickup.employeeIds[]` | Építőcsapat — HR dolgozó azonosítók, szerepkör a `job.crew[]`-ben |
-| `Warehouse.assignedUserIds[]` | Raktári munkatársak (admin raktár szerkesztés); új szállításnál automatikus csapat-javaslat |
-| `logistics:scope_all` | Minden raktár szállítása; nélküle csak hozzárendelt raktár(ok) |
-| `pickup.contactEmails[]` | Értesítési címek |
-| `pickup.notifications.pendingKinds` | Küldésre váró / sikertelen értesítés típusok |
-| `pickup.notifications.pendingRecipientEmails` | Feloldott címzettek (raktár staff + csapat + contact) |
-| `MailTemplate.key` | Sablon kulcs = értesítés típus (`pickup_ready_for_collection`, stb.) |
+| `LogisticsJob.reference` | `JOB-ÉÉÉÉ-NNNN` |
+| `LogisticsJob.demandLines[]` | Igénylista — termék vagy job-helyi BOM (`kit`), raktár soronként (`warehouseId`) |
+| `LogisticsJob.lines[]` | Fizikai, kibontott tételek — `demandLines`-ból ütemezéskor (`explodeDemandLines`) |
+| `LogisticsJob.pickupEmployeeId` | Átvételért felelős dolgozó — kapja az e-mailt, ő rögzíti az átvételt |
+| `LogisticsJob.dropoffEmployeeId` | Leadásért felelős — üresen hagyva az átvételért felelős látja el ezt is |
+| `LogisticsJob.crewEmployeeIds[]` | Egyéb csapattagok — csak olvasás + visszajelzés, nincs bejelentési feladatuk |
+| `LogisticsJob.vehicleId` | Opcionális, egyszerű `Vehicle` hivatkozás — nincs foglalási/kapacitás motor |
+| `jobRolesForEmployees` | `@crm/logistics` — kiszámolja egy user dolgozói tagságaiból, milyen szerepe van a jobon |
+| `Warehouse.assignedUserIds[]` | Raktáros hozzáférés-szűkítéshez (`logistics:scope_all` nélkül) |
+| `MailTemplate.key` | `job_pickup_assigned` / `job_dropoff_assigned` — a lista HTML táblaként az e-mail törzsében, nincs PDF |
 | `sendTemplatedEmail` | `@crm/mail` — SMTP + sablon + `Reply-To` = műveletet indító user |
-| `pickup.documents.*` | PDF meta (csomaglista, visszáru) |
-| `buildLogisticsPickupDocument` | Sablon JSON PDF generáláshoz |
-| Összeszerelés a listán | Prebuild sor összecsukható alkatrészlista (raktár + építő UI, PDF payload) |
-| `Vehicle` | Flotta — mm, max súly/térfogat; `suggestVehiclesForCargo`; cég párosítás, dokumentumok, incidensek |
+| `LogisticsJob.feedback[]` | `{employeeId, message, createdAt}` — bármelyik felelős/csapattag írhat |
+| `Vehicle` | Flotta — mm, max súly/térfogat; cég párosítás, dokumentumok, incidensek (a jobtól független funkció) |
 | `Vehicle.companyId` | HR cég (`/hr/companies`) — tulajdonos |
 | `Company.companyData` | Kulcs–érték mezők (adószám, székhely, …) |
 | `Vehicle.registrationDueDate` / `insuranceDueDate` | Forgalmi / biztosítás lejárat — figyelmeztetés 30 napon belül a `/logistics` dashboardon |
@@ -498,11 +491,11 @@ sequenceDiagram
   participant User as Címzett
 
   Admin->>Mail: Sablon szerkesztés DB-ben
-  Note over Mail: logistics állapotváltás
-  Mail->>Mail: enqueueLogisticsNotification
+  Note over Mail: LogisticsJob ütemezés
+  Mail->>Mail: sendJobAssignmentEmail
   Mail->>Mail: sendTemplatedEmail
   Mail->>SMTP: Reply-To = actor email
-  SMTP->>User: HTML sablon
+  SMTP->>User: HTML sablon (lista beágyazva)
 
   Admin->>Mail: createAndSendInvitation
   Mail->>User: user_invitation sablon
@@ -554,8 +547,8 @@ Részletek: [`hr.md`](./hr.md).
 
 ```mermaid
 flowchart LR
-  Job[LogisticsJob zárolás] --> Sync[syncLogisticsJobToEmployeeSchedules]
-  Sync --> SE[ScheduleEntry kind=job]
+  Job[LogisticsJob ütemezés] --> Sync[syncLogisticsJobToEmployeeSchedules]
+  Sync --> SE["ScheduleEntry kind=job, role=pickup/dropoff/crew"]
   SE --> Cal["/hr/calendar"]
   SE --> Me["/hr/me"]
   Roster[roster mód] --> Shift[kind=shift / other]
@@ -566,8 +559,8 @@ flowchart LR
 |------|--------|
 | `Employee.scheduleMode` | `logistics` (default) vagy `roster` |
 | Job sorok | HR nem szerkeszti; logisztika szinkron tulajdonolja |
-| Roster | HR CRUD műszak; job továbbra is szinkronizál, ha a dolgozó a csapatban van |
-| Crew | `job.crew[].employeeIds` + `pickup.employeeIds` |
+| Roster | HR CRUD műszak; job továbbra is szinkronizál, ha a dolgozó érintett |
+| Job szerepek | `pickupEmployeeId`, `dropoffEmployeeId`, `crewEmployeeIds[]` — egy `ScheduleEntry` / dolgozó / job |
 
 ---
 

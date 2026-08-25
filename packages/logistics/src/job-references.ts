@@ -15,8 +15,3 @@ export async function generateJobReference(): Promise<string> {
   const seq = counter?.seq ?? 1;
   return formatJobReference(year, seq);
 }
-
-/** Sub-reference for a pickup leg within a job (PDF/email attachment id). */
-export function formatPickupReference(jobReference: string, pickupIndex: number): string {
-  return `${jobReference}-P${String(pickupIndex).padStart(2, '0')}`;
-}

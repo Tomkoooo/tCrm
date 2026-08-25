@@ -1,156 +1,84 @@
-import { connectDB, LogisticsJob, User, Warehouse, type ILogisticsJob } from '@crm/db-core';
+import { connectDB, Employee, Product, type ILogisticsJob } from '@crm/db-core';
 import type { Types } from 'mongoose';
-import { getActorEmail, sendTemplatedEmail } from '@crm/mail';
-import { getPickup, normalizeJobPickups } from './job-pickups';
-import { pickupToRecipientInput, resolvePickupNotificationEmails } from './notification-recipients';
+import { sendTemplatedEmail, resolvePublicAppUrl, type SendTemplatedEmailResult } from '@crm/mail';
 
-/** Notification kinds — map 1:1 to MailTemplate.key */
-export type LogisticsNotificationKind =
-  | 'job_scheduled'
-  | 'pickup_gathered'
-  | 'pickup_ready_for_collection'
-  | 'pickup_delivered'
-  | 'pickup_return_reminder'
-  | 'pickup_checkin_complete';
-
-export type LogisticsNotificationPayload = {
-  kind: LogisticsNotificationKind;
-  jobId: Types.ObjectId;
-  pickupId: Types.ObjectId;
-  /** Explicit recipients; falls back to pickup contacts + warehouse staff */
-  recipientEmails?: string[];
-  metadata?: Record<string, string>;
-  /** User who triggered the action — Reply-To and actorName in template */
-  actorUserId?: Types.ObjectId;
-};
-
-export type LogisticsNotificationResult = {
-  queued: boolean;
-  sent: boolean;
-  kind: LogisticsNotificationKind;
-  pickupReference: string;
-  pendingKinds: string[];
-  mailSkippedReason?: string;
-};
-
-async function buildNotificationVariables(
-  job: ILogisticsJob | null,
-  pickup: ReturnType<typeof getPickup>,
-  actorUserId?: Types.ObjectId
-): Promise<Record<string, string>> {
-  const wh = await Warehouse.findById(pickup.warehouseId).select({ name: 1 }).lean().exec();
-  let actorName = '';
-  let actorEmail: string | undefined;
-  if (actorUserId) {
-    const actor = await User.findById(actorUserId).select({ name: 1, email: 1 }).lean().exec();
-    actorName = actor?.name ?? '';
-    actorEmail = actor?.email;
-  }
-
-  return {
-    pickupReference: pickup.reference,
-    jobReference: job?.reference ?? '',
-    eventName: job?.eventName ?? '',
-    siteAddress: job?.siteAddress ?? '',
-    warehouseName: wh?.name ?? '',
-    plannedGatherAt: pickup.plannedGatherAt ? pickup.plannedGatherAt.toISOString() : '',
-    plannedEventAt:
-      (pickup.plannedEventAt ?? job?.plannedEventAt)
-        ? (pickup.plannedEventAt ?? job?.plannedEventAt)!.toISOString()
-        : '',
-    actorName,
-    ...(actorEmail ? { actorEmail } : {}),
-  };
+function formatDateTimeHu(date?: Date): string {
+  if (!date) return '—';
+  return new Intl.DateTimeFormat('hu-HU', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date);
 }
 
-/**
- * Queue notification on pickup and send templated email when SMTP + template are available.
- */
-export async function enqueueLogisticsNotification(
-  payload: LogisticsNotificationPayload
-): Promise<LogisticsNotificationResult> {
-  await connectDB();
-
-  const job = await LogisticsJob.findById(payload.jobId);
-  if (!job) throw new Error('Job not found');
-
-  normalizeJobPickups(job);
-  const pickup = getPickup(job, payload.pickupId);
-
-  const notifications = pickup.notifications ?? {};
-  const pending = new Set(notifications.pendingKinds ?? []);
-  pending.add(payload.kind);
-
-  const resolved = payload.recipientEmails?.length
-    ? payload.recipientEmails.map((e) => e.trim().toLowerCase()).filter(Boolean)
-    : await resolvePickupNotificationEmails(pickupToRecipientInput(pickup));
-
-  pickup.notifications = {
-    ...notifications,
-    pendingKinds: [...pending],
-    pendingRecipientEmails: resolved,
-  };
-
-  job.markModified('pickups');
-  await job.save();
-
-  const variables = {
-    ...(await buildNotificationVariables(job, pickup, payload.actorUserId)),
-    ...payload.metadata,
-  };
-
-  const actorEmail = payload.actorUserId ? await getActorEmail(payload.actorUserId) : undefined;
-
-  let sent = false;
-  let mailSkippedReason: string | undefined;
-
-  if (resolved.length > 0) {
-    const mailResult = await sendTemplatedEmail({
-      templateKey: payload.kind,
-      to: resolved,
-      variables,
-      actorUserId: payload.actorUserId,
-      actorEmail,
-    });
-    sent = mailResult.sent;
-    mailSkippedReason = mailResult.skipped ? mailResult.reason : undefined;
-
-    if (mailResult.sent) {
-      await markLogisticsNotificationSent(payload.jobId, payload.pickupId, payload.kind);
-    }
-  } else {
-    mailSkippedReason = 'No recipients';
-  }
-
-  return {
-    queued: true,
-    sent,
-    kind: payload.kind,
-    pickupReference: pickup.reference,
-    pendingKinds: pickup.notifications.pendingKinds ?? [],
-    mailSkippedReason,
-  };
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-/** Mark notification as sent after successful mail delivery. */
-export async function markLogisticsNotificationSent(
-  jobId: Types.ObjectId,
-  pickupId: Types.ObjectId,
-  kind: LogisticsNotificationKind
-): Promise<void> {
-  await connectDB();
-  const job = await LogisticsJob.findById(jobId);
-  if (!job) throw new Error('Job not found');
-
-  normalizeJobPickups(job);
-  const pickup = getPickup(job, pickupId);
-  const pending = (pickup.notifications?.pendingKinds ?? []).filter((k) => k !== kind);
-  pickup.notifications = {
-    ...pickup.notifications,
-    lastKind: kind,
-    lastSentAt: new Date(),
-    pendingKinds: pending,
+async function buildPartsListHtml(job: ILogisticsJob): Promise<string> {
+  const productIds = [
+    ...job.demandLines.map((l) => l.productId).filter(Boolean),
+    ...job.demandLines.flatMap((l) => (l.kit?.components ?? []).map((c) => c.productId)),
+  ] as Types.ObjectId[];
+  const products = productIds.length
+    ? await Product.find({ _id: { $in: productIds } })
+        .select({ sku: 1, names: 1 })
+        .lean()
+        .exec()
+    : [];
+  const productMap = new Map(products.map((p) => [String(p._id), p]));
+  const label = (id?: Types.ObjectId) => {
+    if (!id) return null;
+    const p = productMap.get(String(id));
+    if (!p) return null;
+    return `${p.names?.hu ?? p.names?.en ?? p.sku} (${p.sku})`;
   };
-  job.markModified('pickups');
-  await job.save();
+
+  const rows = job.demandLines.map((line) => {
+    const name = label(line.productId) ?? line.kit?.name ?? 'Egyedi összeállítás';
+    const parts = [`<strong>${escapeHtml(name)}</strong> — ${line.requestedQuantity} db`];
+    if (line.isOptional) parts.push('<em>(opcionális)</em>');
+    const sub = line.kit?.substitutionNote
+      ? `<br/><small>${escapeHtml(line.kit.substitutionNote)}</small>`
+      : '';
+    const components = (line.kit?.components ?? [])
+      .map((c) => `${escapeHtml(label(c.productId) ?? '—')} × ${c.quantity}`)
+      .join(', ');
+    const componentsHtml = components ? `<br/><small>Összetevők: ${components}</small>` : '';
+    return `<li>${parts.join(' ')}${sub}${componentsHtml}</li>`;
+  });
+
+  return `<ul>${rows.join('')}</ul>`;
+}
+
+export async function sendJobAssignmentEmail(
+  job: ILogisticsJob,
+  role: 'pickup' | 'dropoff',
+  actorUserId: Types.ObjectId
+): Promise<SendTemplatedEmailResult> {
+  await connectDB();
+
+  const employeeId =
+    role === 'pickup' ? job.pickupEmployeeId : (job.dropoffEmployeeId ?? job.pickupEmployeeId);
+  if (!employeeId) return { sent: false, skipped: true, reason: 'No employee assigned' };
+
+  const employee = await Employee.findById(employeeId).select({ email: 1 }).lean().exec();
+  if (!employee?.email) return { sent: false, skipped: true, reason: 'Employee has no email' };
+
+  const partsListHtml = await buildPartsListHtml(job);
+  const jobUrl = `${resolvePublicAppUrl()}/logistics/jobs/${job._id}`;
+
+  return sendTemplatedEmail({
+    templateKey: role === 'pickup' ? 'job_pickup_assigned' : 'job_dropoff_assigned',
+    to: employee.email,
+    variables: {
+      eventName: job.eventName,
+      siteAddress: job.siteAddress,
+      pickupAt: formatDateTimeHu(job.pickupAt),
+      eventAt: formatDateTimeHu(job.eventAt),
+      returnAt: formatDateTimeHu(job.returnAt),
+      partsListHtml,
+      jobUrl,
+    },
+    actorUserId,
+  });
 }

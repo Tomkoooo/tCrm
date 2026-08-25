@@ -1,10 +1,16 @@
 import Link from 'next/link';
 import { getCurrentUser, hasPermission } from '@crm/auth';
 import { getRemainingLeaveDays, listCompanies, listMembershipsForUser, listTimeOff } from '@crm/hr';
-import { connectDB, LogisticsJob, type CrewRole } from '@crm/db-core';
+import { connectDB, LogisticsJob } from '@crm/db-core';
+import { jobRolesForEmployees, type JobEmployeeRole } from '@crm/logistics';
 import { formatDateTime } from '@crm/lib';
 import { Container, Card, CardContent, CardHeader, CardTitle, Badge, Button } from '@crm/ui';
-import { CREW_ROLE_LABELS } from '@/lib/crew-labels';
+
+const JOB_ROLE_LABELS: Record<JobEmployeeRole, string> = {
+  pickup: 'Átvétel',
+  dropoff: 'Leadás',
+  crew: 'Csapat',
+};
 import { MeLeaveClient } from './_components/me-leave-client';
 import { MeCompanyTabs } from './_components/me-membership-switcher';
 import { HrCalendar } from '../_components/hr-calendar';
@@ -62,10 +68,14 @@ export default async function HrMePage({
     (async () => {
       await connectDB();
       return LogisticsJob.find({
-        'crew.employeeId': { $in: selectedIds },
+        $or: [
+          { pickupEmployeeId: { $in: selectedIds } },
+          { dropoffEmployeeId: { $in: selectedIds } },
+          { crewEmployeeIds: { $in: selectedIds } },
+        ],
         status: { $nin: ['cancelled', 'completed'] },
       })
-        .sort({ plannedEventAt: 1, plannedGatherAt: 1 })
+        .sort({ eventAt: 1, pickupAt: 1 })
         .limit(40)
         .lean()
         .exec();
@@ -150,21 +160,22 @@ export default async function HrMePage({
           ) : (
             <ul className="space-y-3">
               {jobs.map((job) => {
-                const crewHits = (job.crew ?? []).filter((c) =>
-                  membershipById.has(String(c.employeeId))
-                );
-                const roles = [...new Set(crewHits.flatMap((c) => c.roles))] as CrewRole[];
+                const jobEmployeeIds = [
+                  job.pickupEmployeeId,
+                  job.dropoffEmployeeId,
+                  ...(job.crewEmployeeIds ?? []),
+                ].filter(Boolean) as (typeof selectedIds)[number][];
+                const hitIds = jobEmployeeIds.filter((eid) => membershipById.has(String(eid)));
+                const roles = jobRolesForEmployees(job, hitIds);
                 const companyNames = [
                   ...new Set(
-                    crewHits.map(
-                      (c) =>
-                        companyMap.get(
-                          String(membershipById.get(String(c.employeeId))?.companyId)
-                        ) ?? 'Cég'
+                    hitIds.map(
+                      (eid) =>
+                        companyMap.get(String(membershipById.get(String(eid))?.companyId)) ?? 'Cég'
                     )
                   ),
                 ];
-                const when = job.plannedEventAt ?? job.plannedGatherAt;
+                const when = job.eventAt ?? job.pickupAt;
                 return (
                   <li
                     key={String(job._id)}
@@ -187,7 +198,7 @@ export default async function HrMePage({
                           : null}
                         {roles.map((role) => (
                           <Badge key={role} variant="secondary">
-                            {CREW_ROLE_LABELS[role]}
+                            {JOB_ROLE_LABELS[role]}
                           </Badge>
                         ))}
                       </div>

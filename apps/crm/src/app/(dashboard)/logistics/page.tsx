@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { hu } from 'date-fns/locale';
 import { requireAnyPermission } from '@crm/auth';
 import { LOGISTICS_READ_PERMISSION_KEYS } from '@crm/logistics/permissions';
-import { connectDB, Reservation, StockMovement, User } from '@crm/db-core';
+import { connectDB, Employee, Reservation, StockMovement } from '@crm/db-core';
 import { getLogisticsKpiSummary, getVehicleComplianceWarnings } from '@crm/logistics';
 import { Container } from '@crm/ui';
 import { Button } from '@crm/ui';
@@ -38,15 +38,15 @@ export default async function LogisticsPage() {
       getVehicleComplianceWarnings(30),
     ]);
 
-  const driverIds = kpi.topDriversByLoss.map((d) => d.driverId);
-  const drivers = driverIds.length
-    ? await User.find({ _id: { $in: driverIds } })
+  const employeeIds = kpi.topEmployeesByLoss.map((d) => d.employeeId);
+  const lossEmployees = employeeIds.length
+    ? await Employee.find({ _id: { $in: employeeIds } })
         .select('name email')
         .lean()
         .exec()
     : [];
-  const driverNameMap = new Map(
-    drivers.map((d) => [String(d._id), d.name || d.email || String(d._id)])
+  const employeeNameMap = new Map(
+    lossEmployees.map((e) => [String(e._id), e.name || e.email || String(e._id)])
   );
 
   const typeLabels: Record<string, string> = {
@@ -209,13 +209,13 @@ export default async function LogisticsPage() {
             <CardTitle className="text-base">Sofőr / csapat — legtöbb hiány</CardTitle>
           </CardHeader>
           <CardContent>
-            {kpi.topDriversByLoss.length === 0 ? (
+            {kpi.topEmployeesByLoss.length === 0 ? (
               <p className="text-muted-foreground text-sm">Még nincs hozzárendelt hiány.</p>
             ) : (
               <ul className="space-y-2 text-sm">
-                {kpi.topDriversByLoss.map((d) => (
-                  <li key={d.driverId} className="flex justify-between gap-2 border-b pb-2">
-                    <span>{driverNameMap.get(d.driverId) ?? d.driverId}</span>
+                {kpi.topEmployeesByLoss.map((d) => (
+                  <li key={d.employeeId} className="flex justify-between gap-2 border-b pb-2">
+                    <span>{employeeNameMap.get(d.employeeId) ?? d.employeeId}</span>
                     <span className="shrink-0 font-medium text-amber-700">{d.totalLost} db</span>
                   </li>
                 ))}

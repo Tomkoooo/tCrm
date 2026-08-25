@@ -30,12 +30,6 @@ export {
 } from './StockMovement';
 export { Vehicle, type IVehicle } from './Vehicle';
 export {
-  VehicleBooking,
-  type IVehicleBooking,
-  type VehicleBookingStatus,
-  type VehicleLastKnownPlace,
-} from './VehicleBooking';
-export {
   VehicleIncident,
   type IVehicleIncident,
   type VehicleIncidentStatus,
@@ -44,22 +38,13 @@ export {
   LogisticsJob,
   type ILogisticsJob,
   type IJobLine,
-  type ILogisticsPickup,
-  type ILogisticsPickupDocuments,
-  type ILogisticsPickupNotifications,
   type IDemandLine,
   type IDemandKit,
   type IDemandKitComponent,
-  type IJobCrewMember,
+  type IJobFeedback,
   type IJobActivity,
-  type IJobItemRequest,
   type JobStatus,
-  type PickupStatus,
-  type CrewRole,
-  type JobPlanStatus,
   type JobActivityKind,
-  type JobItemRequestStatus,
-  CREW_ROLES,
 } from './LogisticsJob';
 export { Employee, type IEmployee, type EmployeeScheduleMode } from './Employee';
 export { TimeOff, type ITimeOff, type TimeOffType, type TimeOffStatus } from './TimeOff';

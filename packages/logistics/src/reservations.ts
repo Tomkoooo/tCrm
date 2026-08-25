@@ -6,7 +6,7 @@ export type CreateReservationParams = {
   productId: Types.ObjectId;
   warehouseId: Types.ObjectId;
   quantity: number;
-  sourceType: 'order' | 'build' | 'manual' | 'event';
+  sourceType: 'order' | 'build' | 'manual';
   sourceId?: Types.ObjectId;
   sourceRef?: string;
   expiresAt?: Date;

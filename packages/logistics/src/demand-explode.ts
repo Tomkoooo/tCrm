@@ -5,6 +5,7 @@ export type PhysicalDemandLine = {
   productId: Types.ObjectId;
   requestedQuantity: number;
   isOptional?: boolean;
+  warehouseId?: Types.ObjectId;
 };
 
 type CatalogProduct = {
@@ -27,6 +28,7 @@ export function explodeDemandLines(
           productId: component.productId,
           requestedQuantity: component.quantity * line.requestedQuantity,
           isOptional: line.isOptional,
+          warehouseId: line.warehouseId,
         });
       }
       continue;
@@ -37,6 +39,7 @@ export function explodeDemandLines(
         productId: line.productId,
         requestedQuantity: line.requestedQuantity,
         isOptional: line.isOptional,
+        warehouseId: line.warehouseId,
       });
       continue;
     }
@@ -60,7 +63,9 @@ export function catalogComponentsForProduct(
 function mergePhysicalDemand(lines: PhysicalDemandLine[]): PhysicalDemandLine[] {
   const map = new Map<string, PhysicalDemandLine>();
   for (const line of lines) {
-    const key = `${String(line.productId)}:${line.isOptional ? 'opt' : 'req'}`;
+    const key = `${String(line.productId)}:${line.isOptional ? 'opt' : 'req'}:${
+      line.warehouseId ? String(line.warehouseId) : ''
+    }`;
     const existing = map.get(key);
     if (existing) {
       existing.requestedQuantity += line.requestedQuantity;

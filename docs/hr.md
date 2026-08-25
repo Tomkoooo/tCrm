@@ -14,7 +14,7 @@ People directory (one Employee row per company), leave/sick + annual entitlement
 
 Job rows are never edited in HR. Hours = sum of `job` + `shift` windows in the month.
 
-The HR calendar shows logistics jobs as the **event name**. Multiple crew roles (and pickup rounds) for the same employee on the same job merge into one block. Day view and taller week blocks also show the time window and role labels. Group day view uses one column per person.
+The HR calendar shows logistics jobs as the **event name**. An employee's pickup/dropoff/crew role on a job is a single `ScheduleEntry`, so there's exactly one block per employee per job. Day view and taller week blocks also show the time window and role label. Group day view uses one column per person.
 
 ## Multi-company (clean)
 

@@ -1,6 +1,6 @@
 ---
 title: Esemény szállítások
-description: Igénylista, helyi összeállítás, automatikus átvételi körök, építőcsapat szerepek, helyszíni checklist.
+description: Igénylista, helyi összeállítás, átvételért és leadásért felelős dolgozó, csapat visszajelzés.
 order: 33
 section: Logisztika
 permissions:
@@ -9,64 +9,72 @@ permissions:
 
 ## Mire való
 
-Eseményhez (pl. rendezvény) kellő tételek listája, majd a rendszer által javasolt raktári körök. Az átvétel és a leadás az **építőcsapat** feladata — nincs külön raktáros szerep.
+Eseményhez (pl. rendezvény) kellő tételek listája. Egy dolgozó felel az **átvételért**
+(kiszedi a listát a raktár(ak)ból), egy dolgozó felel a **leadásért** (visszaellenőrzi, ami
+megjött) — a kettő lehet ugyanaz a személy. Az egyéb csapattagok látják a listát, az
+összeállítási útmutatókat, és írhatnak visszajelzést, de nem ők jelentik be az átvételt/leadást.
 
 ## Hol találod
 
 - **Logisztika → Szállítások** (`/logistics/jobs`)
 - **Új szállítás:** `/logistics/jobs/new`
-- Helyszíni checklist: a feladat lapja, vagy **Általános → Saját feladataim** (`/hr/me`)
+- Saját feladat: a szállítás lapja, vagy **Általános → Saját feladataim** (`/hr/me`)
 
 ## Szükséges jogosultság
 
-- Terv készítése, körök javaslata, zárolás: logisztikai írás
-- Checklist (átvétel / sofőr / építés / leadás): a csapatba kinevezett dolgozó, CRM fiókkal — **Saját feladataim**, külön HR jogosultság nélkül.
+- Létrehozás, tételek szerkesztése, csapat kijelölése, ütemezés, törlés: logisztikai írás.
+- Átvétel / leadás bejelentése, lista megtekintése, visszajelzés: az adott szállításhoz kijelölt
+  dolgozó — **Saját feladataim**, külön logisztikai jogosultság nélkül.
 
 ## Lépésről lépésre
 
-### 1. Új szállítás (négy lépés)
+### 1. Új szállítás (három lépés)
 
-1. **Alapadatok** — esemény neve, helyszín, összeszedés / helyszín / visszaérkezés ideje.
-2. **Tételek** — keresd ki a terméket; a kiválasztott név a keresőmezőben marad. Add meg a mennyiséget, jelöld **Kötelező** vagy **Opcionális**, majd **Hozzáadás a listához**. A sorokon látszik, van-e elég készlet, vagy mi hiányzik.
-3. Ha egy készlet (BOM) nem stimmel az eseményre, **Összeállítás szerkesztése ennél a szállításnál**: pl. 4 m cső helyett 2×2 m + toldó. Írd be a **Csere / megjegyzés a csapatnak** mezőt. Ez **nem** írja felül a katalógusban mentett összeállítást.
-4. **Új összeállítás a semmiből** — ha nincs kész termék, itt állítod össze a listát csak erre a szállításra.
-5. **Csapat** — válaszd ki az építőcsapatot, és jelöld a szerepeket. Pontosan egy **építésvezető** kell. Ugyanaz a személy viselhet több sapkát (pl. sofőr + átvétel).
-6. **Átvételi körök** — a rendszer raktáranként összerakja a köröket. Raktár, jármű és mennyiség még itt módosítható. A készletjelzés a **kiválasztott raktár** szerint frissül (ha másik raktárban nincs készlet, azonnal látszik). **Újrajavaslat**, ha a lista változott.
-7. **Mentés tervezetként.**
+1. **Alapadatok** — esemény neve, helyszín, átvétel / helyszíni / leadás időpontja.
+2. **Tételek** — keresd ki a terméket, add meg a mennyiséget, jelöld **Kötelező** vagy
+   **Opcionális**, és válaszd ki, melyik **raktárból** menjen (soronként eltérő raktár is
+   lehet). Ha egy összeállítás (BOM) nem stimmel az eseményre, **Összeállítás szerkesztése
+   ennél a szállításnál**: pl. 4 m cső helyett 2×2 m + toldó. Ez **nem** írja felül a
+   katalógusban mentett összeállítást. **Új összeállítás a semmiből** — ha nincs kész termék,
+   itt állítod össze a listát csak erre a szállításra.
+3. **Csapat** — válaszd ki az **átvételért felelős** dolgozót. Ha a leadást más intézi,
+   kapcsold ki a "ugyanő felel" jelölőt, és válaszd ki külön. Add hozzá az egyéb
+   csapattagokat, és opcionálisan a járművet.
 
-### 2. Zárolás (ha a körök a lapon készültek)
+Mentés után a szállítás **Tervezet** állapotban jön létre — még nem kaptak róla e-mailt.
 
-1. Ha mentéskor még nem volt kör, a lapon **Körök javaslata**.
-2. Ha a javasolt jármű foglalt, cseréld. A figyelmeztetés nem blokkolja a tervet.
-3. **Terv zárolása** — készletfoglalás, járműfoglalás, naptár. Ettől kezdve a csapat látja a checklistet.
+### 2. Ütemezés
 
-### 3. Helyszínen (pipák)
+A szállítás lapján **Ütemezés és értesítés** gomb — ez elküldi a listát e-mailben az
+átvételért és a leadásért felelősnek, és bekerül a HR naptárukba. Ütemezés előtt még
+szerkesztheted a listát; utána a lapon az átvétel/leadás bejelentése látszik.
 
-| Szerep | Mit pipál |
-|--------|-----------|
-| Átvétel | Raktárban: mi került a kocsira (készlet csökken). Ami előző eseményről jött, az már a kocsin van |
-| Sofőr | Felrakva / elindultunk, majd megérkeztünk |
-| Építő | Telepítés (opcionális mennyiség + hely) |
-| Leadás | Visszaérkezett tételek: cél **raktár** (akár másik, mint ahonnan indult) vagy **következő esemény**; tartós hiánynál különbözet |
-| Építésvezető | Több tétel kérése, esemény-visszajelzés |
+### 3. Átvétel
 
-A **Cserék a csapatnak** szöveg a lapon és a munkafolyamatnál is megjelenik, ha a logisztika helyi összeállítást adott meg.
+Az átvételért felelős a saját feladatai közt vagy a szállítás lapján nyitja meg a listát,
+raktáranként megjelölve, hova kell mennie. Tételenként beírja, mennyit szedett össze — ha
+valamiből mást vagy máshogy vitt, egy megjegyzésben leírhatja, mi történt. Rögzítéskor a
+készlet csökken a megadott raktár(ak)ban.
 
-Bontáskor a leadásnál tételenként megadható, hova kerül a darab:
+### 4. Leadás
 
-- **Raktár** — a kiindulási raktártól eltérő raktár is lehet (a készlet oda nő).
-- **Következő esemény** — a tétel nem megy raktárba, hanem a kiválasztott szállításra kerül (a következő körben nem szedik újra a raktárból).
+A leadásért felelős (vagy ha nincs külön kijelölve, az átvételért felelős) a helyszín után
+rögzíti, mi jött vissza — tételenként a mennyiséget és a cél raktárt (akár másikat is, mint
+ahonnan indult). Ami nem jött vissza, azt a rendszer tartós terméknél hiányként számolja el.
+Rögzítéskor a készlet visszakerül a megadott raktár(ak)ba, és a szállítás **Lezárva** állapotba
+kerül.
 
-### 4. Következő alkalom
+### 5. Visszajelzés
 
-A lapon látszik az **eredeti lista**, a **változások** (elfogadott kérések) és a **visszajelzés**.
+Bárki, aki érintett a szállításban (átvétel, leadás, vagy egyéb csapattag), írhat
+visszajelzést a lap alján — ez bármikor elérhető, az állapottól függetlenül.
 
 ## Tippek
 
-- A járműnek nincs GPS-e: a foglalás időablak, a „hol van” csak raktár / helyszín / ismeretlen.
-- Zárolás után a tételkérést az építésvezető küldi, a logisztika fogadja el vagy utasítja el.
-- Az **opcionális** tételek a checklisten külön csoportban vannak, alapból nincs pipálva.
-- A lapon és a listán látszik, ha helyi összeállítás (BOM) van, és ha a kiválasztott raktárban hiány van.
+- A jármű a szállításon csak egy egyszerű választás — nincs kapacitás- vagy foglalás-ellenőrzés.
+- A lapon látszik, ha helyi összeállítás (BOM) van egy tételen.
+- Ütemezés előtt (tervezet állapotban) a logisztikai jog szerkesztheti a tételeket; utána a
+  listát csak az átvétel/leadás rögzítésekor lehet finomítani, megjegyzéssel.
 
 ## Kapcsolódó fejezetek
 
@@ -75,4 +83,4 @@ A lapon látszik az **eredeti lista**, a **változások** (elfogadott kérések)
 - [Beosztás és kérelmek](/help/beosztas-es-kerelemek)
 - [Összeszerelések](/help/osszeszerelesek)
 
-*Utolsó frissítés: 2026-08*
+*Utolsó frissítés: 2026-08-24*

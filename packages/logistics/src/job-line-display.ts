@@ -1,7 +1,7 @@
 import { connectDB, Product } from '@crm/db-core';
 import type { Types } from 'mongoose';
 
-export type PickupBomComponent = {
+export type JobLineBomComponent = {
   productId: string;
   sku: string;
   name: string;
@@ -15,16 +15,16 @@ export type PickupBomComponent = {
   isAssembly: boolean;
 };
 
-export type PickupLineDisplayItem = {
+export type JobLineDisplayItem = {
   productId: string;
   sku: string;
   name: string;
   quantity: number;
   isPrebuild: boolean;
-  bomComponents: PickupBomComponent[];
+  bomComponents: JobLineBomComponent[];
 };
 
-export type PickupLineQuantityInput = {
+export type JobLineQuantityInput = {
   productId: Types.ObjectId;
   quantity: number;
 };
@@ -76,12 +76,12 @@ function expandBomRecursive(
   parentQuantity: number,
   depth: number,
   visited: Set<string>
-): PickupBomComponent[] {
+): JobLineBomComponent[] {
   const product = productMap.get(productId);
   const components = product?.components ?? [];
   if (!components.length) return [];
 
-  const rows: PickupBomComponent[] = [];
+  const rows: JobLineBomComponent[] = [];
 
   for (const component of components) {
     const componentId = String(component.productId);
@@ -116,11 +116,11 @@ function expandBomRecursive(
 }
 
 /**
- * Enrich pickup lines with recursive BOM component breakdown for prebuilds.
+ * Enrich job lines with recursive BOM component breakdown for prebuilds.
  */
-export async function enrichPickupLinesDisplay(
-  lines: PickupLineQuantityInput[]
-): Promise<PickupLineDisplayItem[]> {
+export async function enrichJobLinesDisplay(
+  lines: JobLineQuantityInput[]
+): Promise<JobLineDisplayItem[]> {
   await connectDB();
 
   if (!lines.length) return [];

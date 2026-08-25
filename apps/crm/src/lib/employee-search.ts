@@ -2,6 +2,7 @@
 
 import { requireAuth } from '@crm/auth';
 import { listEmployees } from '@crm/hr';
+import type { SearchItem } from '@crm/ui';
 
 export type GroupedEmployeeOption = {
   value: string;
@@ -48,4 +49,15 @@ export async function searchEmployeesGroupedAction(
   }
 
   return { groups };
+}
+
+/** Flat single-employee search for SearchAutocomplete-based pickers. */
+export async function searchEmployeesAction(query: string): Promise<SearchItem[]> {
+  await requireAuth();
+  const employees = await listEmployees({ activeOnly: true, query, limit: 20 });
+  return employees.map((e) => ({
+    value: String(e._id),
+    label: e.name,
+    sublabel: e.email || undefined,
+  }));
 }

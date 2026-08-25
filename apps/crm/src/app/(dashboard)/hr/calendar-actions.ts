@@ -11,7 +11,7 @@ import {
   jobEventDisplayName,
   HR_READ_PERMISSION_KEYS,
 } from '@crm/hr';
-import { connectDB, LogisticsJob, type IScheduleEntry } from '@crm/db-core';
+import type { IScheduleEntry } from '@crm/db-core';
 import { resolveEmployeeScheduleColor, scheduleKindFallbackColor } from '@crm/lib';
 
 export type CalendarEventDTO = {
@@ -46,43 +46,14 @@ function sourceJobId(entry: IScheduleEntry): string | undefined {
   return undefined;
 }
 
-async function logisticsJobIndex(entries: IScheduleEntry[]): Promise<{
+function logisticsJobIndex(entries: IScheduleEntry[]): {
   hrefs: Map<string, string>;
   jobIds: Map<string, string>;
-}> {
+} {
   const hrefs = new Map<string, string>();
   const jobIds = new Map<string, string>();
-  const pickupIds: string[] = [];
   for (const entry of entries) {
-    const direct = sourceJobId(entry);
-    if (direct) {
-      hrefs.set(String(entry._id), `/logistics/jobs/${direct}`);
-      jobIds.set(String(entry._id), direct);
-      continue;
-    }
-    const ref = entry.sourceRef;
-    if (ref?.module === 'logistics' && ref.refType === 'pickup' && ref.refId) {
-      pickupIds.push(String(ref.refId));
-    }
-  }
-  if (!pickupIds.length) return { hrefs, jobIds };
-
-  await connectDB();
-  const jobs = await LogisticsJob.find({ 'pickups._id': { $in: pickupIds } })
-    .select({ _id: 1, pickups: 1 })
-    .lean()
-    .exec();
-  const pickupToJob = new Map<string, string>();
-  for (const job of jobs) {
-    for (const pickup of job.pickups ?? []) {
-      pickupToJob.set(String(pickup._id), String(job._id));
-    }
-  }
-  for (const entry of entries) {
-    if (jobIds.has(String(entry._id))) continue;
-    const ref = entry.sourceRef;
-    if (ref?.refType !== 'pickup' || !ref.refId) continue;
-    const jobId = pickupToJob.get(String(ref.refId));
+    const jobId = sourceJobId(entry);
     if (!jobId) continue;
     hrefs.set(String(entry._id), `/logistics/jobs/${jobId}`);
     jobIds.set(String(entry._id), jobId);
@@ -115,7 +86,7 @@ export async function fetchHrCalendarEventsAction(params: {
     employeeIds: params.employeeId ? undefined : employees.map((e) => e._id),
   });
 
-  const { hrefs, jobIds } = await logisticsJobIndex(entries);
+  const { hrefs, jobIds } = logisticsJobIndex(entries);
 
   const mapped: CalendarEventDTO[] = entries.map((e) => {
     const emp = nameMap.get(String(e.employeeId));
@@ -168,7 +139,7 @@ export async function fetchMyCalendarEventsAction(params: {
     end: new Date(params.end),
     employeeIds: selected.map((m) => m._id),
   });
-  const { hrefs, jobIds } = await logisticsJobIndex(entries);
+  const { hrefs, jobIds } = logisticsJobIndex(entries);
   const empMap = new Map(selected.map((m) => [String(m._id), m]));
 
   const mapped: CalendarEventDTO[] = entries.map((e) => {

@@ -12,10 +12,10 @@ export type JobRow = {
   eventName: string;
   siteAddress: string;
   status: JobStatus;
-  pickupCount: number;
+  pickupEmployeeName?: string;
+  dropoffEmployeeName?: string;
   createdAt: Date;
   kitOverride?: boolean;
-  hasShortage?: boolean;
 };
 
 const columns: Array<ColumnDef<JobRow>> = [
@@ -52,11 +52,20 @@ const columns: Array<ColumnDef<JobRow>> = [
     render: (_value, row) => JOB_STATUS_LABELS[row.status] ?? row.status,
   },
   {
-    key: 'pickupCount',
-    label: 'Átvételek',
-    type: 'number',
+    key: 'pickupEmployeeName',
+    label: 'Átvétel',
+    type: 'string',
     sortable: false,
     filterable: false,
+    render: (_value, row) => row.pickupEmployeeName ?? '—',
+  },
+  {
+    key: 'dropoffEmployeeName',
+    label: 'Leadás',
+    type: 'string',
+    sortable: false,
+    filterable: false,
+    render: (_value, row) => row.dropoffEmployeeName ?? row.pickupEmployeeName ?? '—',
   },
   {
     key: 'kitOverride',
@@ -64,15 +73,12 @@ const columns: Array<ColumnDef<JobRow>> = [
     type: 'string',
     sortable: false,
     filterable: false,
-    render: (_value, row) => (
-      <span className="flex flex-wrap gap-1">
-        {row.kitOverride ? <Badge variant="secondary">helyi BOM</Badge> : null}
-        {row.hasShortage ? <Badge variant="destructive">raktári hiány</Badge> : null}
-        {!row.kitOverride && !row.hasShortage ? (
-          <span className="text-muted-foreground">—</span>
-        ) : null}
-      </span>
-    ),
+    render: (_value, row) =>
+      row.kitOverride ? (
+        <Badge variant="secondary">helyi BOM</Badge>
+      ) : (
+        <span className="text-muted-foreground">—</span>
+      ),
   },
   { key: 'createdAt', label: 'Létrehozva', type: 'date', sortable: true },
 ];

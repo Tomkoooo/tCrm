@@ -10,7 +10,7 @@ export default async function NewLogisticsJobPage() {
       <div>
         <h1 className="text-2xl font-bold">Új szállítás</h1>
         <p className="text-muted-foreground text-sm">
-          Alapadatok, tételek, csapat, majd a javasolt átvételi körök — mentés tervezetként.
+          Alapadatok, tételek raktáronként, majd az átvételért és leadásért felelős dolgozó.
         </p>
       </div>
       <JobCreateForm />

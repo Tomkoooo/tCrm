@@ -1,51 +1,20 @@
-import { connectDB, type CrewRole, type ILogisticsJob, type ILogisticsPickup } from '@crm/db-core';
+import { connectDB, type ILogisticsJob } from '@crm/db-core';
 import type { Types } from 'mongoose';
 import { removeScheduleBySourceRef, upsertJobScheduleEntry } from '@crm/hr';
-import { normalizeJobPickups } from './job-pickups';
-import { resolveJobWindows } from './job-windows';
 
 const DEFAULT_SLICE_MS = 3 * 60 * 60 * 1000;
 
-function roleWindow(
-  role: CrewRole,
-  windows: { gather: Date; event: Date; returnAt: Date }
-): { start: Date; end: Date } {
-  switch (role) {
-    case 'director':
-      return { start: windows.gather, end: windows.returnAt };
-    case 'builder':
-      return { start: windows.event, end: windows.returnAt };
-    case 'pickup':
-      return {
-        start: windows.gather,
-        end:
-          windows.event > windows.gather
-            ? windows.event
-            : new Date(windows.gather.getTime() + DEFAULT_SLICE_MS),
-      };
-    case 'driver':
-      return { start: windows.gather, end: windows.returnAt };
-    case 'dropoff':
-      return { start: windows.event, end: windows.returnAt };
-  }
-}
-
-export function resolvePickupScheduleWindow(
-  pickup: ILogisticsPickup,
-  job: ILogisticsJob
-): { start: Date; end: Date } | null {
-  const windows = resolveJobWindows(job);
-  const gatherAt = pickup.plannedGatherAt ?? windows.gather;
-  const eventAt = pickup.plannedEventAt ?? windows.event;
-  const returnAt = pickup.plannedReturnAt ?? windows.returnAt;
-  if (!gatherAt && !eventAt) return null;
-  const start = gatherAt ?? eventAt;
-  const end = returnAt > start ? returnAt : new Date(start.getTime() + DEFAULT_SLICE_MS);
+function resolveWindow(job: ILogisticsJob): { start: Date; end: Date } {
+  const start = job.pickupAt ?? job.eventAt ?? new Date();
+  const end =
+    job.returnAt && job.returnAt > start
+      ? job.returnAt
+      : new Date(start.getTime() + DEFAULT_SLICE_MS);
   return { start, end };
 }
 
 /**
- * Upsert/delete ScheduleEntry rows per crew role.
+ * Upsert/delete ScheduleEntry rows for the job's pickup/dropoff/crew employees.
  * Cancelled jobs remove their sourceRef rows.
  */
 export async function syncLogisticsJobToEmployeeSchedules(
@@ -53,54 +22,54 @@ export async function syncLogisticsJobToEmployeeSchedules(
   actorUserId: Types.ObjectId
 ): Promise<void> {
   await connectDB();
-  normalizeJobPickups(job);
 
   await removeScheduleBySourceRef('logistics', 'job', job._id);
-  for (const pickup of job.pickups ?? []) {
-    await removeScheduleBySourceRef('logistics', 'pickup', pickup._id);
-  }
 
   if (job.status === 'cancelled') return;
 
-  const windows = resolveJobWindows(job);
-  const crew = job.crew ?? [];
+  const { start, end } = resolveWindow(job);
+  const seen = new Set<string>();
 
-  for (const member of crew) {
-    for (const role of member.roles) {
-      const isRoundRole = role === 'pickup' || role === 'driver' || role === 'dropoff';
-      if (isRoundRole && job.pickups?.length) {
-        for (const pickup of job.pickups) {
-          if (pickup.status === 'draft' || pickup.status === 'cancelled') continue;
-          const { start, end } = roleWindow(role, {
-            gather: pickup.plannedGatherAt ?? windows.gather,
-            event: pickup.plannedEventAt ?? windows.event,
-            returnAt: pickup.plannedReturnAt ?? windows.returnAt,
-          });
-          await upsertJobScheduleEntry({
-            employeeId: member.employeeId,
-            start,
-            end,
-            title: job.eventName,
-            notes: job.siteAddress,
-            pickupId: pickup._id,
-            jobId: job._id,
-            role,
-            actorUserId,
-          });
-        }
-      } else if (!isRoundRole) {
-        const { start, end } = roleWindow(role, windows);
-        await upsertJobScheduleEntry({
-          employeeId: member.employeeId,
-          start,
-          end,
-          title: job.eventName,
-          notes: job.siteAddress,
-          jobId: job._id,
-          role,
-          actorUserId,
-        });
-      }
-    }
+  if (job.pickupEmployeeId) {
+    seen.add(String(job.pickupEmployeeId));
+    await upsertJobScheduleEntry({
+      employeeId: job.pickupEmployeeId,
+      start,
+      end,
+      title: job.eventName,
+      notes: job.siteAddress,
+      jobId: job._id,
+      role: 'pickup',
+      actorUserId,
+    });
+  }
+
+  if (job.dropoffEmployeeId && !seen.has(String(job.dropoffEmployeeId))) {
+    seen.add(String(job.dropoffEmployeeId));
+    await upsertJobScheduleEntry({
+      employeeId: job.dropoffEmployeeId,
+      start,
+      end,
+      title: job.eventName,
+      notes: job.siteAddress,
+      jobId: job._id,
+      role: 'dropoff',
+      actorUserId,
+    });
+  }
+
+  for (const employeeId of job.crewEmployeeIds ?? []) {
+    if (seen.has(String(employeeId))) continue;
+    seen.add(String(employeeId));
+    await upsertJobScheduleEntry({
+      employeeId,
+      start,
+      end,
+      title: job.eventName,
+      notes: job.siteAddress,
+      jobId: job._id,
+      role: 'crew',
+      actorUserId,
+    });
   }
 }

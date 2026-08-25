@@ -14,7 +14,7 @@ import {
 } from '@crm/ui';
 import { productDisplayName } from '@crm/lib';
 import { searchProductsAction } from '../../../inventory/search-actions';
-import { loadCatalogBomAction, previewDemandAvailabilityAction } from '../plan-actions';
+import { loadCatalogBomAction, previewDemandAvailabilityAction } from '../actions';
 import { ProductSkuLabel } from '@/components/product-sku-label';
 import { JobCreateKitSheet } from './job-create-kit-sheet';
 import {
@@ -33,9 +33,11 @@ type KitEditor =
 
 export function JobCreatePartsStep({
   demand,
+  warehouses,
   onChange,
 }: {
   demand: DemandLineDraft[];
+  warehouses: Array<{ id: string; name: string; key: string }>;
   onChange: (next: DemandLineDraft[]) => void;
 }) {
   const [pendingId, setPendingId] = useState('');
@@ -68,6 +70,8 @@ export function JobCreatePartsStep({
     setOptional(false);
   };
 
+  const defaultWarehouseId = warehouses[0]?.id ?? '';
+
   const addCatalogLine = () => {
     if (!pendingId) return;
     const qty = Number(quantity) || 1;
@@ -80,6 +84,7 @@ export function JobCreatePartsStep({
         name: pendingName,
         quantity: qty,
         isOptional: optional,
+        warehouseId: defaultWarehouseId,
       },
     ]);
     clearPending();
@@ -120,7 +125,7 @@ export function JobCreatePartsStep({
         <h3 className="font-medium">Igénylista</h3>
         <p className="text-muted-foreground text-sm">
           A készletjelzés a jelenlegi szabad mennyiség. Az összeállítás csak erre a szállításra
-          módosítható — a katalógus BOM változatlan marad.
+          módosítható — a katalógus BOM változatlan marad. Válassz forrás raktárt minden tételhez.
         </p>
       </div>
 
@@ -199,7 +204,7 @@ export function JobCreatePartsStep({
           onClick={() =>
             setEditor({
               mode: 'create',
-              title: 'Új összeállítás ennél a szállításnál',
+              title: 'Új összeállítás a semmiből',
               initial: { name: '', substitutionNote: '', components: [] },
             })
           }
@@ -285,6 +290,31 @@ export function JobCreatePartsStep({
                   >
                     {line.isOptional ? 'Opcionális' : 'Kötelező'}
                   </Button>
+                  <select
+                    className="border-input bg-background h-8 rounded-md border px-2 text-xs"
+                    value={line.warehouseId ?? ''}
+                    onChange={(e) =>
+                      onChange(
+                        demand.map((row) =>
+                          row.localId === line.localId
+                            ? { ...row, warehouseId: e.target.value }
+                            : row
+                        )
+                      )
+                    }
+                  >
+                    <option value="" disabled>
+                      Raktár…
+                    </option>
+                    {warehouses.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name}
+                      </option>
+                    ))}
+                  </select>
+                  {!line.warehouseId ? (
+                    <span className="text-destructive text-xs">Válassz raktárt</span>
+                  ) : null}
                 </div>
 
                 {line.kit?.substitutionNote ? (
@@ -364,6 +394,7 @@ export function JobCreatePartsStep({
                   name: kit.name || 'Egyedi összeállítás',
                   quantity: 1,
                   isOptional: false,
+                  warehouseId: defaultWarehouseId,
                   kit,
                 },
               ]);

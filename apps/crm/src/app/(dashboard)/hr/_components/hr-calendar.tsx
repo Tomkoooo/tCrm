@@ -12,7 +12,6 @@ import {
   scheduleKindFallbackColor,
   toCalendarDate,
 } from '@crm/lib';
-import { CREW_ROLE_LABELS } from '@/lib/crew-labels';
 import {
   fetchHrCalendarEventsAction,
   fetchMyCalendarEventsAction,
@@ -65,11 +64,15 @@ function hydrate(raw: CalendarEventDTO): HrCalendarEvent {
   };
 }
 
+const JOB_ROLE_LABELS: Record<string, string> = {
+  pickup: 'Átvétel',
+  dropoff: 'Leadás',
+  crew: 'Csapat',
+};
+
 function eventRoleLabels(event: HrCalendarEvent): string {
   if (!event.roles?.length) return '';
-  return event.roles
-    .map((role) => CREW_ROLE_LABELS[role as keyof typeof CREW_ROLE_LABELS] ?? role)
-    .join(' · ');
+  return event.roles.map((role) => JOB_ROLE_LABELS[role] ?? role).join(' · ');
 }
 
 function eventTimeLabel(event: HrCalendarEvent): string {

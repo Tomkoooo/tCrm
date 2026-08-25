@@ -2,644 +2,385 @@ import {
   connectDB,
   LogisticsJob,
   Product,
-  Reservation,
+  type IDemandLine,
   type IJobLine,
   type ILogisticsJob,
+  type JobActivityKind,
   type JobStatus,
-  type PickupStatus,
 } from '@crm/db-core';
 import mongoose, { type Types } from 'mongoose';
-import { formatPickupReference, generateJobReference } from './job-references';
-import {
-  assertPickupStatus,
-  findPickupLineIndex,
-  getPickup,
-  normalizeJobPickups,
-  syncJobStatusFromPickups,
-} from './job-pickups';
+import { generateJobReference } from './job-references';
+import { explodeDemandLines } from './demand-explode';
 import { createMovement, confirmMovement } from './movements';
-import { groupCheckInDestinations, warehousePickQuantity } from './check-in';
-import { enqueueLogisticsNotification } from './notifications';
+import { sendJobAssignmentEmail } from './notifications';
 import { syncLogisticsJobToEmployeeSchedules } from './logistics-schedule-sync';
-import { cancelVehicleBookingsForJob } from './vehicle-bookings';
-import { releaseReservation } from './reservations';
-import { resolveUserIdsFromEmployees } from '@crm/hr';
 
-export type JobLineInput = {
-  productId: Types.ObjectId;
+export type DemandLineInput = {
+  productId?: Types.ObjectId;
   requestedQuantity: number;
-};
-
-export type CreatePickupParams = {
-  label?: string;
-  warehouseId: Types.ObjectId;
-  vehicleId?: Types.ObjectId;
-  /** HR people assigned to this pickup. */
-  employeeIds?: Types.ObjectId[];
-  /** Derived User ids — filled automatically from Employee.userId when omitted. */
-  teamMemberIds?: Types.ObjectId[];
-  contactEmails?: string[];
+  isOptional?: boolean;
   note?: string;
-  plannedGatherAt?: Date;
-  plannedEventAt?: Date;
-  lines: JobLineInput[];
+  kit?: IDemandLine['kit'];
+  warehouseId?: Types.ObjectId;
 };
 
 export type CreateJobParams = {
   eventName: string;
   siteAddress: string;
-  plannedEventAt?: Date;
-  pickups: CreatePickupParams[];
   note?: string;
+  eventAt?: Date;
+  pickupAt?: Date;
+  returnAt?: Date;
+  demandLines: DemandLineInput[];
   createdBy: Types.ObjectId;
-  publish?: boolean;
 };
 
-export type GatherLineInput = {
+export type AssignJobEmployeesParams = {
+  pickupEmployeeId: Types.ObjectId;
+  dropoffEmployeeId?: Types.ObjectId;
+  crewEmployeeIds?: Types.ObjectId[];
+  vehicleId?: Types.ObjectId;
+};
+
+export type PickupCheckInLineInput = {
   productId: Types.ObjectId;
   gatheredQuantity: number;
+  warehouseId?: Types.ObjectId;
 };
 
-export type InstallLineInput = {
-  productId: Types.ObjectId;
-  installedQuantity: number;
-  installedLocation?: string;
-};
-
-export type ReturnLineInput = {
-  productId: Types.ObjectId;
-  returnedQuantity: number;
-};
-
-export type CheckInLineInput = {
+export type ReturnCheckInLineInput = {
   productId: Types.ObjectId;
   checkedQuantity: number;
-  destinationKind?: 'warehouse' | 'job';
-  warehouseId?: Types.ObjectId;
-  jobId?: Types.ObjectId;
+  returnWarehouseId?: Types.ObjectId;
 };
 
-function mapLines(inputs: JobLineInput[]): IJobLine[] {
-  return inputs.map((l) => ({
-    productId: l.productId,
-    requestedQuantity: l.requestedQuantity,
-    gatheredQuantity: 0,
-    installedQuantity: 0,
-    returnedQuantity: 0,
-    checkedQuantity: 0,
-    lostQuantity: 0,
-    inboundHandoffQuantity: 0,
-  }));
+export type JobEmployeeRole = 'pickup' | 'dropoff' | 'crew';
+
+function pushActivity(
+  job: ILogisticsJob,
+  kind: JobActivityKind,
+  actorUserId: Types.ObjectId,
+  message?: string
+) {
+  job.activities = [
+    ...(job.activities ?? []),
+    { _id: new mongoose.Types.ObjectId(), kind, at: new Date(), actorUserId, message } as never,
+  ];
 }
 
-function initialPickupStatus(publish: boolean): PickupStatus {
-  return publish ? 'scheduled' : 'draft';
+function findLine(job: ILogisticsJob, productId: Types.ObjectId): IJobLine {
+  const line = job.lines.find((l) => l.productId.equals(productId));
+  if (!line) throw new Error('Tétel nem található a listán.');
+  return line;
 }
 
 export async function createLogisticsJob(params: CreateJobParams): Promise<ILogisticsJob> {
   await connectDB();
-
-  if (!params.pickups.length) {
-    throw new Error('At least one pickup is required');
-  }
-
-  for (const pickup of params.pickups) {
-    if (!pickup.lines.length) {
-      throw new Error('Each pickup must have at least one line');
-    }
+  if (!params.demandLines.length) {
+    throw new Error('Legalább egy tétel kell az igénylistára.');
   }
 
   const reference = await generateJobReference();
-  const publish = Boolean(params.publish);
-  const now = publish ? new Date() : undefined;
-
-  const pickups = await Promise.all(
-    params.pickups.map(async (p, index) => {
-      const employeeIds = p.employeeIds ?? [];
-      const teamMemberIds = p.teamMemberIds ?? (await resolveUserIdsFromEmployees(employeeIds));
-      return {
-        reference: formatPickupReference(reference, index + 1),
-        label: p.label,
-        warehouseId: p.warehouseId,
-        vehicleId: p.vehicleId,
-        employeeIds,
-        teamMemberIds,
-        contactEmails: p.contactEmails ?? [],
-        note: p.note,
-        status: initialPickupStatus(publish),
-        lines: mapLines(p.lines),
-        notifications: {},
-        documents: {},
-        scheduledAt: now,
-        plannedGatherAt: p.plannedGatherAt,
-        plannedEventAt: p.plannedEventAt,
-      };
-    })
-  );
-
   const [job] = await LogisticsJob.create([
     {
       reference,
       eventName: params.eventName,
       siteAddress: params.siteAddress,
-      plannedEventAt: params.plannedEventAt,
-      status: publish ? 'scheduled' : 'draft',
-      pickups,
       note: params.note,
+      eventAt: params.eventAt,
+      pickupAt: params.pickupAt,
+      returnAt: params.returnAt,
+      status: 'draft',
+      demandLines: params.demandLines,
+      lines: [],
+      crewEmployeeIds: [],
+      pickMovementIds: [],
+      returnMovementIds: [],
+      feedback: [],
+      activities: [
+        {
+          kind: 'created',
+          at: new Date(),
+          actorUserId: params.createdBy,
+          message: `${params.demandLines.length} tétel`,
+        },
+      ],
       createdBy: params.createdBy,
-      scheduledAt: now,
     },
   ]);
 
-  if (publish) {
-    const saved = await LogisticsJob.findById(job._id);
-    if (saved) {
-      normalizeJobPickups(saved);
-      for (const pickup of saved.pickups) {
-        await enqueueLogisticsNotification({
-          kind: 'job_scheduled',
-          jobId: saved._id,
-          pickupId: pickup._id,
-        });
-      }
-      await syncLogisticsJobToEmployeeSchedules(saved, params.createdBy);
-    }
-  }
-
   return job;
 }
 
-export async function scheduleLogisticsJob(id: Types.ObjectId): Promise<ILogisticsJob> {
-  await connectDB();
-  const job = await LogisticsJob.findById(id);
-  if (!job) throw new Error('Job not found');
-
-  const pickups = normalizeJobPickups(job);
-  const now = new Date();
-  const notifyPickupIds: Types.ObjectId[] = [];
-
-  for (const pickup of pickups) {
-    if (pickup.status === 'draft') {
-      pickup.status = 'scheduled';
-      pickup.scheduledAt = now;
-      notifyPickupIds.push(pickup._id);
-    }
-  }
-
-  job.scheduledAt = now;
-  syncJobStatusFromPickups(job);
-  job.markModified('pickups');
-  await job.save();
-
-  for (const pickupId of notifyPickupIds) {
-    await enqueueLogisticsNotification({
-      kind: 'job_scheduled',
-      jobId: job._id,
-      pickupId,
-    });
-  }
-
-  await syncLogisticsJobToEmployeeSchedules(job, job.createdBy);
-  return job;
-}
-
-export async function confirmPickupGathering(
+export async function updateJobDemand(
   jobId: Types.ObjectId,
-  pickupId: Types.ObjectId,
-  gatherLines: GatherLineInput[],
-  userId: Types.ObjectId
+  demandLines: DemandLineInput[],
+  actorUserId: Types.ObjectId
 ): Promise<ILogisticsJob> {
   await connectDB();
   const job = await LogisticsJob.findById(jobId);
   if (!job) throw new Error('Job not found');
-
-  const pickup = getPickup(job, pickupId);
-  assertPickupStatus(pickup, ['scheduled']);
-
-  for (const input of gatherLines) {
-    const idx = findPickupLineIndex(pickup, input.productId);
-    pickup.lines[idx].gatheredQuantity = Math.max(0, input.gatheredQuantity);
+  if (job.status === 'completed' || job.status === 'cancelled') {
+    throw new Error('Lezárt eseményen már nem módosítható a lista.');
   }
+  if (!demandLines.length) throw new Error('Az igénylista nem lehet üres.');
 
-  const pickLines = [];
-  for (const l of pickup.lines) {
-    const pickQty = warehousePickQuantity(l.gatheredQuantity, l.inboundHandoffQuantity ?? 0);
-    if (pickQty <= 0) continue;
-    const reservation = await Reservation.findOne({
-      sourceType: 'event',
-      sourceId: job._id,
-      productId: l.productId,
-      warehouseId: pickup.warehouseId,
-      status: 'active',
-    }).exec();
-    pickLines.push({
-      productId: l.productId,
-      quantity: pickQty,
-      fromWarehouseId: pickup.warehouseId,
-      ...(reservation ? { reservationId: reservation._id } : {}),
-    });
-  }
-
-  if (pickLines.length) {
-    const movement = await createMovement({
-      type: 'pick',
-      fromWarehouseId: pickup.warehouseId,
-      note: `Összeszedés ${pickup.reference}`,
-      lines: pickLines,
-      createdBy: userId,
-    });
-    await confirmMovement(movement._id, userId);
-    pickup.pickMovementId = movement._id;
-  }
-
-  pickup.status = 'gathered';
-  pickup.gatheredAt = new Date();
-  syncJobStatusFromPickups(job);
-  job.markModified('pickups');
+  job.demandLines = demandLines as IDemandLine[];
+  pushActivity(job, 'demand_changed', actorUserId, `${demandLines.length} tétel`);
+  job.markModified('activities');
   await job.save();
-
-  await enqueueLogisticsNotification({
-    kind: 'pickup_gathered',
-    jobId: job._id,
-    pickupId: pickup._id,
-    actorUserId: userId,
-  });
-
   return job;
 }
 
-export async function confirmPickupPickup(
+export async function assignJobEmployees(
   jobId: Types.ObjectId,
-  pickupId: Types.ObjectId
+  params: AssignJobEmployeesParams
 ): Promise<ILogisticsJob> {
   await connectDB();
   const job = await LogisticsJob.findById(jobId);
   if (!job) throw new Error('Job not found');
+  if (job.status === 'completed' || job.status === 'cancelled') {
+    throw new Error('Lezárt eseményen már nem módosítható a csapat.');
+  }
 
-  const pickup = getPickup(job, pickupId);
-  assertPickupStatus(pickup, ['gathered']);
-  pickup.status = 'picked_up';
-  pickup.pickedUpAt = new Date();
-  syncJobStatusFromPickups(job);
-  job.markModified('pickups');
+  job.pickupEmployeeId = params.pickupEmployeeId;
+  job.dropoffEmployeeId = params.dropoffEmployeeId;
+  job.crewEmployeeIds = params.crewEmployeeIds ?? [];
+  job.vehicleId = params.vehicleId;
   await job.save();
-
-  await enqueueLogisticsNotification({
-    kind: 'pickup_ready_for_collection',
-    jobId: job._id,
-    pickupId: pickup._id,
-  });
-
   return job;
 }
 
-export async function confirmPickupDelivery(
+export async function scheduleLogisticsJob(
   jobId: Types.ObjectId,
-  pickupId: Types.ObjectId
+  actorUserId: Types.ObjectId
 ): Promise<ILogisticsJob> {
   await connectDB();
   const job = await LogisticsJob.findById(jobId);
   if (!job) throw new Error('Job not found');
+  if (job.status !== 'draft') throw new Error('Csak tervezet ütemezhető.');
+  if (!job.pickupEmployeeId) {
+    throw new Error('Előbb jelölj ki átvételért felelős dolgozót.');
+  }
+  if (!job.demandLines?.length) throw new Error('Nincs igénylista.');
 
-  const pickup = getPickup(job, pickupId);
-  assertPickupStatus(pickup, ['picked_up']);
-  pickup.status = 'delivered';
-  pickup.deliveredAt = new Date();
-  syncJobStatusFromPickups(job);
-  job.markModified('pickups');
+  const productIds = [
+    ...job.demandLines.map((d) => d.productId).filter(Boolean),
+    ...job.demandLines.flatMap((d) => (d.kit?.components ?? []).map((c) => c.productId)),
+  ] as Types.ObjectId[];
+  const products = await Product.find({ _id: { $in: productIds } })
+    .select({ components: 1 })
+    .lean()
+    .exec();
+  const productMap = new Map(products.map((p) => [String(p._id), p]));
+  const physical = explodeDemandLines(job.demandLines, productMap);
+
+  if (physical.some((l) => !l.warehouseId)) {
+    throw new Error('Minden tételhez válassz forrás raktárt, mielőtt ütemezel.');
+  }
+
+  job.lines = physical.map((l) => ({
+    productId: l.productId,
+    requestedQuantity: l.requestedQuantity,
+    isOptional: l.isOptional,
+    warehouseId: l.warehouseId,
+    gatheredQuantity: 0,
+    returnedQuantity: 0,
+    checkedQuantity: 0,
+    lostQuantity: 0,
+  }));
+  job.status = 'scheduled';
+  pushActivity(job, 'scheduled', actorUserId);
+  job.markModified('lines');
+  job.markModified('activities');
   await job.save();
 
-  await enqueueLogisticsNotification({
-    kind: 'pickup_delivered',
-    jobId: job._id,
-    pickupId: pickup._id,
-  });
-
+  await sendJobAssignmentEmail(job, 'pickup', actorUserId);
+  if (job.dropoffEmployeeId && !job.dropoffEmployeeId.equals(job.pickupEmployeeId)) {
+    await sendJobAssignmentEmail(job, 'dropoff', actorUserId);
+  }
+  await syncLogisticsJobToEmployeeSchedules(job, actorUserId);
   return job;
-}
-
-export async function updatePickupInstallation(
-  jobId: Types.ObjectId,
-  pickupId: Types.ObjectId,
-  installLines: InstallLineInput[]
-): Promise<ILogisticsJob> {
-  await connectDB();
-  const job = await LogisticsJob.findById(jobId);
-  if (!job) throw new Error('Job not found');
-
-  const pickup = getPickup(job, pickupId);
-  assertPickupStatus(pickup, ['delivered', 'returning']);
-
-  for (const input of installLines) {
-    const idx = findPickupLineIndex(pickup, input.productId);
-    pickup.lines[idx].installedQuantity = Math.max(0, input.installedQuantity);
-    if (input.installedLocation !== undefined) {
-      pickup.lines[idx].installedLocation = input.installedLocation.trim() || undefined;
-    }
-  }
-
-  job.markModified('pickups');
-  await job.save();
-  return job;
-}
-
-export async function confirmPickupReturnDeparture(
-  jobId: Types.ObjectId,
-  pickupId: Types.ObjectId,
-  returnLines: ReturnLineInput[]
-): Promise<ILogisticsJob> {
-  await connectDB();
-  const job = await LogisticsJob.findById(jobId);
-  if (!job) throw new Error('Job not found');
-
-  const pickup = getPickup(job, pickupId);
-  assertPickupStatus(pickup, ['delivered']);
-
-  for (const input of returnLines) {
-    const idx = findPickupLineIndex(pickup, input.productId);
-    pickup.lines[idx].returnedQuantity = Math.max(0, input.returnedQuantity);
-  }
-
-  pickup.status = 'returning';
-  pickup.returningAt = new Date();
-  syncJobStatusFromPickups(job);
-  job.markModified('pickups');
-  await job.save();
-
-  await enqueueLogisticsNotification({
-    kind: 'pickup_return_reminder',
-    jobId: job._id,
-    pickupId: pickup._id,
-  });
-
-  return job;
-}
-
-async function applyHandoffToJob(params: {
-  sourceJob: ILogisticsJob;
-  sourceWarehouseId: Types.ObjectId;
-  targetJobId: Types.ObjectId;
-  lines: Array<{ productId: Types.ObjectId; quantity: number }>;
-  userId: Types.ObjectId;
-}): Promise<void> {
-  const target = await LogisticsJob.findById(params.targetJobId);
-  if (!target) throw new Error('A cél szállítás nem található.');
-  if (target.status === 'cancelled' || target.status === 'completed') {
-    throw new Error('A cél szállítás már lezárt vagy törölt.');
-  }
-
-  normalizeJobPickups(target);
-  const open = target.pickups.filter((p) => p.status !== 'completed' && p.status !== 'cancelled');
-  const rolling = open.find((p) =>
-    ['gathered', 'picked_up', 'delivered', 'returning'].includes(p.status)
-  );
-  let pickup = rolling ?? open[0];
-
-  if (!pickup) {
-    target.pickups.push({
-      _id: new mongoose.Types.ObjectId(),
-      reference: formatPickupReference(target.reference, target.pickups.length + 1),
-      label: `Átadás: ${params.sourceJob.eventName}`,
-      warehouseId: params.sourceWarehouseId,
-      employeeIds: [],
-      teamMemberIds: [],
-      status: target.status === 'draft' ? 'draft' : 'scheduled',
-      lines: [],
-    });
-    pickup = target.pickups[target.pickups.length - 1]!;
-  }
-
-  const alreadyRolling = ['gathered', 'picked_up', 'delivered', 'returning'].includes(
-    pickup.status
-  );
-
-  for (const line of params.lines) {
-    const existing = pickup.lines.find((l) => String(l.productId) === String(line.productId));
-    if (existing) {
-      existing.requestedQuantity += line.quantity;
-      existing.inboundHandoffQuantity = (existing.inboundHandoffQuantity ?? 0) + line.quantity;
-      if (alreadyRolling) existing.gatheredQuantity += line.quantity;
-    } else {
-      pickup.lines.push({
-        productId: line.productId,
-        requestedQuantity: line.quantity,
-        gatheredQuantity: alreadyRolling ? line.quantity : 0,
-        installedQuantity: 0,
-        returnedQuantity: 0,
-        checkedQuantity: 0,
-        lostQuantity: 0,
-        inboundHandoffQuantity: line.quantity,
-      });
-    }
-  }
-
-  const summary = params.lines.map((l) => `${l.quantity} db`).join(', ');
-  target.activities.push({
-    _id: new mongoose.Types.ObjectId(),
-    kind: 'handoff',
-    at: new Date(),
-    actorUserId: params.userId,
-    message: `Átadás ${params.sourceJob.reference} (${params.sourceJob.eventName}): ${summary}`,
-  });
-  params.sourceJob.activities.push({
-    _id: new mongoose.Types.ObjectId(),
-    kind: 'handoff',
-    at: new Date(),
-    actorUserId: params.userId,
-    message: `Tételek átadva: ${target.reference} (${target.eventName})`,
-  });
-
-  target.markModified('pickups');
-  target.markModified('activities');
-  await target.save();
 }
 
 export async function confirmPickupCheckIn(
   jobId: Types.ObjectId,
-  pickupId: Types.ObjectId,
-  checkInLines: CheckInLineInput[],
-  userId: Types.ObjectId
+  lines: PickupCheckInLineInput[],
+  note: string | undefined,
+  actorUserId: Types.ObjectId
 ): Promise<ILogisticsJob> {
   await connectDB();
   const job = await LogisticsJob.findById(jobId);
   if (!job) throw new Error('Job not found');
+  if (job.status !== 'scheduled') {
+    throw new Error('Az esemény nincs átvételre kész állapotban.');
+  }
 
-  const pickup = getPickup(job, pickupId);
-  assertPickupStatus(pickup, ['returning']);
+  for (const input of lines) {
+    const line = findLine(job, input.productId);
+    line.gatheredQuantity = Math.max(0, input.gatheredQuantity);
+    if (input.warehouseId) line.warehouseId = input.warehouseId;
+  }
 
-  const products = await Product.find({
-    _id: { $in: pickup.lines.map((l) => l.productId) },
-  })
+  const grouped = new Map<string, Array<{ productId: Types.ObjectId; quantity: number }>>();
+  for (const line of job.lines) {
+    if (line.gatheredQuantity <= 0 || !line.warehouseId) continue;
+    const key = String(line.warehouseId);
+    const list = grouped.get(key) ?? [];
+    list.push({ productId: line.productId, quantity: line.gatheredQuantity });
+    grouped.set(key, list);
+  }
+
+  const movementIds: Types.ObjectId[] = [];
+  for (const [warehouseId, groupLines] of grouped) {
+    const fromWarehouseId = new mongoose.Types.ObjectId(warehouseId);
+    const movement = await createMovement({
+      type: 'pick',
+      fromWarehouseId,
+      note: `Összeszedés ${job.reference}`,
+      lines: groupLines.map((l) => ({
+        productId: l.productId,
+        quantity: l.quantity,
+        fromWarehouseId,
+      })),
+      createdBy: actorUserId,
+    });
+    await confirmMovement(movement._id, actorUserId);
+    movementIds.push(movement._id);
+  }
+
+  job.pickMovementIds = [...(job.pickMovementIds ?? []), ...movementIds];
+  job.pickupCheckedInAt = new Date();
+  job.pickupCheckedInBy = actorUserId;
+  job.status = 'picked_up';
+  pushActivity(job, 'pickup_checked_in', actorUserId, note);
+  job.markModified('lines');
+  job.markModified('activities');
+  await job.save();
+  return job;
+}
+
+export async function confirmReturnCheckIn(
+  jobId: Types.ObjectId,
+  lines: ReturnCheckInLineInput[],
+  note: string | undefined,
+  actorUserId: Types.ObjectId
+): Promise<ILogisticsJob> {
+  await connectDB();
+  const job = await LogisticsJob.findById(jobId);
+  if (!job) throw new Error('Job not found');
+  if (job.status !== 'picked_up') {
+    throw new Error('Az esemény nincs visszaellenőrzésre kész állapotban.');
+  }
+
+  const products = await Product.find({ _id: { $in: job.lines.map((l) => l.productId) } })
     .select({ isConsumable: 1 })
     .lean()
     .exec();
   const consumableMap = new Map(products.map((p) => [String(p._id), Boolean(p.isConsumable)]));
 
-  for (const input of checkInLines) {
-    const idx = findPickupLineIndex(pickup, input.productId);
+  for (const input of lines) {
+    const line = findLine(job, input.productId);
     const checked = Math.max(0, input.checkedQuantity);
-    pickup.lines[idx].checkedQuantity = checked;
-    const isConsumable = consumableMap.get(String(input.productId)) ?? false;
-    const gathered = pickup.lines[idx].gatheredQuantity;
-    pickup.lines[idx].lostQuantity = isConsumable ? 0 : Math.max(0, gathered - checked);
-    pickup.lines[idx].returnWarehouseId = undefined;
-    pickup.lines[idx].handoffJobId = undefined;
-    if (checked > 0 && input.destinationKind === 'job' && input.jobId) {
-      pickup.lines[idx].handoffJobId = input.jobId;
-    } else if (checked > 0) {
-      pickup.lines[idx].returnWarehouseId = input.warehouseId ?? pickup.warehouseId;
-    }
+    line.checkedQuantity = checked;
+    line.returnedQuantity = checked;
+    line.returnWarehouseId = input.returnWarehouseId ?? line.warehouseId;
+    const isConsumable = consumableMap.get(String(line.productId)) ?? false;
+    line.lostQuantity = isConsumable ? 0 : Math.max(0, line.gatheredQuantity - checked);
   }
 
-  const grouped = groupCheckInDestinations(
-    checkInLines.map((l) => ({
-      productId: String(l.productId),
-      checkedQuantity: Math.max(0, l.checkedQuantity),
-      destinationKind: l.destinationKind,
-      warehouseId: l.warehouseId ? String(l.warehouseId) : undefined,
-      jobId: l.jobId ? String(l.jobId) : undefined,
-    })),
-    String(pickup.warehouseId)
-  );
+  const grouped = new Map<string, Array<{ productId: Types.ObjectId; quantity: number }>>();
+  for (const line of job.lines) {
+    if (line.checkedQuantity <= 0 || !line.returnWarehouseId) continue;
+    const key = String(line.returnWarehouseId);
+    const list = grouped.get(key) ?? [];
+    list.push({ productId: line.productId, quantity: line.checkedQuantity });
+    grouped.set(key, list);
+  }
 
-  for (const group of grouped.warehouseReturns) {
+  const movementIds: Types.ObjectId[] = [];
+  for (const [warehouseId, groupLines] of grouped) {
+    const toWarehouseId = new mongoose.Types.ObjectId(warehouseId);
     const movement = await createMovement({
       type: 'return',
-      toWarehouseId: new mongoose.Types.ObjectId(group.warehouseId),
-      note: `Visszáru ${pickup.reference}`,
-      lines: group.lines.map((l) => ({
-        productId: new mongoose.Types.ObjectId(l.productId),
+      toWarehouseId,
+      note: `Visszáru ${job.reference}`,
+      lines: groupLines.map((l) => ({
+        productId: l.productId,
         quantity: l.quantity,
-        toWarehouseId: new mongoose.Types.ObjectId(group.warehouseId),
+        toWarehouseId,
       })),
-      createdBy: userId,
+      createdBy: actorUserId,
     });
-    await confirmMovement(movement._id, userId);
-    pickup.returnMovementId = movement._id;
+    await confirmMovement(movement._id, actorUserId);
+    movementIds.push(movement._id);
   }
 
-  for (const group of grouped.jobHandoffs) {
-    if (group.jobId === String(job._id)) {
-      throw new Error('Az átadás célja nem lehet ugyanez a szállítás.');
-    }
-    await applyHandoffToJob({
-      sourceJob: job,
-      sourceWarehouseId: pickup.warehouseId,
-      targetJobId: new mongoose.Types.ObjectId(group.jobId),
-      lines: group.lines.map((l) => ({
-        productId: new mongoose.Types.ObjectId(l.productId),
-        quantity: l.quantity,
-      })),
-      userId,
-    });
-  }
-
-  pickup.status = 'completed';
-  pickup.completedAt = new Date();
-  syncJobStatusFromPickups(job);
-  job.markModified('pickups');
+  job.returnMovementIds = [...(job.returnMovementIds ?? []), ...movementIds];
+  job.returnCheckedInAt = new Date();
+  job.returnCheckedInBy = actorUserId;
+  job.status = 'completed';
+  pushActivity(job, 'return_checked_in', actorUserId, note);
+  job.markModified('lines');
   job.markModified('activities');
   await job.save();
-
-  await enqueueLogisticsNotification({
-    kind: 'pickup_checkin_complete',
-    jobId: job._id,
-    pickupId: pickup._id,
-    actorUserId: userId,
-  });
-
   return job;
 }
 
-export async function cancelLogisticsJob(id: Types.ObjectId): Promise<ILogisticsJob> {
+export async function cancelLogisticsJob(
+  jobId: Types.ObjectId,
+  actorUserId: Types.ObjectId
+): Promise<ILogisticsJob> {
   await connectDB();
-  const job = await LogisticsJob.findById(id);
+  const job = await LogisticsJob.findById(jobId);
   if (!job) throw new Error('Job not found');
-
-  const pickups = normalizeJobPickups(job);
-  for (const pickup of pickups) {
-    if (pickup.status === 'draft' || pickup.status === 'scheduled') {
-      pickup.status = 'cancelled';
-    }
+  if (job.status === 'picked_up' || job.status === 'completed') {
+    throw new Error('Már elindult vagy lezárt esemény nem törölhető.');
   }
 
-  syncJobStatusFromPickups(job);
-  job.markModified('pickups');
+  job.status = 'cancelled';
+  pushActivity(job, 'cancelled', actorUserId);
+  job.markModified('activities');
   await job.save();
-  await cancelVehicleBookingsForJob(job._id);
-  const activeRes = await Reservation.find({
-    sourceType: 'event',
-    sourceId: job._id,
-    status: 'active',
-  }).exec();
-  for (const r of activeRes) {
-    await releaseReservation(r._id, 'cancelled', job.createdBy);
-  }
-  await syncLogisticsJobToEmployeeSchedules(job, job.createdBy);
+  await syncLogisticsJobToEmployeeSchedules(job, actorUserId);
   return job;
 }
 
-function firstPickupId(job: ILogisticsJob): Types.ObjectId {
-  const pickups = normalizeJobPickups(job);
-  if (!pickups.length) throw new Error('No pickups on job');
-  return pickups[0]._id;
-}
-
-/** @deprecated Use confirmPickupGathering with pickupId */
-export async function confirmJobGathering(
-  id: Types.ObjectId,
-  gatherLines: GatherLineInput[],
-  userId: Types.ObjectId
+export async function submitJobFeedback(
+  jobId: Types.ObjectId,
+  employeeId: Types.ObjectId,
+  message: string
 ): Promise<ILogisticsJob> {
-  const job = await LogisticsJob.findById(id);
+  await connectDB();
+  const job = await LogisticsJob.findById(jobId);
   if (!job) throw new Error('Job not found');
-  normalizeJobPickups(job);
-  return confirmPickupGathering(id, firstPickupId(job), gatherLines, userId);
+  const trimmed = message.trim();
+  if (!trimmed) throw new Error('A visszajelzés nem lehet üres.');
+
+  job.feedback = [
+    ...(job.feedback ?? []),
+    {
+      _id: new mongoose.Types.ObjectId(),
+      employeeId,
+      message: trimmed,
+      createdAt: new Date(),
+    } as never,
+  ];
+  job.markModified('feedback');
+  await job.save();
+  return job;
 }
 
-export async function confirmJobPickup(id: Types.ObjectId): Promise<ILogisticsJob> {
-  const job = await LogisticsJob.findById(id);
-  if (!job) throw new Error('Job not found');
-  normalizeJobPickups(job);
-  return confirmPickupPickup(id, firstPickupId(job));
-}
-
-export async function confirmJobDelivery(id: Types.ObjectId): Promise<ILogisticsJob> {
-  const job = await LogisticsJob.findById(id);
-  if (!job) throw new Error('Job not found');
-  normalizeJobPickups(job);
-  return confirmPickupDelivery(id, firstPickupId(job));
-}
-
-export async function updateJobInstallation(
-  id: Types.ObjectId,
-  installLines: InstallLineInput[]
-): Promise<ILogisticsJob> {
-  const job = await LogisticsJob.findById(id);
-  if (!job) throw new Error('Job not found');
-  normalizeJobPickups(job);
-  return updatePickupInstallation(id, firstPickupId(job), installLines);
-}
-
-export async function confirmJobReturnDeparture(
-  id: Types.ObjectId,
-  returnLines: ReturnLineInput[]
-): Promise<ILogisticsJob> {
-  const job = await LogisticsJob.findById(id);
-  if (!job) throw new Error('Job not found');
-  normalizeJobPickups(job);
-  return confirmPickupReturnDeparture(id, firstPickupId(job), returnLines);
-}
-
-export async function confirmJobCheckIn(
-  id: Types.ObjectId,
-  checkInLines: CheckInLineInput[],
-  userId: Types.ObjectId
-): Promise<ILogisticsJob> {
-  const job = await LogisticsJob.findById(id);
-  if (!job) throw new Error('Job not found');
-  normalizeJobPickups(job);
-  return confirmPickupCheckIn(id, firstPickupId(job), checkInLines, userId);
+export function jobRolesForEmployees(
+  job: Pick<ILogisticsJob, 'pickupEmployeeId' | 'dropoffEmployeeId' | 'crewEmployeeIds'>,
+  employeeIds: Types.ObjectId[]
+): JobEmployeeRole[] {
+  const wanted = new Set(employeeIds.map(String));
+  const roles = new Set<JobEmployeeRole>();
+  if (job.pickupEmployeeId && wanted.has(String(job.pickupEmployeeId))) roles.add('pickup');
+  if (job.dropoffEmployeeId && wanted.has(String(job.dropoffEmployeeId))) roles.add('dropoff');
+  if ((job.crewEmployeeIds ?? []).some((id) => wanted.has(String(id)))) roles.add('crew');
+  return [...roles];
 }
 
 export async function getLogisticsKpiSummary(): Promise<{
@@ -651,39 +392,19 @@ export async function getLogisticsKpiSummary(): Promise<{
   lostValueHuf: number;
   lostValueEur: number;
   topSitesByLoss: Array<{ siteAddress: string; eventName: string; totalLost: number }>;
-  topDriversByLoss: Array<{ driverId: string; totalLost: number }>;
+  topEmployeesByLoss: Array<{ employeeId: string; totalLost: number }>;
 }> {
   await connectDB();
 
   const allJobs = await LogisticsJob.find().lean().exec();
-  const completed = allJobs.filter((j) => {
-    const pickups = j.pickups?.length
-      ? j.pickups
-      : j.sourceWarehouseId
-        ? [{ status: j.status, lines: j.lines ?? [] }]
-        : [];
-    return pickups.length > 0 && pickups.every((p) => p.status === 'completed');
-  });
-
-  const activeStatuses: JobStatus[] = [
-    'scheduled',
-    'gathered',
-    'picked_up',
-    'delivered',
-    'returning',
-  ];
-  const activeJobs = allJobs.filter((j) => {
-    const pickups = j.pickups?.length ? j.pickups : [];
-    if (pickups.length) return pickups.some((p) => activeStatuses.includes(p.status as JobStatus));
-    return activeStatuses.includes(j.status as JobStatus);
-  }).length;
+  const completed = allJobs.filter((j) => j.status === 'completed');
+  const activeStatuses: JobStatus[] = ['scheduled', 'picked_up'];
+  const activeJobs = allJobs.filter((j) => activeStatuses.includes(j.status as JobStatus)).length;
 
   const productIds = new Set<string>();
   for (const job of completed) {
-    for (const pickup of job.pickups ?? []) {
-      for (const line of pickup.lines) {
-        if (line.lostQuantity > 0) productIds.add(String(line.productId));
-      }
+    for (const line of job.lines ?? []) {
+      if (line.lostQuantity > 0) productIds.add(String(line.productId));
     }
   }
 
@@ -706,31 +427,28 @@ export async function getLogisticsKpiSummary(): Promise<{
   let lostValueHuf = 0;
   let lostValueEur = 0;
   const siteLoss = new Map<string, { eventName: string; totalLost: number }>();
-  const driverLoss = new Map<string, number>();
+  const employeeLoss = new Map<string, number>();
 
   for (const job of completed) {
     let jobLost = 0;
-    for (const pickup of job.pickups ?? []) {
-      const pickupLost = pickup.lines.reduce((s, l) => s + l.lostQuantity, 0);
-      jobLost += pickupLost;
-      for (const line of pickup.lines) {
-        totalGathered += line.gatheredQuantity;
-        totalLost += line.lostQuantity;
-        const prices = priceMap.get(String(line.productId)) ?? { huf: 0, eur: 0 };
-        lostValueHuf += line.lostQuantity * prices.huf;
-        lostValueEur += line.lostQuantity * prices.eur;
-      }
-      if (pickupLost > 0) {
-        for (const memberId of pickup.teamMemberIds ?? []) {
-          const dId = String(memberId);
-          driverLoss.set(dId, (driverLoss.get(dId) ?? 0) + pickupLost);
-        }
-      }
+    for (const line of job.lines ?? []) {
+      totalGathered += line.gatheredQuantity;
+      totalLost += line.lostQuantity;
+      jobLost += line.lostQuantity;
+      const prices = priceMap.get(String(line.productId)) ?? { huf: 0, eur: 0 };
+      lostValueHuf += line.lostQuantity * prices.huf;
+      lostValueEur += line.lostQuantity * prices.eur;
     }
     if (jobLost > 0) {
-      const siteKey = job.siteAddress;
-      const prev = siteLoss.get(siteKey) ?? { eventName: job.eventName, totalLost: 0 };
-      siteLoss.set(siteKey, { eventName: job.eventName, totalLost: prev.totalLost + jobLost });
+      const prev = siteLoss.get(job.siteAddress) ?? { eventName: job.eventName, totalLost: 0 };
+      siteLoss.set(job.siteAddress, {
+        eventName: job.eventName,
+        totalLost: prev.totalLost + jobLost,
+      });
+      for (const empId of [job.pickupEmployeeId, job.dropoffEmployeeId].filter(Boolean)) {
+        const key = String(empId);
+        employeeLoss.set(key, (employeeLoss.get(key) ?? 0) + jobLost);
+      }
     }
   }
 
@@ -739,8 +457,8 @@ export async function getLogisticsKpiSummary(): Promise<{
     .sort((a, b) => b.totalLost - a.totalLost)
     .slice(0, 10);
 
-  const topDriversByLoss = [...driverLoss.entries()]
-    .map(([driverId, totalLost]) => ({ driverId, totalLost }))
+  const topEmployeesByLoss = [...employeeLoss.entries()]
+    .map(([employeeId, totalLost]) => ({ employeeId, totalLost }))
     .sort((a, b) => b.totalLost - a.totalLost)
     .slice(0, 10);
 
@@ -756,6 +474,6 @@ export async function getLogisticsKpiSummary(): Promise<{
     lostValueHuf,
     lostValueEur,
     topSitesByLoss,
-    topDriversByLoss,
+    topEmployeesByLoss,
   };
 }

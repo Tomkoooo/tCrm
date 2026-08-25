@@ -22,22 +22,14 @@ export async function getWarehouseIdsForUser(userId: Types.ObjectId): Promise<Ty
   return warehouses.map((w) => w._id as Types.ObjectId);
 }
 
-/** Mongo filter: jobs with at least one pickup (or legacy row) in user's warehouses. */
+/** Mongo filter: jobs with at least one line sourced from user's warehouses. */
 export function buildLogisticsJobWarehouseFilter(
   warehouseIds: Types.ObjectId[]
 ): Record<string, unknown> {
   if (!warehouseIds.length) {
     return { _id: { $exists: false } };
   }
-  return {
-    $or: [
-      { 'pickups.warehouseId': { $in: warehouseIds } },
-      {
-        sourceWarehouseId: { $in: warehouseIds },
-        $or: [{ pickups: { $exists: false } }, { pickups: { $size: 0 } }],
-      },
-    ],
-  };
+  return { 'lines.warehouseId': { $in: warehouseIds } };
 }
 
 export function buildLogisticsJobAccessFilter(
@@ -47,11 +39,16 @@ export function buildLogisticsJobAccessFilter(
   const warehouseFilter = buildLogisticsJobWarehouseFilter(warehouseIds);
   if (!employeeId) return warehouseFilter;
   return {
-    $or: [warehouseFilter, { 'crew.employeeId': employeeId }],
+    $or: [
+      warehouseFilter,
+      { pickupEmployeeId: employeeId },
+      { dropoffEmployeeId: employeeId },
+      { crewEmployeeIds: employeeId },
+    ],
   };
 }
 
-export async function canAccessPickupWarehouse(
+export async function canAccessJobWarehouse(
   userId: Types.ObjectId,
   permissions: string[],
   warehouseId: Types.ObjectId

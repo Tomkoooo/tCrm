@@ -57,7 +57,7 @@ flowchart LR
 | `@crm/mail` | Nodemailer wrapper, templated send, recipient resolution |
 | `@crm/media` | Media library service (upload, dedup by hash, link-based media) + permission keys |
 | `@crm/inventory` | Products, categories, suppliers, warehouses/stock, Excel import/export, inventory permission module |
-| `@crm/logistics` | Stock movements, reservations, demand-first event jobs (propose/lock pickup rounds), vehicle bookings, logistics permission module |
+| `@crm/logistics` | Stock movements, reservations, event jobs (parts list → pickup/drop-off employee → check-in), vehicle fleet, logistics permission module |
 | `@crm/hr` | People directory, time off, schedule entries, monthly hours; HR permission module |
 | `@crm/eslint-config`, `@crm/tsconfig` | Shared configs |
 
@@ -304,7 +304,7 @@ Brings up MongoDB, Mongo Express (`:8081`), and the CRM app (`:3000`).
 
 ## 14. Roadmap
 
-The original plan (offers → accounting/multi-tenant SaaS) still holds as the long-term direction. **Phase 1 (inventory), Phase 2 (logistics + builds), and Phase 3 (job-first HR) are live.** Jobs are demand-first: logistics writes a flat item list, the optimizer proposes warehouse/vehicle rounds, lock reserves stock and books vehicles, and the build crew (director / pickup / driver / builder / drop-off) owns field checklists. HR `/hr/me` deep-links into those tasks.
+The original plan (offers → accounting/multi-tenant SaaS) still holds as the long-term direction. **Phase 1 (inventory), Phase 2 (logistics + builds), and Phase 3 (job-first HR) are live.** Jobs are deliberately simple (rebuilt 2026-08-24, see `docs/logistics-jobs-legacy.md` for the earlier demand-planning engine this replaced): logistics writes a flat item list with a warehouse per line, assigns one employee responsible for pickup and one for drop-off (can be the same person) plus a read-only crew, and HR `/hr/me` deep-links into those tasks.
 
 ---
 

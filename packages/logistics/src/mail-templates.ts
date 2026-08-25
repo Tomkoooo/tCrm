@@ -2,71 +2,49 @@ import { seedMailTemplates, type BaselineMailTemplate } from '@crm/mail';
 
 export const LOGISTICS_MAIL_TEMPLATES: BaselineMailTemplate[] = [
   {
-    key: 'job_scheduled',
-    subject: 'Logisztika: esemény ütemezve — {{pickupReference}}',
-    description: 'Új vagy ütemezett szállítási feladat',
+    key: 'job_pickup_assigned',
+    subject: 'Átvétel rád vár — {{eventName}}',
+    description: 'Kijelölve átvételért felelősként egy szállításhoz',
     variables: [
-      'pickupReference',
-      'jobReference',
       'eventName',
       'siteAddress',
-      'warehouseName',
-      'plannedGatherAt',
-      'plannedEventAt',
-      'actorName',
+      'pickupAt',
+      'eventAt',
+      'returnAt',
+      'partsListHtml',
+      'jobUrl',
     ],
     enabled: true,
-    recipientRoleKeys: ['manager'],
-    body: `<p>Ütemezett feladat: <strong>{{pickupReference}}</strong></p>
-<p>Esemény: {{eventName}} ({{jobReference}})</p>
+    body: `<p>Téged jelöltek ki <strong>átvételért felelősnek</strong> ehhez az eseményhez: <strong>{{eventName}}</strong></p>
 <p>Helyszín: {{siteAddress}}</p>
-<p>Raktár: {{warehouseName}}</p>
-<p>Összeszedés: {{plannedGatherAt}}</p>
-<p>Helyszíni időpont: {{plannedEventAt}}</p>`,
+<p>Összeszedés időpontja: {{pickupAt}}</p>
+<p>Helyszíni időpont: {{eventAt}}</p>
+<p><strong>Tételek:</strong></p>
+{{partsListHtml}}
+<p>Ha bármi hiányzik vagy problémás, a listát az alkalmazásban módosíthatod átvételkor.</p>
+<p><a href="{{jobUrl}}">Megnyitás az alkalmazásban</a></p>`,
   },
   {
-    key: 'pickup_gathered',
-    subject: 'Összeszedés kész — {{pickupReference}}',
-    description: 'Raktári összeszedés befejezve',
-    variables: ['pickupReference', 'jobReference', 'warehouseName', 'actorName'],
+    key: 'job_dropoff_assigned',
+    subject: 'Leadás rád vár — {{eventName}}',
+    description: 'Kijelölve leadásért/visszaellenőrzésért felelősként egy szállításhoz',
+    variables: [
+      'eventName',
+      'siteAddress',
+      'pickupAt',
+      'eventAt',
+      'returnAt',
+      'partsListHtml',
+      'jobUrl',
+    ],
     enabled: true,
-    body: `<p>Az összeszedés elkészült: <strong>{{pickupReference}}</strong></p>
-<p>Raktár: {{warehouseName}}</p>`,
-  },
-  {
-    key: 'pickup_ready_for_collection',
-    subject: 'Átvehető a raktárban — {{pickupReference}}',
-    description: 'Felvételre kész a raktárban',
-    variables: ['pickupReference', 'jobReference', 'warehouseName', 'actorName'],
-    enabled: true,
-    body: `<p>A csomag átvehető: <strong>{{pickupReference}}</strong></p>
-<p>Raktár: {{warehouseName}}</p>
-<p>Kérdés esetén válaszoljon erre az e-mailre.</p>`,
-  },
-  {
-    key: 'pickup_delivered',
-    subject: 'Kiszállítva — {{pickupReference}}',
-    description: 'Helyszínen átadva',
-    variables: ['pickupReference', 'jobReference', 'warehouseName', 'actorName'],
-    enabled: true,
-    body: `<p>Kiszállítás megtörtént: <strong>{{pickupReference}}</strong></p>`,
-  },
-  {
-    key: 'pickup_return_reminder',
-    subject: 'Visszáru emlékeztető — {{pickupReference}}',
-    description: 'Visszáru várható',
-    variables: ['pickupReference', 'jobReference', 'warehouseName', 'actorName'],
-    enabled: true,
-    body: `<p>Visszáru emlékeztető: <strong>{{pickupReference}}</strong></p>
-<p>Raktár: {{warehouseName}}</p>`,
-  },
-  {
-    key: 'pickup_checkin_complete',
-    subject: 'Visszáru bevételezve — {{pickupReference}}',
-    description: 'Visszáru feldolgozás kész',
-    variables: ['pickupReference', 'jobReference', 'warehouseName', 'actorName'],
-    enabled: true,
-    body: `<p>Visszáru bevételezve: <strong>{{pickupReference}}</strong></p>`,
+    body: `<p>Téged jelöltek ki <strong>leadásért felelősnek</strong> ehhez az eseményhez: <strong>{{eventName}}</strong></p>
+<p>Helyszín: {{siteAddress}}</p>
+<p>Visszaérkezés időpontja: {{returnAt}}</p>
+<p><strong>Eredeti tételek:</strong></p>
+{{partsListHtml}}
+<p>A visszaellenőrzést az alkalmazásban rögzítheted.</p>
+<p><a href="{{jobUrl}}">Megnyitás az alkalmazásban</a></p>`,
   },
 ];
 
