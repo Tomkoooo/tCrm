@@ -4,7 +4,15 @@ import matter from 'gray-matter';
 import { filterHelpArticles } from './filter-by-permissions';
 import type { HelpArticle, HelpArticleFrontmatter, HelpSection } from './types';
 
-const USER_GUIDE_DIR = path.join(process.cwd(), '../../docs/user-guide');
+function resolveUserGuideDir(): string {
+  const candidates = [
+    path.join(process.cwd(), '../../docs/user-guide'), // `next` / vitest from apps/crm
+    path.join(process.cwd(), 'docs/user-guide'), // Docker WORKDIR /app
+  ];
+  return candidates.find((dir) => fs.existsSync(dir)) ?? candidates[0]!;
+}
+
+const USER_GUIDE_DIR = resolveUserGuideDir();
 
 function slugFromFilename(filename: string): string {
   return filename.replace(/\.md$/, '');

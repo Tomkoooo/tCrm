@@ -5,7 +5,7 @@ Internal CRM + future SaaS platform. Turborepo monorepo with Next.js 16 CRM app,
 ## Quick start
 
 ```bash
-# Prerequisites: Node 20, pnpm 9, MongoDB (or Docker)
+# Prerequisites: Node 22, pnpm 9, MongoDB (or Docker)
 
 cp .env.example apps/crm/.env.local
 pnpm install
