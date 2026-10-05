@@ -32,9 +32,9 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      # Unit tests + Button asChild guard. E2E: local preflight:e2e (see docs/rules.md).
+      # Unit tests + static UI guards. E2E: local preflight:e2e (see docs/rules.md).
       - name: Test
-        run: pnpm test && node scripts/verify-button-aschild.mjs
+        run: pnpm test && node scripts/verify-button-aschild.mjs && node scripts/verify-rsc-function-props.mjs
         env:
           CI: true
           AUTH_SECRET: ci-build-secret-minimum-32-characters-long

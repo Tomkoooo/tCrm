@@ -182,11 +182,21 @@ Do **not** add new raw shadcn `Table` list views. Documented exception: the RBAC
 See [TESTING.md](./TESTING.md) for the current, verified test inventory. In short:
 
 - Unit tests for utils, validation schemas, permission helpers, co-located per package
-- UI guard script: `node scripts/verify-button-aschild.mjs` (prevents React #143 on `Button asChild`)
+- UI guard scripts (both in `pnpm preflight` and CI):
+  - `node scripts/verify-button-aschild.mjs` — prevents React #143 on `Button asChild`
+  - `node scripts/verify-rsc-function-props.mjs` — prevents passing a callback prop
+    (`rowHref`, `rowDetail`, `onSelect`, …) from a Server Component to a Client
+    Component. Lint, typecheck and `next build` all miss this: the route is compiled,
+    not rendered, so it only throws at request time.
 - Husky **pre-commit**: lint-staged (eslint + prettier)
 - Husky **pre-push**: `pnpm preflight` (lint, typecheck, tests, build — same as CI)
 - **E2E (Playwright)**: local only — `pnpm preflight:e2e` or `RUN_E2E=1 git push`. Not in GitHub CI.
-- CI (`.github/workflows/ci.yml`): `pnpm lint`, `pnpm typecheck`, `pnpm test`, `verify-button-aschild`, `pnpm build`
+- CI (`.github/workflows/ci.yml`): `pnpm lint`, `pnpm typecheck`, `pnpm test`, `verify-button-aschild`, `verify-rsc-function-props`, `pnpm build`
+
+**Static checks do not render pages.** A list page that needs `rowHref` or any other
+callback must put the `DataTable` inside a `'use client'` component under
+`_components/` — see `hr/people/_components/people-table.tsx`. Passing the callback
+straight from `page.tsx` typechecks and builds, then fails on every request.
 
 Before pushing, agents and humans should run `pnpm preflight`.
 

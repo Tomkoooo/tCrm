@@ -9,35 +9,8 @@ import {
   HR_SCHEDULE_READ_PERMISSION_KEYS,
   HR_SCHEDULE_WRITE_PERMISSION_KEYS,
 } from '@crm/hr';
-import { Button, Container, DataTable, parseDataTableQuery, type ColumnDef } from '@crm/ui';
-
-type SchedulePlanRow = {
-  _id: string;
-  title: string;
-  company: string;
-  period: string;
-  status: string;
-  employees: number;
-  publishedAt: string;
-};
-
-const COLUMNS: Array<ColumnDef<SchedulePlanRow>> = [
-  { key: 'title', label: 'Megnevezés', type: 'string', sortable: true, searchable: true },
-  { key: 'company', label: 'Cég', type: 'string', sortable: true, filterable: true },
-  { key: 'period', label: 'Időszak', type: 'string' },
-  {
-    key: 'status',
-    label: 'Állapot',
-    type: 'enum',
-    filterable: true,
-    enumValues: [
-      { value: 'Piszkozat', label: 'Piszkozat' },
-      { value: 'Kiküldve', label: 'Kiküldve' },
-    ],
-  },
-  { key: 'employees', label: 'Dolgozók', type: 'number', align: 'right' },
-  { key: 'publishedAt', label: 'Kiküldve', type: 'string' },
-];
+import { Button, Container, parseDataTableQuery } from '@crm/ui';
+import { SchedulePlansTable, type SchedulePlanRow } from './_components/schedule-plans-table';
 
 export default async function HrSchedulesPage({
   searchParams,
@@ -88,17 +61,7 @@ export default async function HrSchedulesPage({
         ) : null}
       </div>
 
-      <DataTable<SchedulePlanRow>
-        mode="client"
-        tableId="hr-schedule-plans"
-        data={rows}
-        columns={COLUMNS}
-        query={query}
-        total={rows.length}
-        basePath="/hr/schedules"
-        emptyMessage="Még nincs beosztás. Hozz létre egyet, töltsd ki a rácsot, majd küldd ki."
-        rowHref={(row) => `/hr/schedules/${row._id}`}
-      />
+      <SchedulePlansTable data={rows} query={query} />
     </Container>
   );
 }
