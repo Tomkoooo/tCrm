@@ -73,7 +73,7 @@ docs/                  Architecture, rules, design system, user guide
 - **Phase 1:** Inventory — products, categories, suppliers, warehouses/stock, Excel import/export, DataTable.
 - **Phase 2:** Logistics (movements, reservations, jobs, vehicles) and builds (`/inventory/builds`).
 - **Phase 3 (current):** Job-first HR — people, leave, calendar from logistics jobs, monthly hours. Not a port of old `/accounting`.
-- **Later:** Offers, bookkeeping, titoktár, multi-tenant SaaS.
+- **Later:** Offers, bookkeeping, multi-tenant SaaS.
 
 ## Tech stack
 

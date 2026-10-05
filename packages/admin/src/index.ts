@@ -16,6 +16,13 @@ export { acceptInvitation } from './accept-invitation';
 export { seedEngineMailTemplates, BASELINE_MAIL_TEMPLATES } from './mail-templates-seed';
 export { enginePermissions } from './permissions';
 export {
+  secretsPermissions,
+  SECRETS_READ_PERMISSION_KEYS,
+  SECRETS_WRITE_PERMISSION_KEYS,
+  SECRETS_DELETE_PERMISSION_KEYS,
+  SECRETS_MANAGE_PERMISSION_KEYS,
+} from './secrets-permissions';
+export {
   createUserSchema,
   updateUserSchema,
   inviteUserSchema,

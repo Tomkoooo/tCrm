@@ -34,7 +34,7 @@ If you update [`docs/inventory_and_logistics_flows.md`](../docs/inventory_and_lo
 
 ## Section order
 
-`Áttekintés` → `Fiók` → `Készletkezelés` → `Logisztika` → `HR` → `Adminisztráció` (later: bookkeeping / titoktár)
+`Áttekintés` → `Fiók` → `Készletkezelés` → `Logisztika` → `HR` → `Titoktár` → `Adminisztráció` (later: bookkeeping)
 
 New modules: add a `section` value and extend `groupHelpArticlesBySection` in [`apps/crm/src/lib/help/load-help.ts`](../apps/crm/src/lib/help/load-help.ts) if needed.
 

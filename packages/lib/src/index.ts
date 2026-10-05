@@ -44,3 +44,13 @@ export {
   type SupplierContactEntry,
 } from './suppliers/contacts';
 export { z } from 'zod';
+export {
+  canManageAllSecrets,
+  canReadSecretProject,
+  canWriteSecretProject,
+  canDeleteSecretProject,
+  canManageSecretProjectAccess,
+  buildSecretProjectListFilter,
+  toSecretAccessUser,
+  type SecretAccessUser,
+} from './secrets/access';

@@ -4,7 +4,7 @@ import {
   ensurePermissionsSynced,
   getRegisteredModules,
 } from '@crm/rbac';
-import { enginePermissions } from '@crm/admin';
+import { enginePermissions, secretsPermissions } from '@crm/admin';
 import { mediaPermissions } from '@crm/media';
 import { inventoryPermissions } from '@crm/inventory/permissions';
 import { logisticsPermissions } from '@crm/logistics/permissions';
@@ -16,6 +16,7 @@ import { hrPermissions } from '@crm/hr/permissions';
   inventoryPermissions,
   logisticsPermissions,
   hrPermissions,
+  secretsPermissions,
 ].forEach(registerPermissionModule);
 
 export { ensurePermissionsSyncedOnce as ensureRbacBootstrapped };

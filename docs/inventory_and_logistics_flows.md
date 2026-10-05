@@ -63,16 +63,20 @@ flowchart TB
     schedHR --> meHR
   end
 
+  subgraph secrets [Titoktár]
+    vault["/secrets projektek + titkosított kulcsok"]
+  end
+
   subgraph future [Később]
     offers[Ajánlatok]
     books[Könyvelés]
-    secrets[Titoktár]
   end
 
   rbac --> inv
   rbac --> log
   rbac --> builds
   rbac --> hr
+  rbac --> secrets
   rbac --> future
   products -.-> offers
   res -.-> mov
@@ -86,7 +90,8 @@ flowchart TB
 | Raktárak | `/admin/warehouses` | Kész ✓ |
 | Logisztika | `/logistics/*`, `/logistics/jobs`, `/logistics/vehicles` | Kész ✓ |
 | HR | `/hr/*`, `/hr/me` | Kész ✓ |
-| Ajánlatok / könyvelés / titoktár | — | Nincs még |
+| Titoktár | `/secrets`, `/secrets/[id]` | Kész ✓ |
+| Ajánlatok / könyvelés | — | Nincs még |
 
 ---
 
@@ -477,7 +482,26 @@ Sablon: [`docs/excel/supplier.csv`](./excel/supplier.csv) — cégnév, cím, k�
 
 ## 13. Titoktár (secret storage)
 
-**Nincs a rebuilt appban.** A régi `/secrets` fa és `SECRETS_ENCRYPTION_KEY` a pre-rebuild kódban élt. Következő fázis — ne portold, amíg nincs explicit scope.
+```mermaid
+flowchart LR
+  list["/secrets lista"] --> project["/secrets/id projekt"]
+  project --> items[Kulcs–érték párok]
+  items --> enc[AES-256-GCM encryptSecret]
+  enc --> mongo[(secretprojects)]
+  project --> share[Megosztás role/user]
+  items --> reveal[reveal on demand]
+  reveal --> dec[decryptSecret]
+```
+
+| Elem | Leírás |
+|------|--------|
+| Útvonal | `/secrets`, `/secrets/[id]` |
+| Jogok | `secrets:read` / `write` / `delete` / `manage` |
+| Tárolás | `SecretProject` + beágyazott `secrets[]`; érték = `encryptSecret` ciphertext |
+| Kulcs | `SECRETS_ENCRYPTION_KEY` (vagy fallback `AUTH_SECRET`, min. 32 karakter) |
+| Hozzáférés | Létrehozó + `allowedUsers` / `allowedRoles`; `secrets:manage` = minden projekt |
+
+Súgó: [`docs/user-guide/titoktar.md`](./user-guide/titoktar.md) → `/help/titoktar`
 
 ---
 
@@ -564,4 +588,4 @@ flowchart LR
 
 ---
 
-*Utolsó frissítés: 2026-08 — core engine rebuild: job-first HR, igényalapú szállítás, leltár; titoktár/könyvelés kikerült az éles fából.*
+*Utolsó frissítés: 2026-09 — Titoktár UI visszaállítva (`/secrets`); meglévő `secretprojects` adatok érintetlenek.*
