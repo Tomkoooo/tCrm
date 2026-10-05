@@ -15,10 +15,14 @@ function redirectTo(pathname: string, search?: string) {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  // Magic-link sign-in must be reachable without a session: the recipient clicks it
+  // straight from a notification e-mail.
+  const isMagicLinkPage = pathname.startsWith('/auth/magic');
   const isAuthPage =
     pathname.startsWith('/login') ||
     pathname.startsWith('/register') ||
-    pathname.startsWith('/reset-password');
+    pathname.startsWith('/reset-password') ||
+    isMagicLinkPage;
   const isSetupPage = pathname.startsWith('/setup');
 
   const isInviteRegisterPage = pathname.startsWith('/register/invite');
@@ -55,7 +59,9 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isAuthPage) {
-    if (isLoggedIn && !isInviteRegisterPage) {
+    // An already-signed-in visitor still needs the magic page to run, so the link
+    // can hand them off to the schedule it points at (possibly as another user).
+    if (isLoggedIn && !isInviteRegisterPage && !isMagicLinkPage) {
       return redirectTo('/');
     }
     return NextResponse.next();

@@ -13,6 +13,8 @@ export interface IEmployee extends Document {
   /** logistics = job sync owns work blocks; roster = HR can CRUD shifts. */
   scheduleMode: EmployeeScheduleMode;
   calendarColor?: string;
+  /** Secret token for the personal read-only .ics calendar feed. */
+  calendarFeedToken?: string;
   isActive: boolean;
   notes?: string;
   createdAt: Date;
@@ -34,6 +36,7 @@ const EmployeeSchema = new Schema<IEmployee>(
       index: true,
     },
     calendarColor: { type: String, maxlength: 32 },
+    calendarFeedToken: { type: String, maxlength: 128, sparse: true, index: true },
     isActive: { type: Boolean, default: true, index: true },
     notes: { type: String, maxlength: 5000 },
   },

@@ -13,6 +13,8 @@ export interface IScheduleChangeRequest extends Document {
   proposedStart: Date;
   proposedEnd: Date;
   note?: string;
+  /** Decision feedback shown to the employee on accept/decline. */
+  reviewNote?: string;
   requestedBy: Types.ObjectId;
   reviewedBy?: Types.ObjectId;
   reviewedAt?: Date;
@@ -42,6 +44,7 @@ const ScheduleChangeRequestSchema = new Schema<IScheduleChangeRequest>(
     proposedStart: { type: Date, required: true },
     proposedEnd: { type: Date, required: true },
     note: { type: String, maxlength: 2000 },
+    reviewNote: { type: String, maxlength: 2000 },
     requestedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     reviewedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     reviewedAt: { type: Date },

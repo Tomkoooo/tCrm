@@ -382,12 +382,18 @@ importers:
 
   packages/hr:
     dependencies:
+      '@crm/auth':
+        specifier: workspace:*
+        version: link:../auth
       '@crm/db-core':
         specifier: workspace:*
         version: link:../db-core
       '@crm/lib':
         specifier: workspace:*
         version: link:../lib
+      '@crm/mail':
+        specifier: workspace:*
+        version: link:../mail
       '@crm/rbac':
         specifier: workspace:*
         version: link:../rbac
@@ -401,6 +407,9 @@ importers:
       '@crm/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@crm/test-utils':
+        specifier: workspace:*
+        version: link:../test-utils
       '@crm/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
@@ -410,6 +419,9 @@ importers:
       eslint:
         specifier: ^9.17.0
         version: 9.39.4(jiti@2.7.0)
+      mongodb-memory-server:
+        specifier: ^11.2.0
+        version: 11.2.0
       typescript:
         specifier: ^5.7.2
         version: 5.9.3

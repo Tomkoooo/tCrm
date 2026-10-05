@@ -23,6 +23,12 @@ export type ImportParseConfig = {
   /** Default: derive CRM SKU from product_id using category prefix */
   skuMode?: ImportSkuMode;
   supplierSkuCut?: SupplierSkuCutConfig;
+  /**
+   * Keep letters from the supplier SKU in the generated CRM SKU. Needed for
+   * catalogues with variant letters (Steinigke `6030649A` / `6030649B`), which
+   * otherwise collide on one SKU. Default: digits only.
+   */
+  preserveSupplierSkuLetters?: boolean;
 };
 
 export type ImportWorkbookInspect = {

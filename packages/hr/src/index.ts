@@ -5,6 +5,8 @@ export {
   HR_APPROVE_PERMISSION_KEYS,
   HR_SELF_PERMISSION_KEYS,
   HR_NAV_PERMISSION_KEYS,
+  HR_SCHEDULE_READ_PERMISSION_KEYS,
+  HR_SCHEDULE_WRITE_PERMISSION_KEYS,
 } from './permissions';
 
 export {
@@ -64,7 +66,74 @@ export {
   cancelScheduleChangeRequest,
   reviewScheduleChangeRequest,
   listScheduleChangeRequests,
+  listPlanChangeRequests,
 } from './schedule-change';
+
+export {
+  createSchedulePlan,
+  updateSchedulePlan,
+  deleteSchedulePlan,
+  getSchedulePlanById,
+  getSchedulePlanGrid,
+  getPlanForEntry,
+  listSchedulePlans,
+  listPlanEntries,
+  markSchedulePlanPublished,
+  upsertPlanCell,
+  clearPlanCell,
+  parseScheduleCell,
+  formatScheduleCell,
+  eachPlanDayKey,
+  cellKey,
+  isValidDayKey,
+  isValidShiftTime,
+  DEFAULT_SHIFT_MINUTES,
+  SCHEDULE_PLAN_MODULE,
+  SCHEDULE_PLAN_REF_TYPE,
+  type SchedulePlanGrid,
+  type SchedulePlanCellDTO,
+  type ParsedScheduleCell,
+  type CreateSchedulePlanParams,
+  type UpdateSchedulePlanParams,
+  type UpsertPlanCellParams,
+} from './schedule-plans';
+
+export {
+  publishSchedulePlan,
+  notifyScheduleChangeRequested,
+  notifyScheduleChangeReviewed,
+  buildEmployeeScheduleTableHtml,
+  describeUnreachableEmployees,
+  ensureEmployeeCalendarToken,
+  calendarFeedPath,
+  formatPeriodLabel,
+  type SchedulePublishResult,
+  type SchedulePublishRecipientResult,
+  type PublishSchedulePlanParams,
+} from './schedule-notify';
+
+export {
+  SCHEDULE_MAIL_TEMPLATES,
+  SCHEDULE_MAIL_TEMPLATE_KEYS,
+  seedScheduleMailTemplates,
+  scheduleMailButton,
+} from './schedule-mail-templates';
+
+export {
+  buildEmployeeCalendarFeed,
+  buildPlanCalendarForEmployee,
+  findEmployeeByCalendarToken,
+  scheduleEntryToIcsEvent,
+} from './schedule-ics';
+
+export {
+  buildIcsCalendar,
+  escapeIcsText,
+  foldIcsLine,
+  formatIcsDate,
+  type IcsEvent,
+  type BuildIcsOptions,
+} from './ics';
 
 export {
   checkAssignmentConflicts,

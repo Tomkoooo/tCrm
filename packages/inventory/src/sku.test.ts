@@ -4,6 +4,7 @@ import {
   deriveSupplierSkuFromCrmSku,
   deriveSupplierSkuFromSm,
   formatSequentialSku,
+  normalizeSkuChars,
   skuSettingsFromCategory,
   QUICK_SKU_FALLBACK,
 } from './sku';
@@ -23,6 +24,35 @@ describe('generateInternalSku', () => {
     expect(generateInternalSku({ prefix: '1', totalLength: 9 }, '3301')).toBe('100003301');
     expect(generateInternalSku({ prefix: '1', totalLength: 9 }, '030001')).toBe('100030001');
   });
+
+  it('collapses variant letters onto one SKU by default', () => {
+    const settings = { prefix: '9', totalLength: 9, padChar: '0' };
+    expect(generateInternalSku(settings, '6030649A')).toBe(
+      generateInternalSku(settings, '6030649B')
+    );
+  });
+
+  it('keeps variant letters distinct with preserveLetters', () => {
+    const settings = { prefix: '9', totalLength: 9, padChar: '0' };
+    expect(generateInternalSku(settings, '6030649A', { preserveLetters: true })).toBe('96030649A');
+    expect(generateInternalSku(settings, '6030649B', { preserveLetters: true })).toBe('96030649B');
+  });
+
+  it('leaves digit-only supplier SKUs byte-identical under preserveLetters', () => {
+    const settings = { prefix: '9', totalLength: 9, padChar: '0' };
+    for (const supplierSku of ['60210010', '60302350', '3301', '030001']) {
+      expect(generateInternalSku(settings, supplierSku, { preserveLetters: true })).toBe(
+        generateInternalSku(settings, supplierSku)
+      );
+    }
+  });
+});
+
+describe('normalizeSkuChars', () => {
+  it('uppercases and strips separators but keeps letters', () => {
+    expect(normalizeSkuChars('6030649a')).toBe('6030649A');
+    expect(normalizeSkuChars('ab-60303008')).toBe('AB60303008');
+  });
 });
 
 describe('deriveSupplierSkuFromSm', () => {
@@ -39,6 +69,19 @@ describe('deriveSupplierSkuFromSm', () => {
       expect(deriveSupplierSkuFromSm(settings, sm, { supplierSkuLength: supplierSku.length })).toBe(
         supplierSku
       );
+    }
+  });
+
+  it('round-trips alphanumeric supplier SKUs with preserveLetters', () => {
+    const traverz = { prefix: '9', totalLength: 9, padChar: '0' };
+    for (const supplierSku of ['6030649A', '6030649B']) {
+      const sm = generateInternalSku(traverz, supplierSku, { preserveLetters: true });
+      expect(
+        deriveSupplierSkuFromSm(traverz, sm, {
+          supplierSkuLength: supplierSku.length,
+          preserveLetters: true,
+        })
+      ).toBe(supplierSku);
     }
   });
 

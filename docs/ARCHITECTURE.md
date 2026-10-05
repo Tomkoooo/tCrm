@@ -50,15 +50,15 @@ flowchart LR
 | `@crm/app` (`apps/crm`) | Main Next.js application — routes, app-specific UI |
 | `@crm/ui` | Shared shadcn primitives, `Container`, `DataTable`, `EntitySheet` |
 | `@crm/lib` | `cn()`, Zod schemas, env helpers (`isPublicRegistrationEnabled`, etc.) |
-| `@crm/db-core` | Mongoose connection, models (User/Role/Permission, Product/Category/Supplier/Warehouse/StockLevel/StockAdjustment, Reservation/StockMovement/LogisticsJob/Vehicle/VehicleIncident, Employee/TimeOff/ScheduleEntry, MailTemplate, Media, Branding, Counter), repositories, branding/system/user helpers |
-| `@crm/auth` | Auth.js v5 config, session helpers (`requireAuth`, `requirePermission`, `getCurrentUser`), `getEffectivePermissionKeys` |
+| `@crm/db-core` | Mongoose connection, models (User/Role/Permission, Product/Category/Supplier/Warehouse/StockLevel/StockAdjustment, Reservation/StockMovement/LogisticsJob/Vehicle/VehicleIncident, Employee/TimeOff/ScheduleEntry/SchedulePlan/ScheduleChangeRequest, MagicLink, MailTemplate, Media, Branding, Counter), repositories, branding/system/user helpers |
+| `@crm/auth` | Auth.js v5 config, session helpers (`requireAuth`, `requirePermission`, `getCurrentUser`), `getEffectivePermissionKeys`, magic-link sign-in (`@crm/auth/magic-link`) |
 | `@crm/rbac` | Permission-module registry (`registerPermissionModule`) + `ensurePermissionsSynced` baseline sync |
 | `@crm/admin` | Engine permission module (`enginePermissions`), users/invitations/password-reset business logic, mail-template seeding |
 | `@crm/mail` | Nodemailer wrapper, templated send, recipient resolution |
 | `@crm/media` | Media library service (upload, dedup by hash, link-based media) + permission keys |
 | `@crm/inventory` | Products, categories, suppliers, warehouses/stock, Excel import/export, inventory permission module |
 | `@crm/logistics` | Stock movements, reservations, event jobs (parts list → pickup/drop-off employee → check-in), vehicle fleet, logistics permission module |
-| `@crm/hr` | People directory, time off, schedule entries, monthly hours; HR permission module |
+| `@crm/hr` | People directory, time off, schedule entries, monthly hours, beosztás (schedule plans + publish e-mail + ICS feeds + change requests); HR permission module |
 | `@crm/eslint-config`, `@crm/tsconfig` | Shared configs |
 
 **Rule:** Cross-app shared code → `packages/`. Single-app code stays in `apps/crm/src/`. There is currently only one app (`apps/crm`); do not create `apps/landing` or similar without an explicit ask.
@@ -89,18 +89,19 @@ Everything that exists in the rebuilt app today. If a doc, comment, or plan refe
 
 | Area | Routes |
 |------|--------|
-| Auth | `/login`, `/register` (gated by `ALLOW_PUBLIC_REGISTRATION`), `/register/invite?token=`, `/reset-password?token=` |
+| Auth | `/login`, `/register` (gated by `ALLOW_PUBLIC_REGISTRATION`), `/register/invite?token=`, `/reset-password?token=`, `/auth/magic?token=` (one-click sign-in from notification e-mails) |
 | First-run setup | `/setup` (creates the first admin), `/setup/complete` |
 | Dashboard | `/` — permission-filtered quick actions |
 | Account | `/account` — profile, password change, effective-permissions summary |
 | Help | `/help`, `/help/[slug]` — renders `docs/user-guide/*.md` |
 | Inventory | `/inventory`, `/inventory/dashboard`, `/inventory/new`, `/inventory/count`, `/inventory/[sku]`, `/inventory/builds`, `/inventory/builds/new`, `/inventory/categories`, `/inventory/suppliers`, `/inventory/suppliers/[id]`, `/inventory/template`, `/inventory/export` |
 | Logistics | `/logistics`, `/logistics/movements`, `/logistics/movements/new/{grn,pick,transfer}`, `/logistics/movements/[id]`, `/logistics/reservations`, `/logistics/jobs`, `/logistics/jobs/new`, `/logistics/jobs/[id]`, `/logistics/vehicles`, `/logistics/vehicles/[id]` |
-| HR | `/hr`, `/hr/companies`, `/hr/people`, `/hr/people/[id]`, `/hr/calendar`, `/hr/leave`, `/hr/leave-summary`, `/hr/leave-summary/import`, `/hr/hours`, `/hr/me` |
+| HR | `/hr`, `/hr/companies`, `/hr/people`, `/hr/people/[id]`, `/hr/calendar`, `/hr/leave`, `/hr/leave-summary`, `/hr/leave-summary/import`, `/hr/hours`, `/hr/schedules`, `/hr/schedules/new`, `/hr/schedules/[id]`, `/hr/schedules/[id]/export.ics`, `/hr/me`, `/hr/me/schedule/[planId]` |
+| Calendar feeds | `/api/calendar/[token].ics`, `/api/calendar/plan/[planId]/[token].ics` — token-authenticated, no session (Google/iCloud/Outlook fetch without cookies) |
 | Admin | `/admin/users`, `/admin/users/new`, `/admin/users/invite`, `/admin/users/invitations`, `/admin/users/[id]`, `/admin/permissions`, `/admin/mail-templates`, `/admin/mail-templates/[id]`, `/admin/media`, `/admin/branding`, `/admin/warehouses`, `/admin/warehouses/[id]` |
 | PWA | Web app manifest (`/manifest.webmanifest`), service worker, install prompt on dashboard |
 
-Offers, bookkeeping, and secrets/titoktár are not built yet. `_legacy-core-reference/` holds leftover pre-rebuild HR/accounting logic as historical reference only — do not port teams/shifts/leave-import.
+Offers and bookkeeping are not built yet. Titoktár (`/secrets`) is restored. `_legacy-core-reference/` holds leftover pre-rebuild HR/accounting logic as historical reference only — do not port teams/shifts/leave-import.
 
 ---
 
@@ -131,6 +132,8 @@ sequenceDiagram
   DB->>MongoDB: Mongoose operation
   MongoDB-->>Browser: Rendered RSC / action result
 ```
+
+`/auth/magic` is in the middleware's unauthenticated set and submits its token by **form POST**, so a link pre-fetched by a mail scanner cannot silently create a session. See [hr.md](./hr.md#magic-links-magiclink) for the token model.
 
 **Edge constraint:** `apps/crm/src/middleware.ts` never imports Mongoose or `@crm/db-core`. It only checks a signed "initialized" cookie (`hasInitializedCookie`) and the session JWT (`getToken`). Admin-existence and DB-backed checks live in Node route handlers (`/api/system/initialized` pattern from the old build; the initialized state is now cookie-based — see `apps/crm/src/lib/initialized-cookie.ts`).
 
@@ -165,6 +168,8 @@ Effective permissions = union of all role permissions + `directPermissionKeys` (
 
 Permission keys are declared as `PermissionModule` objects (`packages/rbac/src/types.ts`) and registered at process start via `registerPermissionModule` — see `apps/crm/src/lib/rbac-bootstrap.ts`, which currently registers `enginePermissions`, `mediaPermissions`, `inventoryPermissions`, `logisticsPermissions`, and `hrPermissions`.
 
+> **Careful:** `upsertRole` *replaces* a role's `permissionIds` with exactly its template's keys. Adding a `roleTemplate` for a role that operators have hand-tuned (e.g. `hr`) would strip their grants — add the permission to the module and let operators assign it at `/admin/permissions` instead.
+
 `ensurePermissionsSynced` (`packages/rbac/src/bootstrap.ts`) upserts every registered permission, then rebuilds the `admin` system role so it always contains **every currently registered key** — recomputed on each sync, never hand-maintained. Each module's own `roleTemplates` (e.g. a baseline `viewer` role) are merged in the same pass.
 
 - Runs automatically once per server process via `ensureRbacBootstrapped()` (module-level guard) — called from the dashboard layout and from `/setup`.
@@ -186,6 +191,7 @@ Database-driven templates (`MailTemplate` model in `@crm/db-core`) sent via `@cr
 | Send API | `@crm/mail` → templated send with variable substitution |
 | Seeding | `seedEngineMailTemplates()` (`@crm/admin`) — called from `/setup` |
 | Invites | `@crm/admin` invitations → `/register/invite?token=` |
+| Beosztás | `@crm/hr` `seedScheduleMailTemplates()` → `hr_schedule_plan_published` / `_change_requested` / `_change_reviewed` |
 | Password reset | `@crm/admin` password-reset → `/reset-password?token=` |
 | Admin UI | `/admin/mail-templates` (`mail:manage`) |
 
@@ -238,7 +244,7 @@ Collapsible sidebar (`apps/crm/src/components/app-sidebar.tsx`) built on shadcn 
 | Általános | `/`, `/help`, `/hr/me` | authenticated; `/hr/me` also needs a linked employee profile (no permission key) |
 | Készletkezelés | `/inventory/dashboard`, `/inventory`, `/inventory/count`, `/inventory/builds`, `/inventory/categories`, `/inventory/suppliers` | `inventory:read` (suppliers also accept `suppliers:read` / write / import) |
 | Logisztika | `/logistics`, `/logistics/movements`, `/logistics/reservations`, `/logistics/jobs`, `/logistics/vehicles` | `logistics:read` (vehicles also accept `logistics:vehicles:read`); job checklists also open for assigned crew |
-| HR | `/hr`, `/hr/people`, `/hr/calendar`, `/hr/leave`, `/hr/leave-summary`, `/hr/hours`, `/hr/companies` | any of `hr:read` / `hr:write` / `hr:approve` (`/hr/companies` needs `hr:write`) |
+| HR | `/hr`, `/hr/people`, `/hr/calendar`, `/hr/leave`, `/hr/leave-summary`, `/hr/hours`, `/hr/schedules`, `/hr/companies` | any of `hr:read` / `hr:write` / `hr:approve` (`/hr/schedules` needs `hr:schedule:read` or `hr:write`; `/hr/companies` needs `hr:write`) |
 | Beállítások | `/account` | authenticated |
 | Adminisztráció | `/admin/users`, `/admin/permissions`, `/admin/mail-templates`, `/admin/warehouses`, `/admin/media`, `/admin/branding` | group hidden unless `admin:access`; warehouses also need `warehouses:read` |
 
@@ -304,7 +310,7 @@ Brings up MongoDB, Mongo Express (`:8081`), and the CRM app (`:3000`).
 
 ## 14. Roadmap
 
-The original plan (offers → accounting/multi-tenant SaaS) still holds as the long-term direction. **Phase 1 (inventory), Phase 2 (logistics + builds), and Phase 3 (job-first HR) are live.** Jobs are deliberately simple (rebuilt 2026-08-24, see `docs/logistics-jobs-legacy.md` for the earlier demand-planning engine this replaced): logistics writes a flat item list with a warehouse per line, assigns one employee responsible for pickup and one for drop-off (can be the same person) plus a read-only crew, and HR `/hr/me` deep-links into those tasks.
+The original plan (offers → accounting/multi-tenant SaaS) still holds as the long-term direction. **Phase 1 (inventory), Phase 2 (logistics + builds), Phase 3 (job-first HR), and the beosztás manager are live.** Jobs are deliberately simple (rebuilt 2026-08-24, see `docs/logistics-jobs-legacy.md` for the earlier demand-planning engine this replaced): logistics writes a flat item list with a warehouse per line, assigns one employee responsible for pickup and one for drop-off (can be the same person) plus a read-only crew, and HR `/hr/me` deep-links into those tasks.
 
 ---
 
@@ -327,4 +333,4 @@ The original plan (offers → accounting/multi-tenant SaaS) still holds as the l
 
 ---
 
-*Last updated: 2026-08 (demand-first logistics jobs + job-first HR).*
+*Last updated: 2026-10 (beosztás manager: schedule plans, magic-link sign-in, ICS calendar feeds).*

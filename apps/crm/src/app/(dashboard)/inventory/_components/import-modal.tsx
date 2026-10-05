@@ -88,6 +88,7 @@ export function ImportModal({ open, onOpenChange }: ImportModalProps) {
   const [allowMissingSupplier, setAllowMissingSupplier] = useState(false);
   const [skuMode, setSkuMode] = useState<SkuMode>('from_supplier_sku');
   const [supplierSkuLength, setSupplierSkuLength] = useState('6');
+  const [preserveSupplierSkuLetters, setPreserveSupplierSkuLetters] = useState(false);
   const [supplierKey, setSupplierKey] = useState('');
   const [supplierLabel, setSupplierLabel] = useState('');
   const [matchKey, setMatchKey] = useState<'sku' | 'supplierSku' | 'ean'>('sku');
@@ -112,6 +113,7 @@ export function ImportModal({ open, onOpenChange }: ImportModalProps) {
     setAllowMissingSupplier(false);
     setSkuMode('from_supplier_sku');
     setSupplierSkuLength('6');
+    setPreserveSupplierSkuLetters(false);
     setSupplierKey('');
     setSupplierLabel('');
     setMatchKey('sku');
@@ -131,6 +133,7 @@ export function ImportModal({ open, onOpenChange }: ImportModalProps) {
         skuMode === 'from_sm' && supplierSkuLength.trim()
           ? { supplierSkuLength: Number(supplierSkuLength) }
           : undefined,
+      preserveSupplierSkuLetters,
     });
 
   useEffect(() => {
@@ -392,6 +395,24 @@ export function ImportModal({ open, onOpenChange }: ImportModalProps) {
                 </div>
               </div>
             )}
+            <div className="flex flex-col gap-1 border-t pt-2">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="preserve-supplier-sku-letters"
+                  checked={preserveSupplierSkuLetters}
+                  onCheckedChange={(checked) => setPreserveSupplierSkuLetters(checked === true)}
+                />
+                <Label htmlFor="preserve-supplier-sku-letters" className="text-sm font-normal">
+                  Betűk megőrzése a beszállítói SKU-ban
+                </Label>
+              </div>
+              <p className="text-muted-foreground text-xs">
+                Alapból csak a számjegyek kerülnek a CRM SKU-ba („AB-60303008” → „60303008”).
+                Kapcsolja be, ha a beszállítói kód betűje változatot jelöl — pl. Steinigke
+                „6030649A” és „6030649B” különben ugyanarra az SKU-ra esik, és a második sor
+                kimarad.
+              </p>
+            </div>
           </div>
 
           <div className="flex flex-col gap-2">

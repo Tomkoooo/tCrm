@@ -25,6 +25,17 @@ export const i18nTextSchema = z.object({
   hu: emptyToUndefined(z.string().max(500)),
 });
 
+/**
+ * Supplier catalogues ship marketing copy with embedded HTML that routinely runs to
+ * several thousand characters (Steinigke/ALUTRUSS truss descriptions are ~2.5k), so
+ * descriptions get their own ceiling. Names and colours stay at 500.
+ */
+export const i18nLongTextSchema = z.object({
+  de: emptyToUndefined(z.string().max(20000)),
+  en: emptyToUndefined(z.string().max(20000)),
+  hu: emptyToUndefined(z.string().max(20000)),
+});
+
 export const productComponentSchema = z.object({
   productSku: skuSchema,
   quantity: z.coerce.number().min(0.000001, 'Quantity must be > 0'),
@@ -39,7 +50,7 @@ export const productSchema = z
     ean: emptyToUndefined(z.string().max(64)),
 
     names: i18nTextSchema,
-    descriptions: i18nTextSchema.optional(),
+    descriptions: i18nLongTextSchema.optional(),
     colors: i18nTextSchema.optional(),
 
     dimensionsMm: z
@@ -315,6 +326,7 @@ export const importParseConfigSchema = z.object({
       stripCategoryPrefix: z.boolean().optional(),
     })
     .optional(),
+  preserveSupplierSkuLetters: z.boolean().optional(),
 });
 
 export function parseImportConfigJson(json: string | null | undefined) {

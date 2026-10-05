@@ -78,6 +78,34 @@ export {
   scheduleChangeRequestSchema,
   scheduleChangeReviewSchema,
   leaveYearUpsertSchema,
+  schedulePlanCreateSchema,
+  schedulePlanUpdateSchema,
+  schedulePlanCellSchema,
+  schedulePlanCellTextSchema,
+  schedulePlanDayNoteSchema,
+  schedulePlanPublishSchema,
 } from './hr';
 
-export type { CompanyInput, EmployeeInput, TimeOffRequestInput, RosterShiftInput } from './hr';
+export type {
+  CompanyInput,
+  EmployeeInput,
+  TimeOffRequestInput,
+  RosterShiftInput,
+  SchedulePlanCreateInput,
+  SchedulePlanUpdateInput,
+  SchedulePlanCellInput,
+} from './hr';
+
+export {
+  secretProjectSchema,
+  secretItemSchema,
+  secretItemUpdateSchema,
+  secretProjectAccessSchema,
+} from './secrets';
+
+export type {
+  SecretProjectInput,
+  SecretItemInput,
+  SecretItemUpdateInput,
+  SecretProjectAccessInput,
+} from './secrets';

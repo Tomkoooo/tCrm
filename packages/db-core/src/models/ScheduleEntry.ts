@@ -25,6 +25,9 @@ export interface IScheduleEntry extends Document {
   role?: string;
   title?: string;
   notes?: string;
+  /** Site/venue the employee reports to ("BOK", "Kispest") — roster plans only. */
+  locationLabel?: string;
+  allDay?: boolean;
   sourceRef?: ScheduleEntrySourceRef;
   createdBy: Types.ObjectId;
   updatedBy: Types.ObjectId;
@@ -48,6 +51,8 @@ const ScheduleEntrySchema = new Schema<IScheduleEntry>(
     role: { type: String, maxlength: 32, index: true },
     title: { type: String, maxlength: 300 },
     notes: { type: String, maxlength: 2000 },
+    locationLabel: { type: String, maxlength: 120 },
+    allDay: { type: Boolean },
     sourceRef: { type: Schema.Types.Mixed },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     updatedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },

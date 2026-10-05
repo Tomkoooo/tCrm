@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { connectDB, User } from '@crm/db-core';
 import { loginSchema } from './validation';
 import { getEffectivePermissionKeys } from './permissions';
+import { consumeMagicLink } from './magic-link';
 
 export const authConfig: NextAuthConfig = {
   providers: [
@@ -29,6 +30,29 @@ export const authConfig: NextAuthConfig = {
           email: user.email,
           name: user.name,
           image: user.image,
+        };
+      },
+    }),
+    /**
+     * One-click sign-in from notification emails. The token is the only credential;
+     * it is validated and its use recorded by `consumeMagicLink`.
+     */
+    Credentials({
+      id: 'magic-link',
+      name: 'magic-link',
+      credentials: {
+        token: { label: 'Token', type: 'text' },
+      },
+      async authorize(credentials) {
+        const token = typeof credentials?.token === 'string' ? credentials.token : '';
+        const consumed = await consumeMagicLink(token);
+        if (!consumed) return null;
+
+        return {
+          id: consumed.userId,
+          email: consumed.email,
+          name: consumed.name,
+          image: consumed.image,
         };
       },
     }),

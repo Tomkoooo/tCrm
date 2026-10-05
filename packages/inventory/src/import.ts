@@ -546,7 +546,8 @@ export async function prepareImportRows(
   const matchKey = mergeOptions?.matchKey ?? 'sku';
   const allowMissingSupplier = mergeOptions?.allowMissingSupplier ?? false;
   const skuMode = mergeOptions?.skuMode ?? 'from_supplier_sku';
-  const supplierSkuCut = mergeOptions?.supplierSkuCut;
+  const preserveLetters = mergeOptions?.preserveSupplierSkuLetters ?? false;
+  const supplierSkuCut = { ...mergeOptions?.supplierSkuCut, preserveLetters };
 
   const ready: ParsedInventoryRow[] = [];
   const skipped: ParseIssue[] = [...parsed.errors];
@@ -635,7 +636,7 @@ export async function prepareImportRows(
         crmSku = sm;
         row.product.supplierSku = supplierSku;
 
-        const generated = generateInternalSku(skuSettings, supplierSku);
+        const generated = generateInternalSku(skuSettings, supplierSku, { preserveLetters });
         if (generated !== sm) {
           warnings.push({
             row: row.rowNumber,
@@ -663,7 +664,7 @@ export async function prepareImportRows(
       }
 
       try {
-        const generated = generateInternalSku(skuSettings, supplierSku);
+        const generated = generateInternalSku(skuSettings, supplierSku, { preserveLetters });
         crmSku = generated;
         if (row.importedSmSku && row.importedSmSku !== crmSku) {
           warnings.push({

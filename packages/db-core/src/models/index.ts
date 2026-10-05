@@ -61,3 +61,16 @@ export {
   type IScheduleChangeRequest,
   type ScheduleChangeStatus,
 } from './ScheduleChangeRequest';
+export {
+  SchedulePlan,
+  type ISchedulePlan,
+  type SchedulePlanStatus,
+  type SchedulePlanDayNote,
+} from './SchedulePlan';
+export { MagicLink, type IMagicLink, type MagicLinkPurpose } from './MagicLink';
+export {
+  SecretProject,
+  type ISecretProject,
+  type ISecretItem,
+  type SecretValueFormat,
+} from './SecretProject';

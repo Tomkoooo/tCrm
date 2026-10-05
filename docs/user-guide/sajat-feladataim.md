@@ -38,10 +38,21 @@ Ha több cégben is dolgozol, fent **céges fülek** jelennek meg:
 - A checklist a szállítási lapon van; a Saját feladataim csak a belépő.
 - A HR naptár (csoportnézet) más menü: ahhoz HR olvasási jog kell.
 
+## Beosztásaim
+
+A **Beosztásaim** kártya a neked kiküldött beosztásokat listázza. Megnyitva látod a
+saját műszakjaidat, feliratkozhatsz a naptáradra, letöltheted `.ics` fájlként, és a
+**Módosítást kérek** gombbal új időpontot javasolhatsz egy műszakra — a beosztás
+készítője e-mailben kap értesítést, a döntésről pedig te kapsz levelet.
+
+Ugyanide jutsz a beosztásról szóló e-mail belépési gombjával is, bejelentkezés nélkül.
+
 ## Kapcsolódó fejezetek
 
 - [Fiókod és jogosultságaid](/help/fiok)
 - [Esemény szállítások](/help/szallitasok)
 - [Beosztás és kérelmek](/help/beosztas-es-kerelemek)
+
+- [Beosztások](/help/beosztasok)
 
 *Utolsó frissítés: 2026-08*

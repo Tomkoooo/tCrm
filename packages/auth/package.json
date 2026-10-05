@@ -9,7 +9,8 @@
     "./config": "./src/config.ts",
     "./edge": "./src/auth.config.ts",
     "./permissions": "./src/permissions.ts",
-    "./validation": "./src/validation.ts"
+    "./validation": "./src/validation.ts",
+    "./magic-link": "./src/magic-link.ts"
   },
   "scripts": {
     "lint": "eslint src/",

@@ -1,6 +1,13 @@
 import Link from 'next/link';
 import { getCurrentUser, hasPermission } from '@crm/auth';
-import { getRemainingLeaveDays, listCompanies, listMembershipsForUser, listTimeOff } from '@crm/hr';
+import {
+  formatPeriodLabel,
+  getRemainingLeaveDays,
+  listCompanies,
+  listMembershipsForUser,
+  listSchedulePlans,
+  listTimeOff,
+} from '@crm/hr';
 import { connectDB, LogisticsJob } from '@crm/db-core';
 import { jobRolesForEmployees, type JobEmployeeRole } from '@crm/logistics';
 import { formatDateTime } from '@crm/lib';
@@ -55,7 +62,7 @@ export default async function HrMePage({
   const selectedIds = selected.map((m) => m._id);
   const year = new Date().getFullYear();
 
-  const [leave, remainingRows, jobs] = await Promise.all([
+  const [leave, remainingRows, jobs, allPlans] = await Promise.all([
     listTimeOff({ employeeIds: selectedIds }),
     Promise.all(
       selected.map(async (m) => ({
@@ -80,7 +87,13 @@ export default async function HrMePage({
         .lean()
         .exec();
     })(),
+    listSchedulePlans({ status: 'published', limit: 50 }),
   ]);
+
+  // Only the plans this user is actually a column of.
+  const myPlans = allPlans.filter((plan) =>
+    plan.employeeIds.some((id) => selectedIds.some((mine) => mine.equals(id)))
+  );
 
   const membershipById = new Map(selected.map((m) => [String(m._id), m]));
 
@@ -209,6 +222,36 @@ export default async function HrMePage({
                   </li>
                 );
               })}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Beosztásaim</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {myPlans.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              Még nincs kiküldött beosztásod. Amikor elkészül, e-mailt kapsz róla.
+            </p>
+          ) : (
+            <ul className="space-y-2 text-sm">
+              {myPlans.map((plan) => (
+                <li
+                  key={String(plan._id)}
+                  className="flex flex-wrap items-center justify-between gap-2 border-b pb-2 last:border-0 last:pb-0"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium">{plan.title}</p>
+                    <p className="text-muted-foreground text-xs">{formatPeriodLabel(plan)}</p>
+                  </div>
+                  <Button asChild size="sm" variant="outline">
+                    <Link href={`/hr/me/schedule/${String(plan._id)}`}>Megnyitás</Link>
+                  </Button>
+                </li>
+              ))}
             </ul>
           )}
         </CardContent>

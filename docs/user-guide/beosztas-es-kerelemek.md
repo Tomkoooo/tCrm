@@ -7,6 +7,11 @@ permissions:
   - hr:read
 ---
 
+## Beosztás összeállítása
+
+A havi/heti beosztás rácsos összeállítása, e-mailes kiküldése és a módosítási
+kérelmek elbírálása külön fejezetben: [Beosztások](/help/beosztasok).
+
 ## Naptár
 
 **HR → Naptár**: válassz **Cég**et, opcionálisan **Dolgozó**t (üres = csoportnézet).
@@ -27,8 +32,9 @@ A dolgozói felület már nem a HR menüben van: **Általános → Saját felada
 
 ## Kapcsolódó
 
+- [Beosztások](/help/beosztasok)
 - [HR áttekintés](/help/hr-attekintes)
 - [Dolgozók](/help/dolgozok)
 - [Saját feladataim](/help/sajat-feladataim)
 
-*Utolsó frissítés: 2026-08*
+*Utolsó frissítés: 2026-10*

@@ -26,8 +26,10 @@ import {
   ListChecksIcon,
   CarIcon,
   CalendarIcon,
+  CalendarRangeIcon,
   ClockIcon,
   UserRoundIcon,
+  KeyRoundIcon,
 } from 'lucide-react';
 import {
   SUPPLIER_READ_PERMISSION_KEYS,
@@ -37,8 +39,13 @@ import {
   LOGISTICS_READ_PERMISSION_KEYS,
   LOGISTICS_VEHICLES_READ_PERMISSION_KEYS,
 } from '@crm/logistics/permissions';
-import { HR_NAV_PERMISSION_KEYS, HR_READ_PERMISSION_KEYS } from '@crm/hr/permissions';
+import {
+  HR_NAV_PERMISSION_KEYS,
+  HR_READ_PERMISSION_KEYS,
+  HR_SCHEDULE_READ_PERMISSION_KEYS,
+} from '@crm/hr/permissions';
 import { MEDIA_READ_PERMISSION_KEYS } from '@crm/media/permissions';
+import { SECRETS_READ_PERMISSION_KEYS } from '@crm/admin/secrets-permissions';
 import { getInitials, hasAnyPermission } from '@crm/lib';
 import {
   Sidebar,
@@ -227,6 +234,13 @@ export function AppSidebar({ serverUser }: { serverUser?: SidebarUser }) {
         }
       );
     }
+    if (hasAny(HR_SCHEDULE_READ_PERMISSION_KEYS)) {
+      items.push({
+        href: '/hr/schedules',
+        icon: <CalendarRangeIcon className="h-4 w-4" />,
+        label: 'Beosztások',
+      });
+    }
     if (hasPermission('hr:write')) {
       items.push({
         href: '/hr/companies',
@@ -324,6 +338,15 @@ export function AppSidebar({ serverUser }: { serverUser?: SidebarUser }) {
                   label="Saját feladataim"
                   onClick={linkClick}
                   tourId="my-tasks"
+                />
+              ) : null}
+              {hasAny(SECRETS_READ_PERMISSION_KEYS) ? (
+                <MenuItem
+                  href="/secrets"
+                  icon={<KeyRoundIcon className="h-4 w-4" />}
+                  label="Titoktár"
+                  onClick={linkClick}
+                  tourId="secrets"
                 />
               ) : null}
             </SidebarMenu>

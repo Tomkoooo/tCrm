@@ -1,6 +1,6 @@
 # Agent handoff — tCrm
 
-**Last updated: 2026-08-18**
+**Last updated: 2026-10-05**
 
 Canonical catch-up document for agents continuing work on this monorepo. Read this **first**, before [ARCHITECTURE.md](./ARCHITECTURE.md) — this file has current status and known issues; ARCHITECTURE.md has stable design patterns.
 
@@ -11,7 +11,7 @@ Canonical catch-up document for agents continuing work on this monorepo. Read th
 The CRM was **rebuilt from scratch** per the architectural plan in the root [README.md](../README.md): package names changed (`@crm/db` → `@crm/db-core`, `@crm/core` split into `@crm/admin`/`@crm/rbac`/`@crm/mail`/`@crm/media`/`@crm/inventory`/`@crm/logistics`/`@crm/hr`).
 
 - **Branch:** landed on `main` from `rebuild/core-engine` (Phase 0+1, Phase 2, Phase 3 job-first HR).
-- Inventory, logistics, builds, stock count, and HR (`/hr/*`) are live. Offers, bookkeeping, and titoktár are not.
+- Inventory, logistics, builds, stock count, HR (`/hr/*`), and Titoktár (`/secrets`) are live. Offers and bookkeeping are not.
 
 ---
 
@@ -80,11 +80,21 @@ pnpm dev
 
 ---
 
+### Beosztás permissions missing after this deploy
+
+- **Symptom:** the **Beosztások** sidebar item is absent, or `/hr/schedules` 404s for an admin.
+- **Cause:** `hr:schedule:read` / `hr:schedule:write` are new keys; `admin` only picks
+  them up on the next baseline sync.
+- **Fix:** **Admin → Szerepkörök → Baseline jogosultságok szinkronizálása**, then grant
+  both keys to the `hr` role. (`hr:write` holders already pass both gates.)
+
 ## 7. Recommended near-term follow-ups
 
-- [ ] After deploy, sync baseline permissions once and confirm admin has `admin:access` + `hr:*`
+- [ ] After deploy, sync baseline permissions once and confirm admin has `admin:access` + `hr:*` + `hr:schedule:*`
+- [ ] Browser click-through of `/hr/schedules` (server logic is covered by `packages/hr/src/schedule-plans.integration.test.ts`; the React pages are typecheck/build-verified only)
+- [ ] First real publish: send to one employee before the whole crew — this is the first feature that e-mails staff directly
 - [ ] Expand E2E coverage (inventory, logistics jobs, HR people/leave)
-- [ ] Offers / bookkeeping / titoktár when explicitly scoped
+- [ ] Offers / bookkeeping when explicitly scoped
 
 ---
 
@@ -93,7 +103,7 @@ pnpm dev
 ```
 You are continuing work on tCrm (Next.js 16, React 19, MongoDB, Auth.js v5,
 Turborepo/pnpm). Phase 0–2 and Phase 3 job-first HR (`@crm/hr`, `/hr/*`) are live.
-Do not restore the old `/accounting` tree. Offers/bookkeeping/titoktár are not built
+Do not restore the old `/accounting` tree. Offers/bookkeeping are not built
 unless asked.
 
 Read: docs/AGENT_HANDOFF.md, docs/ARCHITECTURE.md, docs/hr.md, docs/logistics.md,

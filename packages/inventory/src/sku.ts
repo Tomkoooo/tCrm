@@ -53,8 +53,35 @@ export function normalizeDigits(value: string): string {
   return value.replace(/\D+/g, '');
 }
 
+/** Uppercased alphanumerics — keeps letters that `normalizeDigits` would drop. */
+export function normalizeSkuChars(value: string): string {
+  return String(value ?? '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '');
+}
+
+export type SkuCharsOptions = {
+  /**
+   * Keep letters in the supplier SKU instead of stripping them.
+   *
+   * Off by default: most catalogues use digit SKUs with decorative prefixes
+   * (`AB-60303008`), where stripping is what you want. Steinigke ships genuine
+   * variant letters (`6030649A` / `6030649B`) that collapse onto a single CRM SKU
+   * when the letter is dropped — those imports opt in.
+   */
+  preserveLetters?: boolean;
+};
+
+function normalizeSupplierSku(value: string, options?: SkuCharsOptions): string {
+  return options?.preserveLetters ? normalizeSkuChars(value) : normalizeDigits(String(value ?? ''));
+}
+
 /** Belső kód: kategória előtag + a beszállítói SKU (nullákkal balra kitöltve) */
-export function generateInternalSku(settings: CategorySkuSettings, supplierSku: string): string {
+export function generateInternalSku(
+  settings: CategorySkuSettings,
+  supplierSku: string,
+  options?: SkuCharsOptions
+): string {
   const prefix = String(settings.prefix ?? '').trim();
   const totalLength = Number(settings.totalLength);
   const padChar = (settings.padChar ?? '0').slice(0, 1);
@@ -65,7 +92,7 @@ export function generateInternalSku(settings: CategorySkuSettings, supplierSku: 
   }
 
   const skuPartLength = totalLength - prefix.length;
-  const digits = normalizeDigits(String(supplierSku ?? ''));
+  const digits = normalizeSupplierSku(String(supplierSku ?? ''), options);
   const trimmed = digits.slice(-skuPartLength);
   const padded = trimmed.padStart(skuPartLength, padChar);
   return `${prefix}${padded}`;
@@ -78,7 +105,7 @@ export type SupplierSkuCutOptions = {
   digitCount?: number;
   /** @deprecated ignored — supplier SKU is always read from the end of the SM SKU */
   stripCategoryPrefix?: boolean;
-};
+} & SkuCharsOptions;
 
 function resolveSupplierSkuLength(options?: SupplierSkuCutOptions): number | undefined {
   const length = options?.supplierSkuLength ?? options?.digitCount;
@@ -103,14 +130,14 @@ export function deriveSupplierSkuFromSm(
     );
   }
 
-  const digits = normalizeDigits(String(smSku ?? ''));
+  const digits = normalizeSupplierSku(String(smSku ?? ''), options);
   if (digits.length < supplierSkuLength) {
     throw new Error(
-      `Az SM SKU túl rövid (${digits.length} számjegy); legalább ${supplierSkuLength} kell.`
+      `Az SM SKU túl rövid (${digits.length} karakter); legalább ${supplierSkuLength} kell.`
     );
   }
 
-  const prefixDigits = normalizeDigits(String(settings.prefix ?? ''));
+  const prefixDigits = normalizeSupplierSku(String(settings.prefix ?? ''), options);
   if (prefixDigits && !digits.startsWith(prefixDigits)) {
     throw new Error(
       `CRM SKU „${smSku}” nem illeszkedik a kategória előtaghoz (${settings.prefix}).`

@@ -50,3 +50,6 @@ docker-compose.portainer.yml
 
 # Local Mongo dumps (prod clones — never commit)
 /backups/
+
+# Excel lock files
+~$*.xlsx

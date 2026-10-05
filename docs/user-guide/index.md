@@ -22,7 +22,7 @@ A tCrm belső üzemeltetői rendszer. Ez az útmutató lépésről lépésre seg
    - **Általános** — Vezérlőpult, Súgó, Saját feladataim (ha van dolgozó profilod)
    - **Készletkezelés** — termékek, összeszerelések, kategóriák, beszállítók (jogosultság függvényében)
    - **Logisztika** — készletmozgások, foglalások, szállítások, járműflotta
-   - **HR** — dolgozók, naptár, szabadság, órák (jogosultság függvényében)
+   - **HR** — dolgozók, naptár, beosztások, szabadság, órák (jogosultság függvényében)
    - **Beállítások** — Fiók
    - **Adminisztráció** — csak akkor látszik, ha van hozzá jogosultságod (lásd [Fiókod és jogosultságaid](/help/fiok))
 
