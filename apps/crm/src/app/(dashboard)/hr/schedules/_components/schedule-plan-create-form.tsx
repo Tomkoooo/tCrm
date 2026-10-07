@@ -148,22 +148,28 @@ export function SchedulePlanCreateForm({
         </div>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="defaultShiftMinutes">Műszak alapértelmezett hossza (perc)</Label>
-        <Input
-          id="defaultShiftMinutes"
-          name="defaultShiftMinutes"
-          type="number"
-          min={15}
-          max={1440}
-          step={15}
-          defaultValue={480}
-          className="max-w-[12rem]"
-        />
-        <p className="text-muted-foreground text-xs">
-          A rácsban „13:00 BOK” beírásakor ennyi lesz a műszak hossza. Cellánként átírható.
-        </p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="defaultStartTime">Alapértelmezett kezdés</Label>
+          <Input id="defaultStartTime" name="defaultStartTime" type="time" defaultValue="08:00" />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="defaultShiftHours">Műszak hossza (óra)</Label>
+          <Input
+            id="defaultShiftHours"
+            name="defaultShiftHours"
+            type="number"
+            min={0.25}
+            max={24}
+            step={0.25}
+            defaultValue={8}
+          />
+        </div>
       </div>
+      <p className="text-muted-foreground -mt-4 text-xs">
+        Ezek töltik ki a rács időpontjait, ha egy cellánál csak a helyszínt adod meg. Cellánként
+        bármikor átírható.
+      </p>
 
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2">

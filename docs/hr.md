@@ -24,10 +24,12 @@ Replaces the hand-maintained Excel roster. A `SchedulePlan` owns a rectangle of
 | Piece | Detail |
 |-------|--------|
 | Cell | A real `ScheduleEntry` (`kind: 'shift'`) tagged `sourceRef = { module: 'hr', refType: 'plan', refId }` |
-| Cell shorthand | `13:00 BOK` (start + location), location only = all-day, `-`/empty = not working |
-| Shift length | `plan.defaultShiftMinutes` (default 480), overridable per cell |
+| Cell fields | **place** (`locationLabel` — the venue, required), **start**, **end**, optional **description** (`notes`) |
+| Empty cell | A blank place clears the cell — the place is what makes a shift exist |
+| Defaults | `plan.defaultStartTime` (`08:00`) and `plan.defaultShiftHours` (8, fractional allowed) fill in blank times |
+| Overnight | An end at or before the start rolls to the next day (22:00 → 02:00 is a 4-hour shift) |
 | Day notes | `plan.dayNotes` — the Excel's event columns (“Atlétika Épül”) |
-| Timezone | Day keys and times are Budapest wall-clock via `@crm/lib` `parseHrDateOnly` / `combineHrDayAndTime` |
+| Timezone | Day keys and times are Budapest wall-clock via `@crm/lib` `parseHrDateOnly` / `combineHrDayAndTime`. Day stepping uses +36h and re-truncates, because the day DST ends on is 25 hours long and +24h lands back on the same date |
 
 Because cells are ordinary `ScheduleEntry` rows, the HR calendar, monthly hours and
 leave summary pick plan shifts up with **no extra wiring**, and deleting a plan (or

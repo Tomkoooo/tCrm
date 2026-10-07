@@ -1,72 +1,86 @@
 import { describe, expect, it } from 'vitest';
-import { parseHrDateOnly } from '@crm/lib';
+import { formatHrTime, parseHrDateOnly } from '@crm/lib';
 import {
+  addHoursToTime,
   cellKey,
   eachPlanDayKey,
-  formatScheduleCell,
   isValidDayKey,
   isValidShiftTime,
-  parseScheduleCell,
+  planShiftHours,
+  planStartTime,
+  resolveCellWindow,
 } from './schedule-plans';
 
-describe('parseScheduleCell', () => {
-  it('reads the roster shorthand from the Excel roster', () => {
-    expect(parseScheduleCell('13:00 BOK')).toEqual({
-      startTime: '13:00',
-      locationLabel: 'BOK',
-    });
-    expect(parseScheduleCell('8:00 Kispest')).toEqual({
-      startTime: '08:00',
-      locationLabel: 'Kispest',
-    });
-    expect(parseScheduleCell('11:30 BOK')).toEqual({
-      startTime: '11:30',
-      locationLabel: 'BOK',
-    });
+describe('addHoursToTime', () => {
+  it('adds whole hours', () => {
+    expect(addHoursToTime('08:00', 8)).toBe('16:00');
+    expect(addHoursToTime('13:00', 8)).toBe('21:00');
   });
 
-  it('accepts a time with no location', () => {
-    expect(parseScheduleCell('9:00')).toEqual({ startTime: '09:00', locationLabel: undefined });
+  it('adds fractional hours', () => {
+    expect(addHoursToTime('08:00', 7.5)).toBe('15:30');
+    expect(addHoursToTime('09:15', 0.25)).toBe('09:30');
   });
 
-  it('treats a location-only cell as an all-day shift', () => {
-    expect(parseScheduleCell('Remiz')).toEqual({ locationLabel: 'Remiz' });
-    expect(parseScheduleCell('Edzés / MDL')).toEqual({ locationLabel: 'Edzés / MDL' });
-  });
-
-  it('reads blanks and dashes as "not working"', () => {
-    for (const value of ['', '   ', '-', '–', '—']) {
-      expect(parseScheduleCell(value)).toBeNull();
-    }
-  });
-
-  it('falls back to a location when the time is out of range', () => {
-    expect(parseScheduleCell('99:99 Nowhere')).toEqual({ locationLabel: '99:99 Nowhere' });
-  });
-
-  it('keeps multi-word locations intact', () => {
-    expect(parseScheduleCell('6:00 Hősök Tere')).toEqual({
-      startTime: '06:00',
-      locationLabel: 'Hősök Tere',
-    });
+  it('wraps past midnight', () => {
+    expect(addHoursToTime('22:00', 4)).toBe('02:00');
+    expect(addHoursToTime('23:30', 1)).toBe('00:30');
   });
 });
 
-describe('formatScheduleCell', () => {
-  it('round-trips a timed cell back to the shorthand', () => {
-    const start = parseHrDateOnly('2026-10-05');
-    const at13 = new Date(start.getTime() + 13 * 60 * 60 * 1000);
-    expect(formatScheduleCell({ start: at13, locationLabel: 'BOK' })).toBe('13:00 BOK');
+describe('resolveCellWindow', () => {
+  it('resolves a same-day shift', () => {
+    const { start, end } = resolveCellWindow('2026-10-06', '13:00', '21:00');
+    expect(formatHrTime(start)).toBe('13:00');
+    expect(formatHrTime(end)).toBe('21:00');
+    expect(end.getTime() - start.getTime()).toBe(8 * 60 * 60 * 1000);
   });
 
-  it('labels an all-day cell by its location', () => {
+  it('rolls an end that is earlier than the start into the next day', () => {
+    const { start, end } = resolveCellWindow('2026-10-06', '22:00', '02:00');
+    expect(end.getTime()).toBeGreaterThan(start.getTime());
+    expect(end.getTime() - start.getTime()).toBe(4 * 60 * 60 * 1000);
+    expect(formatHrTime(end)).toBe('02:00');
+  });
+
+  it('treats an end equal to the start as a full 24 hours', () => {
+    const { start, end } = resolveCellWindow('2026-10-06', '08:00', '08:00');
+    expect(end.getTime() - start.getTime()).toBe(24 * 60 * 60 * 1000);
+  });
+
+  it('stays correct across the autumn DST change', () => {
+    // 2026-10-25 is the Budapest DST end — that local day is 25 hours long.
+    const { start, end } = resolveCellWindow('2026-10-25', '22:00', '02:00');
+    expect(formatHrTime(start)).toBe('22:00');
+    expect(formatHrTime(end)).toBe('02:00');
+    expect(end.getTime()).toBeGreaterThan(start.getTime());
+  });
+});
+
+describe('plan defaults', () => {
+  it('reads the shift length in hours', () => {
+    expect(planShiftHours({ defaultShiftHours: 8 })).toBe(8);
+    expect(planShiftHours({ defaultShiftHours: 7.5 })).toBe(7.5);
+  });
+
+  it('falls back to legacy minutes, converted to hours', () => {
     expect(
-      formatScheduleCell({
-        start: parseHrDateOnly('2026-10-05'),
-        locationLabel: 'Remiz',
-        allDay: true,
-      })
-    ).toBe('Remiz');
+      planShiftHours({ defaultShiftHours: undefined as never, defaultShiftMinutes: 480 })
+    ).toBe(8);
+    expect(
+      planShiftHours({ defaultShiftHours: undefined as never, defaultShiftMinutes: 450 })
+    ).toBe(7.5);
+  });
+
+  it('falls back to 8 hours when nothing usable is stored', () => {
+    expect(planShiftHours({ defaultShiftHours: 0 })).toBe(8);
+    expect(planShiftHours({ defaultShiftHours: undefined as never })).toBe(8);
+  });
+
+  it('validates the stored default start time', () => {
+    expect(planStartTime({ defaultStartTime: '06:30' })).toBe('06:30');
+    expect(planStartTime({ defaultStartTime: 'nonsense' })).toBe('08:00');
+    expect(planStartTime({ defaultStartTime: '' })).toBe('08:00');
   });
 });
 
@@ -91,7 +105,6 @@ describe('eachPlanDayKey', () => {
   });
 
   it('crosses the DST change without skipping or repeating a day', () => {
-    // Europe/Budapest leaves DST on 2026-10-25.
     const keys = eachPlanDayKey(parseHrDateOnly('2026-10-23'), parseHrDateOnly('2026-10-27'));
     expect(keys).toEqual(['2026-10-23', '2026-10-24', '2026-10-25', '2026-10-26', '2026-10-27']);
     expect(new Set(keys).size).toBe(keys.length);

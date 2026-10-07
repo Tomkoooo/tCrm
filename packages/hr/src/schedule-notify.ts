@@ -18,6 +18,7 @@ import {
   getPlanForEntry,
   getSchedulePlanGrid,
   markSchedulePlanPublished,
+  type SchedulePlanCellDTO,
   type SchedulePlanGrid,
 } from './schedule-plans';
 import {
@@ -51,6 +52,11 @@ export function formatPeriodLabel(plan: ISchedulePlan): string {
   return start === end ? start : `${start} – ${end}`;
 }
 
+/** `13:00–21:00`, with a marker when the shift runs into the next day. */
+function formatCellTime(cell: SchedulePlanCellDTO): string {
+  return `${cell.startTime}–${cell.endTime}${cell.overnight ? ' (+1 nap)' : ''}`;
+}
+
 /**
  * The roster table as HTML, from one employee's point of view: their own column
  * plus the day's shared event notes. Days off are shown as `—` so the recipient can
@@ -63,23 +69,26 @@ export function buildEmployeeScheduleTableHtml(grid: SchedulePlanGrid, employeeI
     const cell = grid.cells.get(cellKey(employeeId, dayKey));
     const notes = grid.dayNotes.get(dayKey) ?? [];
     const working = Boolean(cell);
+    const detail = [cell?.description, notes.join(' · ')].filter(Boolean).join(' — ');
+    const muted = working ? '#18181b' : '#a1a1aa';
 
     rows.push(
       `<tr style="background:${working ? '#ffffff' : '#fafafa'}">` +
         `<td style="padding:7px 10px;border:1px solid #e4e4e7;white-space:nowrap">${escapeHtml(formatDayLabel(dayKey))}</td>` +
-        `<td style="padding:7px 10px;border:1px solid #e4e4e7;font-weight:${working ? 600 : 400};color:${working ? '#18181b' : '#a1a1aa'};white-space:nowrap">` +
-        `${escapeHtml(cell ? cell.label : '—')}</td>` +
-        `<td style="padding:7px 10px;border:1px solid #e4e4e7;color:#52525b">${escapeHtml(notes.join(' · '))}</td>` +
+        `<td style="padding:7px 10px;border:1px solid #e4e4e7;font-weight:${working ? 600 : 400};color:${muted}">${escapeHtml(cell ? cell.place : '—')}</td>` +
+        `<td style="padding:7px 10px;border:1px solid #e4e4e7;white-space:nowrap;color:${muted}">${escapeHtml(cell ? formatCellTime(cell) : '—')}</td>` +
+        `<td style="padding:7px 10px;border:1px solid #e4e4e7;color:#52525b">${escapeHtml(detail)}</td>` +
         `</tr>`
     );
   }
 
   return (
-    `<table style="border-collapse:collapse;margin:18px 0;font-size:13px;width:100%;max-width:560px">` +
+    `<table style="border-collapse:collapse;margin:18px 0;font-size:13px;width:100%;max-width:620px">` +
     `<thead><tr style="background:#f4f4f5">` +
     `<th style="padding:7px 10px;border:1px solid #e4e4e7;text-align:left">Nap</th>` +
-    `<th style="padding:7px 10px;border:1px solid #e4e4e7;text-align:left">Műszak</th>` +
-    `<th style="padding:7px 10px;border:1px solid #e4e4e7;text-align:left">Esemény</th>` +
+    `<th style="padding:7px 10px;border:1px solid #e4e4e7;text-align:left">Helyszín</th>` +
+    `<th style="padding:7px 10px;border:1px solid #e4e4e7;text-align:left">Időpont</th>` +
+    `<th style="padding:7px 10px;border:1px solid #e4e4e7;text-align:left">Leírás / esemény</th>` +
     `</tr></thead><tbody>${rows.join('')}</tbody></table>`
   );
 }

@@ -42,7 +42,22 @@ export type EditorEmployee = {
   hasUser: boolean;
 };
 
-export type EditorCell = { label: string; durationMinutes: number };
+export type EditorCell = {
+  place: string;
+  startTime: string;
+  endTime: string;
+  description?: string;
+  hours: number;
+  overnight: boolean;
+};
+
+/** What the inputs hold for one cell. Empty place = no shift. */
+type CellDraft = {
+  place: string;
+  startTime: string;
+  endTime: string;
+  description: string;
+};
 
 const DAY_NAMES_HU = ['vasárnap', 'hétfő', 'kedd', 'szerda', 'csütörtök', 'péntek', 'szombat'];
 
@@ -61,13 +76,36 @@ function cellKey(employeeId: string, dayKey: string) {
   return `${employeeId}:${dayKey}`;
 }
 
+function emptyDraft(): CellDraft {
+  return { place: '', startTime: '', endTime: '', description: '' };
+}
+
+function draftFromCell(cell: EditorCell): CellDraft {
+  return {
+    place: cell.place,
+    startTime: cell.startTime,
+    endTime: cell.endTime,
+    description: cell.description ?? '',
+  };
+}
+
+function sameDraft(a: CellDraft, b: CellDraft) {
+  return (
+    a.place.trim() === b.place.trim() &&
+    a.startTime.trim() === b.startTime.trim() &&
+    a.endTime.trim() === b.endTime.trim() &&
+    a.description.trim() === b.description.trim()
+  );
+}
+
 export function SchedulePlanEditor({
   canWrite,
   planId,
   status,
   title,
   notes,
-  defaultShiftMinutes,
+  defaultShiftHours,
+  defaultStartTime,
   dayKeys,
   employees,
   candidateEmployees,
@@ -80,7 +118,8 @@ export function SchedulePlanEditor({
   status: 'draft' | 'published';
   title: string;
   notes?: string;
-  defaultShiftMinutes: number;
+  defaultShiftHours: number;
+  defaultStartTime: string;
   dayKeys: string[];
   employees: EditorEmployee[];
   candidateEmployees: EditorEmployee[];
@@ -91,9 +130,10 @@ export function SchedulePlanEditor({
   const router = useRouter();
   const [, startTransition] = useTransition();
 
-  // Mirrors the server grid so a saved cell shows immediately without a full refetch.
-  const [draft, setDraft] = useState<Record<string, string>>(() =>
-    Object.fromEntries(Object.entries(cells).map(([key, cell]) => [key, cell.label]))
+  // Mirrors the server grid so a saved cell shows immediately without a refetch.
+  const [saved, setSaved] = useState<Record<string, EditorCell>>(cells);
+  const [draft, setDraft] = useState<Record<string, CellDraft>>(() =>
+    Object.fromEntries(Object.entries(cells).map(([key, cell]) => [key, draftFromCell(cell)]))
   );
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>(() =>
@@ -109,23 +149,55 @@ export function SchedulePlanEditor({
     () => new Set(unreachable.map((u) => u.employeeId)),
     [unreachable]
   );
-  const filledCount = Object.values(draft).filter((v) => v.trim()).length;
 
-  const saveCell = (employeeId: string, dayKey: string, value: string) => {
+  const getDraft = (key: string) => draft[key] ?? emptyDraft();
+  const filledCount = Object.values(draft).filter((d) => d.place.trim()).length;
+
+  const totalHours = useMemo(
+    () => Object.values(saved).reduce((sum, cell) => sum + cell.hours, 0),
+    [saved]
+  );
+
+  const patchDraft = (key: string, patch: Partial<CellDraft>) =>
+    setDraft((d) => ({ ...d, [key]: { ...(d[key] ?? emptyDraft()), ...patch } }));
+
+  const saveCell = (employeeId: string, dayKey: string) => {
     const key = cellKey(employeeId, dayKey);
-    const previous = cells[key]?.label ?? '';
-    if (value.trim() === previous.trim()) return;
+    const next = getDraft(key);
+    const previous = saved[key] ? draftFromCell(saved[key]!) : emptyDraft();
+    if (sameDraft(next, previous)) return;
 
     setSaving((s) => ({ ...s, [key]: true }));
     startTransition(async () => {
-      const result = await setSchedulePlanCellAction({ planId, employeeId, dayKey, value });
+      const result = await setSchedulePlanCellAction({
+        planId,
+        employeeId,
+        dayKey,
+        place: next.place,
+        startTime: next.startTime || undefined,
+        endTime: next.endTime || undefined,
+        description: next.description || undefined,
+      });
       setSaving((s) => ({ ...s, [key]: false }));
+
       if (!result.success) {
         toast.error(result.message);
         setDraft((d) => ({ ...d, [key]: previous }));
         return;
       }
-      setDraft((d) => ({ ...d, [key]: result.data.label }));
+
+      const cell = result.data.cell;
+      if (!cell) {
+        setSaved((s) => {
+          const copy = { ...s };
+          delete copy[key];
+          return copy;
+        });
+        setDraft((d) => ({ ...d, [key]: emptyDraft() }));
+      } else {
+        setSaved((s) => ({ ...s, [key]: cell }));
+        setDraft((d) => ({ ...d, [key]: draftFromCell(cell) }));
+      }
       router.refresh();
     });
   };
@@ -151,6 +223,8 @@ export function SchedulePlanEditor({
     });
   };
 
+  const inputClass = 'h-7 border-transparent bg-transparent px-1.5 text-xs shadow-none';
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -171,15 +245,17 @@ export function SchedulePlanEditor({
           </>
         ) : null}
         <span className="text-muted-foreground ml-auto text-xs">
-          {filledCount} kitöltött cella · alap műszak {defaultShiftMinutes / 60} óra
+          {filledCount} műszak · {Math.round(totalHours * 10) / 10} óra összesen · alap{' '}
+          {defaultStartTime}, {defaultShiftHours} óra
         </span>
       </div>
 
       {canWrite ? (
         <p className="text-muted-foreground text-xs">
-          Cella formátuma: <code className="bg-muted rounded px-1">13:00 BOK</code> (kezdés +
-          helyszín), csak helyszín = egész napos, <code className="bg-muted rounded px-1">-</code>{' '}
-          vagy üres = nincs műszak. A mentés a cellából kilépve történik.
+          A <strong>helyszín</strong> megadása hozza létre a műszakot (pl. „BOK”, „Kispest”). Üresen
+          hagyva a cella törlődik. Az időpontokat üresen hagyva a beosztás alapértéke érvényes (
+          {defaultStartTime}, {defaultShiftHours} óra). Éjfélen átnyúló műszak: írj korábbi véget,
+          mint a kezdés (pl. 22:00 → 02:00).
         </p>
       ) : null}
 
@@ -196,14 +272,14 @@ export function SchedulePlanEditor({
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="bg-muted/50">
-              <th className="bg-muted/50 sticky left-0 z-10 min-w-[7rem] border-b border-r p-2 text-left font-medium">
+              <th className="bg-muted/50 sticky left-0 z-10 min-w-[6.5rem] border-b border-r p-2 text-left font-medium">
                 Nap
               </th>
-              <th className="min-w-[12rem] border-b border-r p-2 text-left font-medium">Esemény</th>
+              <th className="min-w-[11rem] border-b border-r p-2 text-left font-medium">Esemény</th>
               {employees.map((employee) => (
                 <th
                   key={employee.id}
-                  className="min-w-[9rem] border-b border-r p-2 text-left font-medium last:border-r-0"
+                  className="min-w-[13rem] border-b border-r p-2 text-left font-medium last:border-r-0"
                 >
                   <div className="flex items-center gap-1">
                     <span className="truncate">{employee.name}</span>
@@ -223,19 +299,20 @@ export function SchedulePlanEditor({
                   <th
                     scope="row"
                     className={cn(
-                      'sticky left-0 z-10 whitespace-nowrap border-b border-r p-2 text-left font-normal',
+                      'sticky left-0 z-10 whitespace-nowrap border-b border-r p-2 text-left align-top font-normal',
                       parts.isWeekend ? 'bg-muted/60' : 'bg-background'
                     )}
                   >
                     <span className="font-medium">{parts.short}</span>
-                    <span className="text-muted-foreground ml-1 text-xs">{parts.weekday}</span>
+                    <br />
+                    <span className="text-muted-foreground text-xs">{parts.weekday}</span>
                   </th>
-                  <td className="border-b border-r p-1">
+                  <td className="border-b border-r p-1 align-top">
                     <Input
                       aria-label={`${dayKey} esemény`}
                       value={noteDraft[dayKey] ?? ''}
                       readOnly={!canWrite}
-                      className="focus-visible:border-input h-8 border-transparent bg-transparent shadow-none"
+                      className={inputClass}
                       placeholder={canWrite ? 'pl. Atlétika Épül' : ''}
                       onChange={(e) => setNoteDraft((d) => ({ ...d, [dayKey]: e.target.value }))}
                       onBlur={(e) => canWrite && saveDayNote(dayKey, e.target.value)}
@@ -246,29 +323,73 @@ export function SchedulePlanEditor({
                   </td>
                   {employees.map((employee) => {
                     const key = cellKey(employee.id, dayKey);
-                    const value = draft[key] ?? '';
+                    const d = getDraft(key);
+                    const cell = saved[key];
+                    const active = Boolean(d.place.trim());
                     return (
-                      <td key={key} className="border-b border-r p-1 last:border-r-0">
-                        <Input
-                          aria-label={`${employee.name} — ${dayKey}`}
-                          value={value}
-                          readOnly={!canWrite}
-                          className={cn(
-                            'focus-visible:border-input h-8 border-transparent bg-transparent shadow-none',
-                            value.trim() && 'font-medium',
-                            saving[key] && 'opacity-50'
-                          )}
-                          placeholder={canWrite ? '—' : ''}
-                          onChange={(e) => setDraft((d) => ({ ...d, [key]: e.target.value }))}
-                          onBlur={(e) => canWrite && saveCell(employee.id, dayKey, e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') e.currentTarget.blur();
-                            if (e.key === 'Escape') {
-                              setDraft((d) => ({ ...d, [key]: cells[key]?.label ?? '' }));
-                              e.currentTarget.blur();
-                            }
-                          }}
-                        />
+                      <td
+                        key={key}
+                        className={cn(
+                          'border-b border-r p-1 align-top last:border-r-0',
+                          saving[key] && 'opacity-50'
+                        )}
+                      >
+                        <div className="flex flex-col gap-0.5">
+                          <Input
+                            aria-label={`${employee.name} — ${dayKey} helyszín`}
+                            value={d.place}
+                            readOnly={!canWrite}
+                            className={cn(inputClass, active && 'font-semibold')}
+                            placeholder={canWrite ? 'Helyszín' : '—'}
+                            onChange={(e) => patchDraft(key, { place: e.target.value })}
+                            onBlur={() => canWrite && saveCell(employee.id, dayKey)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') e.currentTarget.blur();
+                            }}
+                          />
+                          {canWrite || active ? (
+                            <div className="flex items-center gap-0.5">
+                              <Input
+                                aria-label={`${employee.name} — ${dayKey} kezdés`}
+                                type="time"
+                                value={d.startTime}
+                                readOnly={!canWrite}
+                                className={cn(inputClass, 'w-[5.5rem] tabular-nums')}
+                                onChange={(e) => patchDraft(key, { startTime: e.target.value })}
+                                onBlur={() => canWrite && saveCell(employee.id, dayKey)}
+                              />
+                              <span className="text-muted-foreground text-xs">–</span>
+                              <Input
+                                aria-label={`${employee.name} — ${dayKey} vége`}
+                                type="time"
+                                value={d.endTime}
+                                readOnly={!canWrite}
+                                className={cn(inputClass, 'w-[5.5rem] tabular-nums')}
+                                onChange={(e) => patchDraft(key, { endTime: e.target.value })}
+                                onBlur={() => canWrite && saveCell(employee.id, dayKey)}
+                              />
+                              {cell?.overnight ? (
+                                <span className="text-xs text-amber-600" title="Másnap ér véget">
+                                  +1
+                                </span>
+                              ) : null}
+                            </div>
+                          ) : null}
+                          {canWrite || d.description ? (
+                            <Input
+                              aria-label={`${employee.name} — ${dayKey} leírás`}
+                              value={d.description}
+                              readOnly={!canWrite}
+                              className={cn(inputClass, 'text-muted-foreground')}
+                              placeholder={canWrite ? 'Leírás (opcionális)' : ''}
+                              onChange={(e) => patchDraft(key, { description: e.target.value })}
+                              onBlur={() => canWrite && saveCell(employee.id, dayKey)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') e.currentTarget.blur();
+                              }}
+                            />
+                          ) : null}
+                        </div>
                       </td>
                     );
                   })}
@@ -299,6 +420,7 @@ export function SchedulePlanEditor({
         planId={planId}
         employees={employees}
         dayKeys={dayKeys}
+        defaultStartTime={defaultStartTime}
       />
 
       <SettingsSheet
@@ -307,7 +429,8 @@ export function SchedulePlanEditor({
         planId={planId}
         title={title}
         notes={notes}
-        defaultShiftMinutes={defaultShiftMinutes}
+        defaultShiftHours={defaultShiftHours}
+        defaultStartTime={defaultStartTime}
         selectedEmployees={employees}
         candidateEmployees={candidateEmployees}
       />
@@ -462,20 +585,26 @@ function FillSheet({
   planId,
   employees,
   dayKeys,
+  defaultStartTime,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   planId: string;
   employees: EditorEmployee[];
   dayKeys: string[];
+  defaultStartTime: string;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [scope, setScope] = useState<'employee' | 'day'>('employee');
   const [employeeId, setEmployeeId] = useState(employees[0]?.id ?? '');
   const [dayKey, setDayKey] = useState(dayKeys[0] ?? '');
-  const [value, setValue] = useState('8:00 Kispest');
+  const [place, setPlace] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [description, setDescription] = useState('');
   const [onlyEmpty, setOnlyEmpty] = useState(true);
+  const [skipWeekends, setSkipWeekends] = useState(true);
 
   const selectClassName = cn(
     'border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm'
@@ -485,10 +614,14 @@ function FillSheet({
     setPending(true);
     const result = await fillSchedulePlanAction({
       planId,
-      value,
+      place,
+      startTime: startTime || undefined,
+      endTime: endTime || undefined,
+      description: description || undefined,
       employeeId: scope === 'employee' ? employeeId : undefined,
       dayKey: scope === 'day' ? dayKey : undefined,
       onlyEmpty,
+      skipWeekends: scope === 'employee' ? skipWeekends : false,
     });
     setPending(false);
     if (!result.success) {
@@ -550,16 +683,49 @@ function FillSheet({
         )}
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="fill-value">Cella értéke</Label>
+          <Label htmlFor="fill-place">Helyszín</Label>
           <Input
-            id="fill-value"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder="8:00 Kispest"
+            id="fill-place"
+            value={place}
+            onChange={(e) => setPlace(e.target.value)}
+            placeholder="pl. Kispest"
           />
           <p className="text-muted-foreground text-xs">
-            Üresen hagyva vagy „-” beírásával az érintett cellák törlődnek.
+            Üresen hagyva az érintett cellák törlődnek.
           </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="fill-start">Kezdés</Label>
+            <Input
+              id="fill-start"
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="fill-end">Vége</Label>
+            <Input
+              id="fill-end"
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+            />
+          </div>
+        </div>
+        <p className="text-muted-foreground -mt-2 text-xs">
+          Üresen hagyva a beosztás alapértéke érvényes (kezdés {defaultStartTime}).
+        </p>
+
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="fill-description">Leírás (opcionális)</Label>
+          <Input
+            id="fill-description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
         </div>
 
         <label className="flex items-center gap-2 text-sm">
@@ -569,6 +735,16 @@ function FillSheet({
           />
           Csak az üres cellákat írja át
         </label>
+
+        {scope === 'employee' ? (
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox
+              checked={skipWeekends}
+              onCheckedChange={(checked) => setSkipWeekends(checked === true)}
+            />
+            Hétvégét hagyja ki
+          </label>
+        ) : null}
 
         <Button type="button" onClick={submit} loading={pending} loadingText="Kitöltés…">
           Kitöltés
@@ -584,7 +760,8 @@ function SettingsSheet({
   planId,
   title,
   notes,
-  defaultShiftMinutes,
+  defaultShiftHours,
+  defaultStartTime,
   selectedEmployees,
   candidateEmployees,
 }: {
@@ -593,7 +770,8 @@ function SettingsSheet({
   planId: string;
   title: string;
   notes?: string;
-  defaultShiftMinutes: number;
+  defaultShiftHours: number;
+  defaultStartTime: string;
   selectedEmployees: EditorEmployee[];
   candidateEmployees: EditorEmployee[];
 }) {
@@ -646,21 +824,32 @@ function SettingsSheet({
           <Input id="plan-title" name="title" defaultValue={title} maxLength={200} />
         </div>
 
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="plan-shift-minutes">Műszak alapértelmezett hossza (perc)</Label>
-          <Input
-            id="plan-shift-minutes"
-            name="defaultShiftMinutes"
-            type="number"
-            min={15}
-            max={1440}
-            step={15}
-            defaultValue={defaultShiftMinutes}
-          />
-          <p className="text-muted-foreground text-xs">
-            Csak az ezután kitöltött cellákra hat; a meglévő műszakok hossza nem változik.
-          </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="plan-start-time">Alapértelmezett kezdés</Label>
+            <Input
+              id="plan-start-time"
+              name="defaultStartTime"
+              type="time"
+              defaultValue={defaultStartTime}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="plan-shift-hours">Műszak hossza (óra)</Label>
+            <Input
+              id="plan-shift-hours"
+              name="defaultShiftHours"
+              type="number"
+              min={0.25}
+              max={24}
+              step={0.25}
+              defaultValue={defaultShiftHours}
+            />
+          </div>
         </div>
+        <p className="text-muted-foreground -mt-2 text-xs">
+          Csak az ezután kitöltött cellákra hat; a meglévő műszakok nem változnak.
+        </p>
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="plan-notes">Megjegyzés a dolgozóknak</Label>

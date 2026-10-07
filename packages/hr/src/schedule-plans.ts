@@ -17,15 +17,23 @@ import mongoose, { type Types } from 'mongoose';
  * `ScheduleEntry` (`kind: 'shift'`) tagged with `sourceRef.refType = 'plan'`, so
  * the HR calendar, monthly hours and leave summary pick plan shifts up with no
  * extra wiring — and deleting a plan cleans its entries up by that same tag.
+ *
+ * A cell is **place + start + end + description**. The place is what makes a cell
+ * exist (it is where the employee has to show up); the times default from the plan,
+ * and the description is optional detail about the work.
  */
 
 export const SCHEDULE_PLAN_MODULE = 'hr';
 export const SCHEDULE_PLAN_REF_TYPE = 'plan';
-export const DEFAULT_SHIFT_MINUTES = 480;
+export const DEFAULT_SHIFT_HOURS = 8;
+export const DEFAULT_START_TIME = '08:00';
 
 /** `HH:MM` in 24h form. */
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const DAY_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+const MS_PER_HOUR = 60 * 60 * 1000;
+const MS_PER_DAY = 24 * MS_PER_HOUR;
 
 function toOid(id: Types.ObjectId | string): Types.ObjectId {
   return typeof id === 'string' ? new mongoose.Types.ObjectId(id) : id;
@@ -39,6 +47,20 @@ export function isValidShiftTime(value: string): boolean {
   return TIME_PATTERN.test(value.trim());
 }
 
+/** Plans written before the hours switch stored `defaultShiftMinutes`; read either. */
+export function planShiftHours(plan: Pick<ISchedulePlan, 'defaultShiftHours'>): number {
+  const hours = Number(plan.defaultShiftHours);
+  if (Number.isFinite(hours) && hours > 0) return hours;
+  const legacyMinutes = Number((plan as { defaultShiftMinutes?: number }).defaultShiftMinutes);
+  if (Number.isFinite(legacyMinutes) && legacyMinutes > 0) return legacyMinutes / 60;
+  return DEFAULT_SHIFT_HOURS;
+}
+
+export function planStartTime(plan: Pick<ISchedulePlan, 'defaultStartTime'>): string {
+  const value = plan.defaultStartTime?.trim();
+  return value && isValidShiftTime(value) ? value : DEFAULT_START_TIME;
+}
+
 /** Inclusive list of Budapest-dated `YYYY-MM-DD` keys. Capped to keep a grid renderable. */
 export function eachPlanDayKey(start: Date, end: Date, maxDays = 120): string[] {
   const keys: string[] = [];
@@ -50,66 +72,27 @@ export function eachPlanDayKey(start: Date, end: Date, maxDays = 120): string[] 
     keys.push(key);
     if (key >= lastKey) break;
     // Step 36h then re-truncate so DST transitions can't skip or repeat a day.
-    cursor = parseHrDateOnly(formatHrDateKey(new Date(cursor.getTime() + 36 * 60 * 60 * 1000)));
+    cursor = parseHrDateOnly(formatHrDateKey(new Date(cursor.getTime() + 36 * MS_PER_HOUR)));
   }
 
   return keys;
-}
-
-export type ParsedScheduleCell = {
-  /** Omitted for a location-only cell, which becomes an all-day shift. */
-  startTime?: string;
-  locationLabel?: string;
-};
-
-/**
- * Parses the roster's cell shorthand — `"13:00 BOK"`, `"8:00 Kispest"`, `"9:00"`.
- * `"-"`, `"–"` and blanks mean "not working" and return null.
- */
-export function parseScheduleCell(raw: string): ParsedScheduleCell | null {
-  const trimmed = raw.trim();
-  if (!trimmed || trimmed === '-' || trimmed === '–' || trimmed === '—') return null;
-
-  const match = trimmed.match(/^(\d{1,2}):(\d{2})\s*(.*)$/);
-  if (!match) {
-    // Location-only cell ("Remiz") — a shift with no stated start time.
-    return { locationLabel: trimmed.slice(0, 120) };
-  }
-
-  const hour = Number(match[1]);
-  const minute = Number(match[2]);
-  if (hour > 23 || minute > 59) return { locationLabel: trimmed.slice(0, 120) };
-
-  const location = match[3]?.trim();
-  return {
-    startTime: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
-    locationLabel: location ? location.slice(0, 120) : undefined,
-  };
-}
-
-/** Inverse of `parseScheduleCell` — what the grid and the email table show. */
-export function formatScheduleCell(entry: {
-  start: Date;
-  locationLabel?: string;
-  allDay?: boolean;
-}): string {
-  const location = entry.locationLabel?.trim();
-  if (entry.allDay) return location || 'Egész nap';
-  const time = formatHrTime(entry.start);
-  return location ? `${time} ${location}` : time;
 }
 
 export type SchedulePlanCellDTO = {
   entryId: string;
   employeeId: string;
   dayKey: string;
+  /** Venue the employee reports to — "BOK", "Kispest". */
+  place: string;
+  startTime: string;
+  endTime: string;
+  /** Optional detail about the work itself. */
+  description?: string;
   start: Date;
   end: Date;
-  startTime: string;
-  durationMinutes: number;
-  locationLabel?: string;
-  notes?: string;
-  label: string;
+  hours: number;
+  /** True when the shift runs past midnight into the next day. */
+  overnight: boolean;
 };
 
 export type SchedulePlanGrid = {
@@ -127,21 +110,21 @@ export function cellKey(employeeId: string, dayKey: string): string {
 }
 
 function entryToCell(entry: IScheduleEntry): SchedulePlanCellDTO {
-  const durationMinutes = Math.max(
-    0,
-    Math.round((entry.end.getTime() - entry.start.getTime()) / 60000)
-  );
+  const dayKey = formatHrDateKey(entry.start);
+  const ms = entry.end.getTime() - entry.start.getTime();
+
   return {
     entryId: String(entry._id),
     employeeId: String(entry.employeeId),
-    dayKey: formatHrDateKey(entry.start),
+    dayKey,
+    place: entry.locationLabel ?? entry.title ?? '',
+    startTime: formatHrTime(entry.start),
+    endTime: formatHrTime(entry.end),
+    description: entry.notes,
     start: entry.start,
     end: entry.end,
-    startTime: formatHrTime(entry.start),
-    durationMinutes,
-    locationLabel: entry.locationLabel,
-    notes: entry.notes,
-    label: formatScheduleCell(entry),
+    hours: Math.round((ms / MS_PER_HOUR) * 100) / 100,
+    overnight: formatHrDateKey(entry.end) !== dayKey,
   };
 }
 
@@ -152,7 +135,8 @@ export type CreateSchedulePlanParams = {
   startDateKey: string;
   endDateKey: string;
   employeeIds: Array<Types.ObjectId | string>;
-  defaultShiftMinutes?: number;
+  defaultShiftHours?: number;
+  defaultStartTime?: string;
   notes?: string;
   actorUserId: Types.ObjectId | string;
 };
@@ -182,6 +166,11 @@ export async function createSchedulePlan(params: CreateSchedulePlanParams): Prom
     throw new Error('Egy vagy több kiválasztott dolgozó nem ehhez a céghez tartozik.');
   }
 
+  const startTime = params.defaultStartTime?.trim();
+  if (startTime && !isValidShiftTime(startTime)) {
+    throw new Error('Érvénytelen alapértelmezett kezdés (ÓÓ:PP).');
+  }
+
   const actor = toOid(params.actorUserId);
 
   return SchedulePlan.create({
@@ -192,7 +181,8 @@ export async function createSchedulePlan(params: CreateSchedulePlanParams): Prom
     status: 'draft',
     employeeIds,
     dayNotes: [],
-    defaultShiftMinutes: params.defaultShiftMinutes ?? DEFAULT_SHIFT_MINUTES,
+    defaultShiftHours: params.defaultShiftHours ?? DEFAULT_SHIFT_HOURS,
+    defaultStartTime: startTime || DEFAULT_START_TIME,
     notes: params.notes?.trim() || undefined,
     publishCount: 0,
     createdBy: actor,
@@ -275,16 +265,49 @@ export async function getSchedulePlanGrid(
   };
 }
 
+/**
+ * Resolves a cell's absolute start/end. An end at or before the start is read as
+ * running past midnight — a 22:00–02:00 load-out is an ordinary event shift — so it
+ * moves to the next day rather than being rejected.
+ */
+export function resolveCellWindow(
+  dayKey: string,
+  startTime: string,
+  endTime: string
+): { start: Date; end: Date } {
+  const day = parseHrDateOnly(dayKey);
+  const start = combineHrDayAndTime(day, startTime);
+  let end = combineHrDayAndTime(day, endTime);
+  if (end.getTime() <= start.getTime()) {
+    // Step 36h, not 24h: the Budapest day on which DST ends is 25 hours long, so
+    // +24h lands back on the same calendar day and the shift would end before it
+    // starts. Re-truncating a 36h step always yields the next day.
+    const nextDay = parseHrDateOnly(formatHrDateKey(new Date(day.getTime() + 36 * MS_PER_HOUR)));
+    end = combineHrDayAndTime(nextDay, endTime);
+  }
+  return { start, end };
+}
+
+/** `"08:00" + 8.5` → `"16:30"`, wrapping past midnight. */
+export function addHoursToTime(time: string, hours: number): string {
+  const [h, m] = time.split(':').map(Number);
+  const total = h! * 60 + m! + Math.round(hours * 60);
+  const wrapped = ((total % (24 * 60)) + 24 * 60) % (24 * 60);
+  return `${String(Math.floor(wrapped / 60)).padStart(2, '0')}:${String(wrapped % 60).padStart(2, '0')}`;
+}
+
 export type UpsertPlanCellParams = {
   planId: Types.ObjectId | string;
   employeeId: Types.ObjectId | string;
   /** `YYYY-MM-DD` */
   dayKey: string;
-  /** `HH:MM`; omit for an all-day cell. */
+  /** Venue — the one required field; a cell with no place is not a shift. */
+  place: string;
+  /** `HH:MM`; falls back to the plan's default start. */
   startTime?: string;
-  durationMinutes?: number;
-  locationLabel?: string;
-  notes?: string;
+  /** `HH:MM`; falls back to start + the plan's default length. */
+  endTime?: string;
+  description?: string;
   actorUserId: Types.ObjectId | string;
 };
 
@@ -300,6 +323,9 @@ export async function upsertPlanCell(params: UpsertPlanCellParams): Promise<ISch
     throw new Error('A nap kívül esik a beosztás időszakán.');
   }
 
+  const place = params.place?.trim().slice(0, 120);
+  if (!place) throw new Error('A helyszín megadása kötelező.');
+
   const employeeOid = toOid(params.employeeId);
   if (!plan.employeeIds.some((id) => id.equals(employeeOid))) {
     throw new Error('Ez a dolgozó nincs kiválasztva ehhez a beosztáshoz.');
@@ -308,29 +334,19 @@ export async function upsertPlanCell(params: UpsertPlanCellParams): Promise<ISch
   const employee = await Employee.findById(employeeOid).select({ companyId: 1 }).lean().exec();
   if (!employee) throw new Error('Dolgozó nem található.');
 
-  const allDay = !params.startTime?.trim();
-  if (!allDay && !isValidShiftTime(params.startTime!)) {
-    throw new Error('Érvénytelen kezdési időpont (HH:MM).');
-  }
+  const startTime = params.startTime?.trim() || planStartTime(plan);
+  if (!isValidShiftTime(startTime)) throw new Error('Érvénytelen kezdési időpont (ÓÓ:PP).');
 
-  const durationMinutes =
-    params.durationMinutes && params.durationMinutes > 0
-      ? Math.min(params.durationMinutes, 24 * 60)
-      : plan.defaultShiftMinutes || DEFAULT_SHIFT_MINUTES;
+  const endTime = params.endTime?.trim() || addHoursToTime(startTime, planShiftHours(plan));
+  if (!isValidShiftTime(endTime)) throw new Error('Érvénytelen befejezési időpont (ÓÓ:PP).');
 
-  const start = allDay
-    ? parseHrDateOnly(params.dayKey)
-    : combineHrDayAndTime(parseHrDateOnly(params.dayKey), params.startTime!.trim());
-  const end = allDay
-    ? new Date(start.getTime() + 24 * 60 * 60 * 1000)
-    : new Date(start.getTime() + durationMinutes * 60000);
-
-  const location = params.locationLabel?.trim().slice(0, 120) || undefined;
+  const { start, end } = resolveCellWindow(params.dayKey, startTime, endTime);
   const actor = toOid(params.actorUserId);
+  const description = params.description?.trim().slice(0, 2000) || undefined;
 
   // One cell per employee per day: match on the plan tag + employee + that day.
   const dayStart = parseHrDateOnly(params.dayKey);
-  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+  const dayEnd = new Date(dayStart.getTime() + MS_PER_DAY);
   const existing = await ScheduleEntry.findOne({
     'sourceRef.module': SCHEDULE_PLAN_MODULE,
     'sourceRef.refType': SCHEDULE_PLAN_REF_TYPE,
@@ -339,15 +355,13 @@ export async function upsertPlanCell(params: UpsertPlanCellParams): Promise<ISch
     start: { $gte: dayStart, $lt: dayEnd },
   }).exec();
 
-  const title = location || 'Műszak';
-
   if (existing) {
     existing.start = start;
     existing.end = end;
-    existing.allDay = allDay;
-    existing.title = title;
-    existing.locationLabel = location;
-    existing.notes = params.notes?.trim() || undefined;
+    existing.allDay = false;
+    existing.title = place;
+    existing.locationLabel = place;
+    existing.notes = description;
     existing.companyId = employee.companyId;
     existing.updatedBy = actor;
     await existing.save();
@@ -359,11 +373,11 @@ export async function upsertPlanCell(params: UpsertPlanCellParams): Promise<ISch
     companyId: employee.companyId,
     start,
     end,
-    allDay,
+    allDay: false,
     kind: 'shift',
-    title,
-    locationLabel: location,
-    notes: params.notes?.trim() || undefined,
+    title: place,
+    locationLabel: place,
+    notes: description,
     sourceRef: {
       module: SCHEDULE_PLAN_MODULE,
       refType: SCHEDULE_PLAN_REF_TYPE,
@@ -384,7 +398,7 @@ export async function clearPlanCell(params: {
   if (!isValidDayKey(params.dayKey)) throw new Error('Érvénytelen nap (YYYY-MM-DD).');
 
   const dayStart = parseHrDateOnly(params.dayKey);
-  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+  const dayEnd = new Date(dayStart.getTime() + MS_PER_DAY);
 
   const result = await ScheduleEntry.deleteOne({
     'sourceRef.module': SCHEDULE_PLAN_MODULE,
@@ -401,7 +415,8 @@ export type UpdateSchedulePlanParams = {
   id: Types.ObjectId | string;
   title?: string;
   notes?: string;
-  defaultShiftMinutes?: number;
+  defaultShiftHours?: number;
+  defaultStartTime?: string;
   employeeIds?: Array<Types.ObjectId | string>;
   /** dayKey → notes; replaces that day's notes. */
   dayNotes?: Record<string, string[]>;
@@ -419,8 +434,15 @@ export async function updateSchedulePlan(params: UpdateSchedulePlanParams): Prom
     plan.title = title;
   }
   if (params.notes !== undefined) plan.notes = params.notes.trim() || undefined;
-  if (params.defaultShiftMinutes !== undefined && params.defaultShiftMinutes > 0) {
-    plan.defaultShiftMinutes = Math.min(params.defaultShiftMinutes, 24 * 60);
+  if (params.defaultShiftHours !== undefined && params.defaultShiftHours > 0) {
+    plan.defaultShiftHours = Math.min(params.defaultShiftHours, 24);
+  }
+  if (params.defaultStartTime !== undefined) {
+    const startTime = params.defaultStartTime.trim();
+    if (startTime && !isValidShiftTime(startTime)) {
+      throw new Error('Érvénytelen alapértelmezett kezdés (ÓÓ:PP).');
+    }
+    plan.defaultStartTime = startTime || DEFAULT_START_TIME;
   }
 
   if (params.employeeIds) {

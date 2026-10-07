@@ -22,8 +22,10 @@ export interface ISchedulePlan extends Document {
   /** Column order in the planner grid. */
   employeeIds: Types.ObjectId[];
   dayNotes: SchedulePlanDayNote[];
-  /** Default shift length applied to new cells, in minutes. */
-  defaultShiftMinutes: number;
+  /** Default shift length in hours, applied to a new cell that has no end time. */
+  defaultShiftHours: number;
+  /** `HH:MM` default start for a new cell that has no start time. */
+  defaultStartTime: string;
   notes?: string;
   publishedAt?: Date;
   publishedBy?: Types.ObjectId;
@@ -58,7 +60,8 @@ const SchedulePlanSchema = new Schema<ISchedulePlan>(
     },
     employeeIds: [{ type: Schema.Types.ObjectId, ref: 'Employee' }],
     dayNotes: { type: [SchedulePlanDayNoteSchema], default: [] },
-    defaultShiftMinutes: { type: Number, required: true, default: 480 },
+    defaultShiftHours: { type: Number, required: true, default: 8 },
+    defaultStartTime: { type: String, required: true, default: '08:00' },
     notes: { type: String, maxlength: 2000 },
     publishedAt: { type: Date },
     publishedBy: { type: Schema.Types.ObjectId, ref: 'User' },

@@ -81,7 +81,6 @@ export {
   schedulePlanCreateSchema,
   schedulePlanUpdateSchema,
   schedulePlanCellSchema,
-  schedulePlanCellTextSchema,
   schedulePlanDayNoteSchema,
   schedulePlanPublishSchema,
 } from './hr';

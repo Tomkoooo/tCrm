@@ -9,6 +9,8 @@ import {
   listCompanies,
   listEmployees,
   listPlanChangeRequests,
+  planShiftHours,
+  planStartTime,
   HR_SCHEDULE_READ_PERMISSION_KEYS,
   HR_SCHEDULE_WRITE_PERMISSION_KEYS,
 } from '@crm/hr';
@@ -129,7 +131,8 @@ export default async function SchedulePlanDetailPage({
           status={grid.plan.status}
           title={grid.plan.title}
           notes={grid.plan.notes}
-          defaultShiftMinutes={grid.plan.defaultShiftMinutes}
+          defaultShiftHours={planShiftHours(grid.plan)}
+          defaultStartTime={planStartTime(grid.plan)}
           dayKeys={grid.dayKeys}
           employees={grid.employees.map((e) => ({
             id: String(e._id),
@@ -146,7 +149,14 @@ export default async function SchedulePlanDetailPage({
           cells={Object.fromEntries(
             [...grid.cells.entries()].map(([key, cell]) => [
               key,
-              { label: cell.label, durationMinutes: cell.durationMinutes },
+              {
+                place: cell.place,
+                startTime: cell.startTime,
+                endTime: cell.endTime,
+                description: cell.description,
+                hours: cell.hours,
+                overnight: cell.overnight,
+              },
             ])
           )}
           dayNotes={Object.fromEntries(grid.dayNotes)}

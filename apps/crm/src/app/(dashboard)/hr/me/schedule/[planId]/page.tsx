@@ -96,7 +96,11 @@ export default async function MySchedulePage({ params }: { params: Promise<{ pla
         rows={myCells.map(({ dayKey, cell }) => ({
           dayKey,
           entryId: cell.entryId,
-          label: cell.label,
+          place: cell.place,
+          startTime: cell.startTime,
+          endTime: cell.endTime,
+          description: cell.description,
+          overnight: cell.overnight,
           start: cell.start.toISOString(),
           end: cell.end.toISOString(),
           pendingRequestId: requestByEntry.get(cell.entryId),

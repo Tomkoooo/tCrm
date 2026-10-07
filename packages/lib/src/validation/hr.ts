@@ -83,7 +83,9 @@ export const schedulePlanCreateSchema = z
     startDateKey: dayKey,
     endDateKey: dayKey,
     employeeIds: z.array(z.string().min(1)).min(1, 'Válassz legalább egy dolgozót'),
-    defaultShiftMinutes: z.coerce.number().int().min(15).max(1440).optional().default(480),
+    /** Hours, not minutes — 0.25 steps allow a 7.5h day. */
+    defaultShiftHours: z.coerce.number().min(0.25).max(24).optional().default(8),
+    defaultStartTime: shiftTime.optional().default('08:00'),
     notes: emptyToUndefined(z.string().max(2000)),
   })
   .refine((v) => v.endDateKey >= v.startDateKey, {
@@ -94,29 +96,24 @@ export const schedulePlanCreateSchema = z
 export const schedulePlanUpdateSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1, 'A megnevezés kötelező').max(200).optional(),
-  defaultShiftMinutes: z.coerce.number().int().min(15).max(1440).optional(),
+  defaultShiftHours: z.coerce.number().min(0.25).max(24).optional(),
+  defaultStartTime: shiftTime.optional(),
   employeeIds: z.array(z.string().min(1)).min(1).optional(),
   notes: emptyToUndefined(z.string().max(2000)),
 });
 
+/**
+ * One grid cell. `place` is the venue the employee reports to and is what makes a
+ * cell exist; blank it to clear the cell. Times fall back to the plan defaults.
+ */
 export const schedulePlanCellSchema = z.object({
   planId: z.string().min(1),
   employeeId: z.string().min(1),
   dayKey,
-  /** Empty clears the cell; omitted-but-present means an all-day shift. */
+  place: z.string().max(120),
   startTime: emptyToUndefined(shiftTime),
-  durationMinutes: z.coerce.number().int().min(15).max(1440).optional(),
-  locationLabel: emptyToUndefined(z.string().max(120)),
-  notes: emptyToUndefined(z.string().max(2000)),
-});
-
-/** Cell shorthand as typed in the grid: `"13:00 BOK"`, `"-"`, `""`. */
-export const schedulePlanCellTextSchema = z.object({
-  planId: z.string().min(1),
-  employeeId: z.string().min(1),
-  dayKey,
-  value: z.string().max(140),
-  durationMinutes: z.coerce.number().int().min(15).max(1440).optional(),
+  endTime: emptyToUndefined(shiftTime),
+  description: emptyToUndefined(z.string().max(2000)),
 });
 
 export const schedulePlanDayNoteSchema = z.object({

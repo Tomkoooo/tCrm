@@ -7,11 +7,9 @@ import {
   clearPlanCell,
   createSchedulePlan,
   deleteSchedulePlan,
-  formatScheduleCell,
   getSchedulePlanGrid,
   listPlanChangeRequests,
   notifyScheduleChangeReviewed,
-  parseScheduleCell,
   publishSchedulePlan,
   reviewScheduleChangeRequest,
   updateSchedulePlan,
@@ -19,7 +17,7 @@ import {
   HR_SCHEDULE_WRITE_PERMISSION_KEYS,
 } from '@crm/hr';
 import {
-  schedulePlanCellTextSchema,
+  schedulePlanCellSchema,
   schedulePlanCreateSchema,
   schedulePlanDayNoteSchema,
   schedulePlanPublishSchema,
@@ -81,7 +79,8 @@ export async function createSchedulePlanAction(
     startDateKey: formData.get('startDateKey'),
     endDateKey: formData.get('endDateKey'),
     employeeIds: formData.getAll('employeeIds').map(String).filter(Boolean),
-    defaultShiftMinutes: formData.get('defaultShiftMinutes') || undefined,
+    defaultShiftHours: formData.get('defaultShiftHours') || undefined,
+    defaultStartTime: formData.get('defaultStartTime') || undefined,
     notes: formData.get('notes'),
   });
   if (!parsed.success) {
@@ -112,7 +111,8 @@ export async function updateSchedulePlanAction(
   const parsed = schedulePlanUpdateSchema.safeParse({
     id: formData.get('id'),
     title: formData.get('title') || undefined,
-    defaultShiftMinutes: formData.get('defaultShiftMinutes') || undefined,
+    defaultShiftHours: formData.get('defaultShiftHours') || undefined,
+    defaultStartTime: formData.get('defaultStartTime') || undefined,
     employeeIds: employeeIds.length ? employeeIds : undefined,
     notes: formData.get('notes'),
   });
@@ -129,17 +129,28 @@ export async function updateSchedulePlanAction(
   }
 }
 
+export type SavedCell = {
+  place: string;
+  startTime: string;
+  endTime: string;
+  description?: string;
+  hours: number;
+  overnight: boolean;
+};
+
 /**
- * Writes one grid cell from the shorthand the planner accepts (`"13:00 BOK"`).
- * An empty value or `-` clears the cell.
+ * Writes one grid cell. The place is what makes a cell exist — clearing it removes
+ * the shift. Times left blank fall back to the plan defaults.
  */
 export async function setSchedulePlanCellAction(input: {
   planId: string;
   employeeId: string;
   dayKey: string;
-  value: string;
-  durationMinutes?: number;
-}): Promise<ActionResult<{ label: string; cleared: boolean }>> {
+  place: string;
+  startTime?: string;
+  endTime?: string;
+  description?: string;
+}): Promise<ActionResult<{ cell: SavedCell | null }>> {
   let user;
   try {
     user = await requireScheduleWriter();
@@ -147,34 +158,50 @@ export async function setSchedulePlanCellAction(input: {
     return { success: false, message: errorMessage(err, 'Nincs jogosultság.') };
   }
 
-  const parsed = schedulePlanCellTextSchema.safeParse(input);
+  const parsed = schedulePlanCellSchema.safeParse(input);
   if (!parsed.success) {
     return { success: false, message: parsed.error.issues[0]?.message ?? 'Érvénytelen érték.' };
   }
 
-  const { planId, employeeId, dayKey, value, durationMinutes } = parsed.data;
-  const cell = parseScheduleCell(value);
+  const { planId, employeeId, dayKey, place, startTime, endTime, description } = parsed.data;
 
   try {
-    if (!cell) {
+    if (!place.trim()) {
       await clearPlanCell({ planId, employeeId, dayKey });
       revalidatePlan(planId);
-      return { success: true, data: { label: '', cleared: true } };
+      return { success: true, data: { cell: null } };
     }
 
-    const entry = await upsertPlanCell({
+    await upsertPlanCell({
       planId,
       employeeId,
       dayKey,
-      startTime: cell.startTime,
-      durationMinutes,
-      locationLabel: cell.locationLabel,
+      place,
+      startTime,
+      endTime,
+      description,
       actorUserId: user.id,
     });
+
+    // Read the cell back so the grid shows the resolved times, not the blanks.
+    const grid = await getSchedulePlanGrid(planId);
+    const saved = grid?.cells.get(cellKey(employeeId, dayKey));
     revalidatePlan(planId);
+
     return {
       success: true,
-      data: { label: formatScheduleCell(entry), cleared: false },
+      data: {
+        cell: saved
+          ? {
+              place: saved.place,
+              startTime: saved.startTime,
+              endTime: saved.endTime,
+              description: saved.description,
+              hours: saved.hours,
+              overnight: saved.overnight,
+            }
+          : null,
+      },
     };
   } catch (err) {
     return { success: false, message: errorMessage(err, 'A cella mentése sikertelen.') };
@@ -184,11 +211,16 @@ export async function setSchedulePlanCellAction(input: {
 /** Applies one cell value to a whole employee column or a whole day row. */
 export async function fillSchedulePlanAction(input: {
   planId: string;
-  value: string;
+  place: string;
+  startTime?: string;
+  endTime?: string;
+  description?: string;
   employeeId?: string;
   dayKey?: string;
   /** Only overwrite cells that are currently empty. */
   onlyEmpty?: boolean;
+  /** Skip Saturdays and Sundays. */
+  skipWeekends?: boolean;
 }): Promise<ActionResult<{ changed: number }>> {
   let user;
   try {
@@ -204,7 +236,7 @@ export async function fillSchedulePlanAction(input: {
   const grid = await getSchedulePlanGrid(input.planId);
   if (!grid) return { success: false, message: 'Beosztás nem található.' };
 
-  const cell = parseScheduleCell(input.value);
+  const place = input.place?.trim() ?? '';
   const targets: Array<{ employeeId: string; dayKey: string }> = [];
 
   for (const employee of grid.employees) {
@@ -213,6 +245,11 @@ export async function fillSchedulePlanAction(input: {
     for (const dayKey of grid.dayKeys) {
       if (input.dayKey && dayKey !== input.dayKey) continue;
       if (input.onlyEmpty && grid.cells.has(cellKey(employeeId, dayKey))) continue;
+      if (input.skipWeekends) {
+        const [y, m, d] = dayKey.split('-').map(Number);
+        const weekday = new Date(Date.UTC(y!, m! - 1, d!)).getUTCDay();
+        if (weekday === 0 || weekday === 6) continue;
+      }
       targets.push({ employeeId, dayKey });
     }
   }
@@ -220,15 +257,17 @@ export async function fillSchedulePlanAction(input: {
   let changed = 0;
   try {
     for (const target of targets) {
-      if (!cell) {
+      if (!place) {
         if (await clearPlanCell({ planId: input.planId, ...target })) changed++;
         continue;
       }
       await upsertPlanCell({
         planId: input.planId,
         ...target,
-        startTime: cell.startTime,
-        locationLabel: cell.locationLabel,
+        place,
+        startTime: input.startTime,
+        endTime: input.endTime,
+        description: input.description,
         actorUserId: user.id,
       });
       changed++;

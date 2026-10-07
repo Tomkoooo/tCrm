@@ -141,7 +141,8 @@ describe('createSchedulePlan', () => {
     const plan = await makePlan();
     expect(plan.status).toBe('draft');
     expect(plan.publishCount).toBe(0);
-    expect(plan.defaultShiftMinutes).toBe(480);
+    expect(plan.defaultShiftHours).toBe(8);
+    expect(plan.defaultStartTime).toBe('08:00');
 
     const grid = await getSchedulePlanGrid(plan._id);
     expect(grid?.dayKeys).toHaveLength(7);
@@ -208,8 +209,8 @@ describe('upsertPlanCell', () => {
       planId: plan._id,
       employeeId: aliceId,
       dayKey: '2026-10-06',
+      place: 'BOK',
       startTime: '13:00',
-      locationLabel: 'BOK',
       actorUserId: plannerId,
     });
 
@@ -226,6 +227,7 @@ describe('upsertPlanCell', () => {
       planId: plan._id,
       employeeId: aliceId,
       dayKey: '2026-10-06',
+      place: 'Kispest',
       startTime: '08:00',
       actorUserId: plannerId,
     });
@@ -244,6 +246,7 @@ describe('upsertPlanCell', () => {
         planId: plan._id,
         employeeId: aliceId,
         dayKey: '2026-10-06',
+        place: 'Kispest',
         startTime: time,
         actorUserId: plannerId,
       });
@@ -253,30 +256,90 @@ describe('upsertPlanCell', () => {
     expect(formatHrTime(entries[0]!.start)).toBe('10:30');
   });
 
-  it('honours a per-cell duration', async () => {
+  it('honours an explicit end time', async () => {
     const plan = await makePlan();
     const entry = await upsertPlanCell({
       planId: plan._id,
       employeeId: aliceId,
       dayKey: '2026-10-06',
+      place: 'Kispest',
       startTime: '08:00',
-      durationMinutes: 240,
+      endTime: '12:00',
       actorUserId: plannerId,
     });
     expect(formatHrTime(entry.end)).toBe('12:00');
   });
 
-  it('writes an all-day shift when no time is given', async () => {
+  it('defaults both times from the plan when only a place is given', async () => {
+    const plan = await createSchedulePlan({
+      companyId,
+      title: 'Alapértékek',
+      startDateKey: START,
+      endDateKey: END,
+      employeeIds: [aliceId],
+      defaultStartTime: '06:30',
+      defaultShiftHours: 7.5,
+      actorUserId: plannerId,
+    });
+
+    const entry = await upsertPlanCell({
+      planId: plan._id,
+      employeeId: aliceId,
+      dayKey: '2026-10-06',
+      place: 'Kispest',
+      actorUserId: plannerId,
+    });
+
+    expect(formatHrTime(entry.start)).toBe('06:30');
+    expect(formatHrTime(entry.end)).toBe('14:00');
+  });
+
+  it('stores an overnight shift as ending the next day', async () => {
     const plan = await makePlan();
     const entry = await upsertPlanCell({
       planId: plan._id,
       employeeId: aliceId,
       dayKey: '2026-10-06',
-      locationLabel: 'Remiz',
+      place: 'BOK',
+      startTime: '22:00',
+      endTime: '02:00',
       actorUserId: plannerId,
     });
-    expect(entry.allDay).toBe(true);
-    expect(entry.end.getTime() - entry.start.getTime()).toBe(24 * 60 * 60 * 1000);
+
+    expect(entry.end.getTime() - entry.start.getTime()).toBe(4 * 60 * 60 * 1000);
+
+    const grid = await getSchedulePlanGrid(plan._id);
+    const cell = grid!.cells.get(cellKey(String(aliceId), '2026-10-06'));
+    expect(cell?.overnight).toBe(true);
+    expect(cell?.hours).toBe(4);
+  });
+
+  it('stores the description separately from the place', async () => {
+    const plan = await makePlan();
+    const entry = await upsertPlanCell({
+      planId: plan._id,
+      employeeId: aliceId,
+      dayKey: '2026-10-06',
+      place: 'BOK',
+      description: 'Színpad bontás, 3 fő',
+      actorUserId: plannerId,
+    });
+
+    expect(entry.locationLabel).toBe('BOK');
+    expect(entry.notes).toBe('Színpad bontás, 3 fő');
+  });
+
+  it('rejects a cell with no place', async () => {
+    const plan = await makePlan();
+    await expect(
+      upsertPlanCell({
+        planId: plan._id,
+        employeeId: aliceId,
+        dayKey: '2026-10-06',
+        place: '   ',
+        actorUserId: plannerId,
+      })
+    ).rejects.toThrow(/helyszín/i);
   });
 
   it('refuses a day outside the plan period', async () => {
@@ -286,6 +349,7 @@ describe('upsertPlanCell', () => {
         planId: plan._id,
         employeeId: aliceId,
         dayKey: '2026-11-01',
+        place: 'Kispest',
         startTime: '08:00',
         actorUserId: plannerId,
       })
@@ -299,6 +363,7 @@ describe('upsertPlanCell', () => {
         planId: plan._id,
         employeeId: bobId,
         dayKey: '2026-10-06',
+        place: 'Kispest',
         startTime: '08:00',
         actorUserId: plannerId,
       })
@@ -312,6 +377,7 @@ describe('upsertPlanCell', () => {
         planId: plan._id,
         employeeId: aliceId,
         dayKey: '2026-10-06',
+        place: 'Kispest',
         startTime: '25:00',
         actorUserId: plannerId,
       })
@@ -326,6 +392,7 @@ describe('clearPlanCell', () => {
       planId: plan._id,
       employeeId: aliceId,
       dayKey: '2026-10-06',
+      place: 'Kispest',
       startTime: '08:00',
       actorUserId: plannerId,
     });
@@ -333,6 +400,7 @@ describe('clearPlanCell', () => {
       planId: plan._id,
       employeeId: aliceId,
       dayKey: '2026-10-07',
+      place: 'Kispest',
       startTime: '08:00',
       actorUserId: plannerId,
     });
@@ -361,15 +429,17 @@ describe('getSchedulePlanGrid', () => {
       planId: plan._id,
       employeeId: aliceId,
       dayKey: '2026-10-06',
+      place: 'BOK',
       startTime: '13:00',
-      locationLabel: 'BOK',
       actorUserId: plannerId,
     });
 
     const grid = await getSchedulePlanGrid(plan._id);
     const cell = grid!.cells.get(cellKey(String(aliceId), '2026-10-06'));
-    expect(cell?.label).toBe('13:00 BOK');
-    expect(cell?.durationMinutes).toBe(480);
+    expect(cell?.place).toBe('BOK');
+    expect(cell?.startTime).toBe('13:00');
+    expect(cell?.endTime).toBe('21:00');
+    expect(cell?.hours).toBe(8);
     expect(grid!.cells.get(cellKey(String(bobId), '2026-10-06'))).toBeUndefined();
   });
 
@@ -409,6 +479,7 @@ describe('updateSchedulePlan', () => {
       planId: plan._id,
       employeeId: bobId,
       dayKey: '2026-10-06',
+      place: 'Kispest',
       startTime: '08:00',
       actorUserId: plannerId,
     });
@@ -416,6 +487,7 @@ describe('updateSchedulePlan', () => {
       planId: plan._id,
       employeeId: aliceId,
       dayKey: '2026-10-06',
+      place: 'Kispest',
       startTime: '08:00',
       actorUserId: plannerId,
     });
@@ -440,6 +512,7 @@ describe('deleteSchedulePlan', () => {
       planId: plan._id,
       employeeId: aliceId,
       dayKey: '2026-10-06',
+      place: 'Kispest',
       startTime: '08:00',
       actorUserId: plannerId,
     });
@@ -475,8 +548,8 @@ describe('plan shifts and the rest of HR', () => {
       planId: plan._id,
       employeeId: aliceId,
       dayKey: '2026-10-06',
+      place: 'Kispest',
       startTime: '08:00',
-      locationLabel: 'Kispest',
       actorUserId: plannerId,
     });
 
@@ -506,6 +579,7 @@ describe('publishSchedulePlan', () => {
       planId: plan._id,
       employeeId: aliceId,
       dayKey: '2026-10-06',
+      place: 'Kispest',
       startTime: '08:00',
       actorUserId: plannerId,
     });
@@ -573,8 +647,8 @@ describe('buildEmployeeScheduleTableHtml', () => {
       planId: plan._id,
       employeeId: aliceId,
       dayKey: '2026-10-06',
+      place: 'BOK',
       startTime: '13:00',
-      locationLabel: 'BOK',
       actorUserId: plannerId,
     });
     await updateSchedulePlan({
@@ -586,7 +660,8 @@ describe('buildEmployeeScheduleTableHtml', () => {
     const grid = await getSchedulePlanGrid(plan._id);
     const html = buildEmployeeScheduleTableHtml(grid!, String(aliceId));
 
-    expect(html).toContain('13:00 BOK');
+    expect(html).toContain('BOK');
+    expect(html).toContain('13:00–21:00');
     expect(html).toContain('Atlétika Épül');
     // 7 body rows, one per day of the period (the header row is <tr style> too).
     const body = html.slice(html.indexOf('<tbody>'));
@@ -600,8 +675,8 @@ describe('buildEmployeeScheduleTableHtml', () => {
       planId: plan._id,
       employeeId: bobId,
       dayKey: '2026-10-06',
+      place: 'Titkos',
       startTime: '06:00',
-      locationLabel: 'Titkos',
       actorUserId: plannerId,
     });
 
@@ -616,8 +691,8 @@ describe('buildEmployeeScheduleTableHtml', () => {
       planId: plan._id,
       employeeId: aliceId,
       dayKey: '2026-10-06',
+      place: '<script>alert(1)</script>',
       startTime: '08:00',
-      locationLabel: '<script>alert(1)</script>',
       actorUserId: plannerId,
     });
 
@@ -646,8 +721,8 @@ describe('schedule change requests', () => {
       planId: plan._id,
       employeeId: aliceId,
       dayKey: '2026-10-06',
+      place: 'Kispest',
       startTime: '08:00',
-      locationLabel: 'Kispest',
       actorUserId: plannerId,
     });
     await publishSchedulePlan({ planId: plan._id, actorUserId: plannerId });
@@ -801,8 +876,8 @@ describe('calendar feed', () => {
       planId: plan._id,
       employeeId: aliceId,
       dayKey: '2026-10-06',
+      place: 'BOK',
       startTime: '13:00',
-      locationLabel: 'BOK',
       actorUserId: plannerId,
     });
 
@@ -828,8 +903,8 @@ describe('calendar feed', () => {
       planId: plan._id,
       employeeId: bobId,
       dayKey: '2026-10-06',
+      place: 'Titkos',
       startTime: '06:00',
-      locationLabel: 'Titkos',
       actorUserId: plannerId,
     });
 

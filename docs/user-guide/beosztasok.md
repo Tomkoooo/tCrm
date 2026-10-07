@@ -22,8 +22,9 @@ e-mailben, és a dolgozók innen kérnek módosítást.
 2. Adj **megnevezést** (pl. „2026. október — Eseménycsapat”), válaszd ki a **céget**
    és az **időszakot** (első és utolsó nap).
 3. Pipáld ki a **dolgozókat** — ők lesznek a rács oszlopai.
-4. A **műszak alapértelmezett hossza** (perc) határozza meg, meddig tart egy cella;
-   alapból 8 óra. Cellánként felülírható.
+4. Az **alapértelmezett kezdés** és a **műszak hossza (óra)** tölti ki a cellák
+   időpontjait, ha csak a helyszínt adod meg. Alapból 08:00 és 8 óra; cellánként
+   bármikor felülírható.
 5. A **megjegyzés** szövege bekerül a kiküldött e-mailbe.
 
 > Ha egy kiválasztott dolgozónál nincs e-mail cím vagy nincs összekapcsolt CRM fiók,
@@ -31,27 +32,32 @@ e-mailben, és a dolgozók innen kérnek módosítást.
 
 ## A rács kitöltése
 
-Sorok = napok, oszlopok = dolgozók. A hétvégék háttérrel elkülönülnek.
+Sorok = napok, oszlopok = dolgozók. A hétvégék háttérrel elkülönülnek. Minden cella
+három sorból áll:
 
-| Amit beírsz | Mit jelent |
-|-------------|------------|
-| `13:00 BOK` | 13:00-kor kezd a BOK-ban |
-| `8:00 Kispest` | 8:00-kor kezd Kispesten |
-| `9:00` | 9:00-kor kezd, helyszín nincs megadva |
-| `Remiz` | egész napos, helyszín Remiz |
-| `-` vagy üres | aznap nem dolgozik |
+| Mező | Mire való |
+|------|-----------|
+| **Helyszín** | Hova kell mennie (pl. `BOK`, `Kispest`). Ez hozza létre a műszakot — ha kitörlöd, a cella is törlődik. |
+| **Kezdés – Vége** | Időpontok. Üresen hagyva a beosztás alapértéke érvényes. |
+| **Leírás** | Opcionális: mit kell ott csinálni (pl. „Színpad bontás, 3 fő”). |
 
-A mentés akkor történik, amikor **kilépsz a cellából** (Tab vagy kattintás máshova).
-**Enter** is menti, **Esc** visszaállítja az eredeti értéket.
+A mentés akkor történik, amikor **kilépsz a mezőből** (Tab vagy kattintás máshova).
+A helyszín és a leírás mezőn az **Enter** is ment.
+
+**Éjszakába nyúló műszak:** írj a kezdésnél későbbi véget — pl. `22:00 – 02:00` egy
+négyórás, másnap hajnalban végződő műszak. A cellában `+1` jelzi.
 
 Az **Esemény** oszlopba a nap közös eseménye megy (pl. „Atlétika Épül”). Több esemény
 elválasztása: `·`. Ez minden dolgozó e-mailjében megjelenik.
 
 ### Tömeges kitöltés
 
-A **Tömeges kitöltés** gombbal egy értéket viszel fel egy **dolgozó teljes oszlopára**
-vagy **egy nap minden dolgozójára**. A *Csak az üres cellákat írja át* pipával a már
-kitöltött cellák érintetlenül maradnak.
+A **Tömeges kitöltés** gombbal egy helyszínt (és opcionálisan időpontot, leírást)
+viszel fel egy **dolgozó teljes oszlopára** vagy **egy nap minden dolgozójára**.
+
+- *Csak az üres cellákat írja át* — a már kitöltött cellák érintetlenül maradnak.
+- *Hétvégét hagyja ki* — oszlop kitöltésénél a szombat és vasárnap kimarad.
+- A helyszínt üresen hagyva az érintett cellák **törlődnek**.
 
 ## Kiküldés
 

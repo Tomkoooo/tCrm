@@ -24,7 +24,11 @@ import { cancelScheduleChangeAction, requestScheduleChangeAction } from '../sche
 export type MyScheduleRow = {
   dayKey: string;
   entryId: string;
-  label: string;
+  place: string;
+  startTime: string;
+  endTime: string;
+  description?: string;
+  overnight: boolean;
   start: string;
   end: string;
   pendingRequestId?: string;
@@ -74,8 +78,9 @@ export function MyScheduleTable({
           <TableHeader>
             <TableRow>
               <TableHead>Nap</TableHead>
-              <TableHead>Műszak</TableHead>
-              <TableHead>Esemény</TableHead>
+              <TableHead>Helyszín</TableHead>
+              <TableHead>Időpont</TableHead>
+              <TableHead>Leírás / esemény</TableHead>
               <TableHead className="text-right">Módosítás</TableHead>
             </TableRow>
           </TableHeader>
@@ -88,9 +93,17 @@ export function MyScheduleTable({
                     {weekdayOf(row.dayKey)}
                   </span>
                 </TableCell>
-                <TableCell className="whitespace-nowrap font-medium">{row.label}</TableCell>
+                <TableCell className="font-medium">{row.place}</TableCell>
+                <TableCell className="whitespace-nowrap tabular-nums">
+                  {row.startTime}–{row.endTime}
+                  {row.overnight ? (
+                    <span className="text-muted-foreground ml-1 text-xs">+1 nap</span>
+                  ) : null}
+                </TableCell>
                 <TableCell className="text-muted-foreground text-sm">
-                  {(dayNotes[row.dayKey] ?? []).join(' · ')}
+                  {[row.description, (dayNotes[row.dayKey] ?? []).join(' · ')]
+                    .filter(Boolean)
+                    .join(' — ')}
                 </TableCell>
                 <TableCell className="text-right">
                   {row.pendingRequestId ? (
@@ -173,8 +186,9 @@ function ChangeRequestForm({ row, onDone }: { row: MyScheduleRow; onDone: () => 
   return (
     <div className="flex flex-col gap-4">
       <p className="text-muted-foreground text-sm">
-        Jelenlegi műszak: <strong>{row.label}</strong> ({row.dayKey}). Add meg, mikor felelne meg —
-        a beosztás készítője e-mailben kap értesítést, és a döntésről te is kapsz egyet.
+        Jelenlegi műszak: <strong>{row.place}</strong>, {row.startTime}–{row.endTime} ({row.dayKey}
+        ). Add meg, mikor felelne meg — a beosztás készítője e-mailben kap értesítést, és a
+        döntésről te is kapsz egyet.
       </p>
 
       <div className="flex flex-col gap-2">
